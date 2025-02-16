@@ -9,6 +9,14 @@ public partial class App : Application
 
 	protected override Window CreateWindow(IActivationState activationState)
 	{
-		return new Window(new AppShell());
+		try 
+		{
+			return new Window(new AppShell());
+        }
+        catch (Exception ex)
+		{
+			Debug.WriteLine(ex.ToString());
+			return null;
+		}
 	}
 }

@@ -29,7 +29,9 @@ public static class MauiProgram
 		builder.Services.AddSingleton<FileDataService>();
 		builder.Services.AddSingleton<FilesViewModel>();
 
-		builder.Services.AddTransient<FileDetailsViewModel>();
+        builder.Services.AddSingleton<MainPageViewModel>();
+
+        builder.Services.AddTransient<FileDetailsViewModel>();
 		builder.Services.AddSingleton<DetailsPage>();
 		return builder.Build();
 	}

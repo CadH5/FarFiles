@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFrameworks>net9.0-android</TargetFrameworks>
@@ -46,5 +46,21 @@
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.30" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="9.0.30" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Compile Update="View\ClientPage.xaml.cs">
+	    <DependentUpon>ClientPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="View\ServerPage.xaml.cs">
+	    <DependentUpon>ServerPage.xaml</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+	<ItemGroup>
+	  <MauiXaml Update="View\ClientPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="View\ServerPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	</ItemGroup>
 </Project>

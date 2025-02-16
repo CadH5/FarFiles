@@ -2,7 +2,7 @@
 
 public partial class MainPage : ContentPage
 {
-	public MainPage(FilesViewModel viewModel)
+	public MainPage(MainPageViewModel viewModel)
 	{
 		InitializeComponent();
 		BindingContext = viewModel;

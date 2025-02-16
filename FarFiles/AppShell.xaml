@@ -27,7 +27,7 @@
 
 
     <ShellContent
-        Title="Monkeys"
+        Title="Far Files"
         ContentTemplate="{DataTemplate view:MainPage}"
         Route="MainPage" />
 
