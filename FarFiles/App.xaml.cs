@@ -9,7 +9,7 @@ public partial class App : Application
 
 	protected override Window CreateWindow(IActivationState activationState)
 	{
-		try 
+		try
 		{
 			return new Window(new AppShell());
         }
