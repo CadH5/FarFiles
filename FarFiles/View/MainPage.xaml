@@ -42,6 +42,8 @@
         <Label Grid.Row="5" Grid.Column="0" Text="Connect Key:"></Label>
         <Entry Grid.Row="5" Grid.Column="1" Text="{Binding ConnectKey}"></Entry>
 
+        <Label Grid.Row="6" Grid.Column="0" Text="{Binding LblInfo}"></Label>
+
         <Button
             Grid.Row="6"
             Grid.Column="1"

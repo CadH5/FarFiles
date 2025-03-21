@@ -46,6 +46,7 @@
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.30" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="9.0.30" />
+		<PackageReference Include="Stun.Net" Version="8.0.2" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Compile Update="View\ClientPage.xaml.cs">
