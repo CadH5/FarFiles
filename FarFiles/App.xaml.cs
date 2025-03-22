@@ -12,8 +12,8 @@ public partial class App : Application
 		try
 		{
 			return new Window(new AppShell());
-        }
-        catch (Exception ex)
+		}
+		catch (Exception ex)
 		{
 			Debug.WriteLine(ex.ToString());
 			return null;

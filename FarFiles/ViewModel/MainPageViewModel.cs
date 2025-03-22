@@ -5,6 +5,7 @@ using STUN.Client;
 using STUN.Enums;
 
 using FarFiles.Services;
+//JEEWEE
 //using Java.Util;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -20,14 +21,28 @@ namespace FarFiles.ViewModel;
 
 public partial class MainPageViewModel : BaseViewModel
 {
+    //JEEWEE
+    //protected SettingsService _settingsService;
+    //public MainPageViewModel(SettingsService settingsService)
     public MainPageViewModel()
     {
         Title = "Far Away Files Access";
+
+        //JEEWEE
+        //_settingsService = settingsService;
+        //LoadSettings();
+
+        //JEEWEE: seems xaml cannot bind to MauiProgram.Settings directly
+        Settings = MauiProgram.Settings;
     }
 
-    public string FullPathRoot { get; set; }
-    public int Idx0isSvr1isCl { get; set; }
-    public string ConnectKey { get; set; }
+    public Settings Settings { get; set; }
+
+    //JEEWEE
+    //public string FullPathRoot { get; set; } = "";
+    //public int Idx0isSvr1isCl { get; set; } = 0;
+    //public string ConnectKey { get; set; } = "";
+
     protected string _lblInfo = "";
     public string LblInfo
     {
@@ -54,8 +69,8 @@ public partial class MainPageViewModel : BaseViewModel
                 throw new Exception($"FolderPicker not successful or cancelled");
             }
 
-            FullPathRoot = folderPickerResult.Folder?.Path;
-            OnPropertyChanged(nameof(FullPathRoot));
+            MauiProgram.Settings.FullPathRoot = folderPickerResult.Folder?.Path;
+            OnPropertyChanged(nameof(Settings.FullPathRoot));
         }
         catch (Exception ex)
         {
@@ -84,7 +99,7 @@ public partial class MainPageViewModel : BaseViewModel
             if (true)
             {
                 int udpSvrPort = 0;
-                if (0 == Idx0isSvr1isCl)        // server
+                if (0 == MauiProgram.Settings.Idx0isSvr1isCl)        // server
                 {
                     var udpIEndPoint = await GetUdpSvrIEndPointFromStun();
                     if (null == udpIEndPoint)
@@ -98,7 +113,7 @@ public partial class MainPageViewModel : BaseViewModel
 
                     //JEEWEE
                     //var requestData = new { ConnectKey = ConnectKey, SvrCl = Idx0isSvr1isCl, LocalIP = GetLocalIP() };
-                    var requestData = new { ConnectKey = ConnectKey, UdpSvrPort = udpSvrPort, LocalIP = GetLocalIP() };
+                    var requestData = new { ConnectKey = MauiProgram.Settings.ConnectKey, UdpSvrPort = udpSvrPort, LocalIP = GetLocalIP() };
                     var json = JsonSerializer.Serialize(requestData);
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -109,12 +124,12 @@ public partial class MainPageViewModel : BaseViewModel
 
                 await Shell.Current.DisplayAlert("Info", msg, "Cancel");
 
-                if (Idx0isSvr1isCl == 0)
+                if (MauiProgram.Settings.Idx0isSvr1isCl == 0)
                 {
                     msg = await ListenAsSvr(udpSvrPort);
                     await Shell.Current.DisplayAlert("ListenAsSvr", msg, "Cancel");
                 }
-                else if (Idx0isSvr1isCl == 1)
+                else if (MauiProgram.Settings.Idx0isSvr1isCl == 1)
                 {
                     string ipData = GetJsonProp(msg, "ipData");
                     if (String.IsNullOrEmpty(ipData))
@@ -153,6 +168,11 @@ public partial class MainPageViewModel : BaseViewModel
         }
     }
 
+    //JEEWEE
+    //protected void LoadSettings()
+    //{
+    //    Settings = _settingsService.LoadFromFile();
+    //}
 
     protected async Task<string> ListenAsSvr(int udpSvrPort)
     {
