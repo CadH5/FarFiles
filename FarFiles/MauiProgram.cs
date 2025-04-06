@@ -3,11 +3,17 @@ using FarFiles.Services;
 using FarFiles.View;
 using CommunityToolkit.Maui;
 using Microsoft.Maui.LifecycleEvents;
+using System.Text;
+using System;
+using ThreadNetwork;
+using Microsoft.Maui.Media;
 
 namespace FarFiles;
 
 public static class MauiProgram
 {
+    public static int UdpSvrPort_0isclient { get; set; } = 0;
+    public static string StrLocalIP { get; set; } = "";
     public static Settings Settings { get; set; } = new Settings();
 
 	public static MauiApp CreateMauiApp()
@@ -28,19 +34,19 @@ public static class MauiProgram
 #if WINDOWS
                 events.AddWindows(w => w.OnClosed((window, args) =>
                 {
-                    SaveSettings();
+                    OnCloseThings();
                 }));
 #endif
 #if ANDROID
                 events.AddAndroid(android => android.OnStop(activity =>
                 {
-                    SaveSettings();
+                    OnCloseThings();
                 }));
 #endif
 #if IOS || MACCATALYST
                 events.AddiOS(iOS => iOS.WillTerminate((app) =>
                 {
-                    SaveSettings();
+                    OnCloseThings();
                 }));
 #endif
             });
@@ -69,6 +75,40 @@ public static class MauiProgram
 		builder.Services.AddSingleton<DetailsPage>();
 		return builder.Build();
 	}
+
+
+    private static void OnCloseThings()
+    {
+        SaveSettings();
+
+        if (Settings.Idx0isSvr1isCl == 0)           // server
+        {
+            string msg = MauiProgram.PostToCentralServerAsync("UNREGISTER",
+                UdpSvrPort_0isclient, StrLocalIP).GetAwaiter().GetResult();
+        }
+    }
+
+
+
+    public static async Task<string> PostToCentralServerAsync(string strCmd,
+            int udpSvrPort, string strLocalIP)
+    {
+        using (var client = new HttpClient())
+        {
+            var url = "https://www.cadh5.com/farfiles/farfiles.php";
+
+            var requestData = new { Cmd = strCmd, ConnectKey = Settings.ConnectKey,
+                UdpSvrPort = udpSvrPort, LocalIP = strLocalIP };
+
+            var json = JsonSerializer.Serialize(requestData);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync(url, content);
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadAsStringAsync();
+        }
+    }
 
 
     private static void LoadSettings()

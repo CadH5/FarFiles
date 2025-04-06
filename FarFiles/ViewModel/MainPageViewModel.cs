@@ -105,22 +105,30 @@ public partial class MainPageViewModel : BaseViewModel
                     if (null == udpIEndPoint)
                         throw new Exception("Error getting data from Stun Server");
                     udpSvrPort = udpIEndPoint.Port;
+                    if (udpSvrPort <= 0)
+                        throw new Exception("Wrong data from Stun Server");
                 }
 
-                using (var client = new HttpClient())
-                {
-                    var url = "https://www.cadh5.com/farfiles/farfiles.php";
+                //JEEWEE
+                //using (var client = new HttpClient())
+                //{
+                //    var url = "https://www.cadh5.com/farfiles/farfiles.php";
 
-                    //JEEWEE
-                    //var requestData = new { ConnectKey = ConnectKey, SvrCl = Idx0isSvr1isCl, LocalIP = GetLocalIP() };
-                    var requestData = new { ConnectKey = MauiProgram.Settings.ConnectKey, UdpSvrPort = udpSvrPort, LocalIP = GetLocalIP() };
-                    var json = JsonSerializer.Serialize(requestData);
-                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                //    //JEEWEE
+                //    //var requestData = new { ConnectKey = ConnectKey, SvrCl = Idx0isSvr1isCl, LocalIP = GetLocalIP() };
+                //    var requestData = new { ConnectKey = MauiProgram.Settings.ConnectKey, UdpSvrPort = udpSvrPort, LocalIP = GetLocalIP() };
+                //    var json = JsonSerializer.Serialize(requestData);
+                //    var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                    var response = await client.PostAsync(url, content);
-                    response.EnsureSuccessStatusCode();
-                    msg = await response.Content.ReadAsStringAsync();
-                }
+                //    var response = await client.PostAsync(url, content);
+                //    response.EnsureSuccessStatusCode();
+                //    msg = await response.Content.ReadAsStringAsync();
+                //}
+                MauiProgram.UdpSvrPort_0isclient = udpSvrPort;
+                MauiProgram.StrLocalIP = GetLocalIP();
+                msg = await MauiProgram.PostToCentralServerAsync("REGISTER",
+                    udpSvrPort,        // if 0 then this is client
+                    MauiProgram.StrLocalIP);
 
                 await Shell.Current.DisplayAlert("Info", msg, "Cancel");
 
