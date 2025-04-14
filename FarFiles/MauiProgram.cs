@@ -5,7 +5,8 @@ using CommunityToolkit.Maui;
 using Microsoft.Maui.LifecycleEvents;
 using System.Text;
 using System;
-using ThreadNetwork;
+//JEEWEE
+//using ThreadNetwork;
 using Microsoft.Maui.Media;
 
 namespace FarFiles;
