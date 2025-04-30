@@ -16,8 +16,9 @@ public static class MauiProgram
     public static int UdpSvrPort_0isclient { get; set; } = 0;
     public static string StrLocalIP { get; set; } = "";
     public static Settings Settings { get; set; } = new Settings();
+    public static bool Connected { get; set; } = false;
 
-	public static MauiApp CreateMauiApp()
+    public static MauiApp CreateMauiApp()
 	{
         LoadSettings();
 
@@ -78,14 +79,22 @@ public static class MauiProgram
 	}
 
 
-    private static void OnCloseThings()
+    private async static void OnCloseThings()
     {
         SaveSettings();
 
         if (Settings.Idx0isSvr1isCl == 0)           // server
         {
-            string msg = MauiProgram.PostToCentralServerAsync("UNREGISTER",
-                UdpSvrPort_0isclient, StrLocalIP).GetAwaiter().GetResult();
+            string msg = await MauiProgram.PostToCentralServerAsync(
+                "UNREGISTER", UdpSvrPort_0isclient, StrLocalIP);
+
+            // Funny, but during invoke of prev function the application ends, and
+            // msg can never be read. Because of the await, I suppose (code after the wait
+            // is not executed). But actually that's precisely what I wanted.
+            // If I use msg = Task.Run(() => etc).Result, or use GetAwaiter, then
+            // the application practically hangs.
+            // (Note: if UNREGISTER fails somehow, the after a day the registration
+            // also becomes invalid; see PHP).
         }
     }
 

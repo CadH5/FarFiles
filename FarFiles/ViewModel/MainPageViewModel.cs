@@ -129,8 +129,20 @@ public partial class MainPageViewModel : BaseViewModel
                 msg = await MauiProgram.PostToCentralServerAsync("REGISTER",
                     udpSvrPort,        // if 0 then this is client
                     MauiProgram.StrLocalIP);
+                //JEEWEE
+                //await Shell.Current.DisplayAlert("Info", msg, "Cancel");
 
-                await Shell.Current.DisplayAlert("Info", msg, "Cancel");
+                string errMsg = GetJsonProp(msg, "errMsg");
+                if ("" != errMsg)
+                {
+                    await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+                }
+                else
+                {
+                    MauiProgram.Connected = true;
+                    IsBusy = true;
+                }
+
 
                 if (MauiProgram.Settings.Idx0isSvr1isCl == 0)
                 {

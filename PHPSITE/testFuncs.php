@@ -20,6 +20,11 @@ echo "  resp='" . DoData("WRONGCMD", "Key", 1234, "10.10.10.10", $ipData) . "'<b
 echo "  ipData='" . $ipData . "'<br>";
 echo "<br>";
 
+if (file_exists($strDataFile)) {
+    echo "prev farfilesdata.dat:<br>";
+    EchoDataFile("./farfilesdata.dat");
+}
+
 echo "Test delete, first server REGISTER:<br>";
 ELib_FileDelete($strDataFile);
 echo "  resp='" . DoData("REGISTER", "Key", 1234, "10.10.10.10", $ipData) . "'<br>";

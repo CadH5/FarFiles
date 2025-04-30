@@ -39,7 +39,7 @@ function DoData($cmd, $connectKey, $udpSvrPort, $localIP, &$ipData)
         if ("" === $errMsg) {
             $prevPos = 0;
             while (($oneData = ReadOneData($fpData)) !== FALSE) {
-                if (0 === $oneData->nIsRegistered)
+                if (! IsRegistrationStillValid($oneData))
                 {
                     $nUnregisteredCounter++;
                 }
@@ -112,6 +112,16 @@ function DoData($cmd, $connectKey, $udpSvrPort, $localIP, &$ipData)
     return $errMsg;
 }
 
+
+function IsRegistrationStillValid($oneData)
+{
+    $dtNow = new DateTime();
+    return $oneData->nIsRegistered && $oneData->dtThisCreated->diff($dtNow)->days < 1;
+}
+
+
+
+
 // returns "" if success or errmsg if not
 function BlockDeblock($blockFlag)
 {
@@ -134,7 +144,7 @@ function BlockDeblock($blockFlag)
         }
 
         //JWdP 20250405: HERE IS AN UNATOMIC MOMENT BETWEEN file_exists AND @fopen
-        //but in case it happens, user will get an internal server error, this happens maybe once in thousand times
+        //but in case it happens, user will get an internal server error, this happens maybe once in a thousand times
         $fpBlock = @fopen($strFullBlockfile, "w");
         if ($fpBlock === FALSE)
             return "Internal server error (BLOCKERR)";
@@ -158,7 +168,7 @@ function CleanupDataFile($strDataFile, $strDataFileTempCleanup)
     $fpDataNew = @fopen($strDataFileTempCleanup, "wb");
 
     while (($oneData = ReadOneData($fpData)) !== FALSE) {
-        if (0 !== $oneData->nIsRegistered) {
+        if (IsRegistrationStillValid($oneData)) {
             WriteOneData($fpDataNew, $oneData);
         }
     }
@@ -440,6 +450,38 @@ function StrIpToInt($strIp)
 }
 
 
+// returns: string (bytes) object
+function DateTimeToBytes(DateTime $dt)
+{
+    // Get number of microseconds since Unix epoch
+    $timestamp = (int)($dt->format('Uu')); // 'U' = seconds, 'u' = microseconds
+
+    // Pack it into 8 bytes (unsigned 64-bit)
+    return pack('J', $timestamp);
+}
+
+
+// returns: DateTime object
+function BytesToDateTime($bytes) {
+    // Unpack the 8 bytes into an integer
+    $arr = unpack('J', $bytes);
+    $timestamp = $arr[1];
+
+    // Separate seconds and microseconds
+    $seconds = intdiv($timestamp, 1000000);
+    $microseconds = $timestamp % 1000000;
+
+    // Create DateTime from seconds
+    $dt = (new DateTime())->setTimestamp($seconds);
+
+    // Add microseconds
+    $dt = $dt->modify("+{$microseconds} microseconds");
+
+    return $dt;
+}
+
+
+
 // $oneData: must be FfBinConnData instance
 function WriteOneData($fpData, FfBinConnData $oneData)
 {
@@ -448,6 +490,7 @@ function WriteOneData($fpData, FfBinConnData $oneData)
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nIpSvrAsInt);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nUdpSvrPort);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nLocalIpSvrAsInt);
+    ELib_FileBinWrite($fpData, DateTimeToBytes($oneData->dtThisCreated), 8);
 }
 
 
@@ -464,6 +507,7 @@ function ReadOneData($fpData)
     $retData->nIpSvrAsInt = ELib_FileBinReadInt_Decr($fpData);
     $retData->nUdpSvrPort = ELib_FileBinReadInt_Decr($fpData);
     $retData->nLocalIpSvrAsInt = ELib_FileBinReadInt_Decr($fpData);
+    $retData->dtThisCreated = BytesToDateTime(ELib_FileBinRead($fpData, 8));
     return $retData;
 }
 
@@ -473,8 +517,15 @@ class FfBinConnData
     public $nIsRegistered = 0;
     public $strConnKey = "";
     public $nIpSvrAsInt;
+
+
     public $nUdpSvrPort = 0;
     public $nLocalIpSvrAsInt = 0;
+    public $dtThisCreated;
+
+    public function __construct() {
+        $this->dtThisCreated = new DateTime();
+    }
 
     public function ToIpData()
     {
@@ -497,6 +548,9 @@ class FfBinConnData
         echo "nIpSvrAsInt=$this->nIpSvrAsInt<br>";
         echo "nUdpSvrPort=$this->nUdpSvrPort<br>";
         echo "nLocalIpSvrAsInt=$this->nLocalIpSvrAsInt<br>";
+        $diffWithNow = $this->dtThisCreated->diff(new DateTime());
+        echo "dtThisCreated={$this->dtThisCreated->format('Y-m-d H:i:s.u')}" .
+            ", days: {$diffWithNow->days}, minutes: {$diffWithNow->i}<br>";
     }
 }
 
