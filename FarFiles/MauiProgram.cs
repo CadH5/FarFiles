@@ -83,25 +83,29 @@ public static class MauiProgram
     {
         SaveSettings();
 
-        if (Settings.Idx0isSvr1isCl == 0)           // server
+        try
         {
-            string msg = await MauiProgram.PostToCentralServerAsync(
-                "UNREGISTER", UdpSvrPort_0isclient, StrLocalIP);
+            if (Settings.Idx0isSvr1isCl == 0)           // server
+            {
+                var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
+                    "UNREGISTER", UdpSvrPort_0isclient, StrLocalIP, true));
 
-            // Funny, but during invoke of prev function the application ends, and
-            // msg can never be read. Because of the await, I suppose (code after the wait
-            // is not executed). But actually that's precisely what I wanted.
-            // If I use msg = Task.Run(() => etc).Result, or use GetAwaiter, then
-            // the application practically hangs.
-            // (Note: if UNREGISTER fails somehow, the after a day the registration
-            // also becomes invalid; see PHP).
+                // Wait max 1 second — no deadlock risk
+                unregisterTask.Wait(TimeSpan.FromSeconds(1));
+ 
+                // (Note: if UNREGISTER fails somehow, the after a day the registration
+                // also becomes invalid; see PHP).
+            }
+        }
+        catch
+        {
         }
     }
 
 
 
     public static async Task<string> PostToCentralServerAsync(string strCmd,
-            int udpSvrPort, string strLocalIP)
+            int udpSvrPort, string strLocalIP, bool closing = false)
     {
         using (var client = new HttpClient())
         {
@@ -113,10 +117,29 @@ public static class MauiProgram
             var json = JsonSerializer.Serialize(requestData);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await client.PostAsync(url, content);
-            response.EnsureSuccessStatusCode();
+            if (closing)
+            {
+                // ChatGPT:
+                // Optional: add a short timeout to HttpClient itself
+                client.Timeout = TimeSpan.FromSeconds(2);
+                var request = new HttpRequestMessage(HttpMethod.Post, url)
+                {
+                    Content = content
+                };
 
-            return await response.Content.ReadAsStringAsync();
+                // Only wait for headers, not full body
+                await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
+                .ConfigureAwait(false);
+
+                return "";
+            }
+            else
+            {
+                HttpResponseMessage response = await client.PostAsync(url, content);
+                response.EnsureSuccessStatusCode();
+
+                return await response.Content.ReadAsStringAsync();
+            }
         }
     }
 

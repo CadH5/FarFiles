@@ -53,6 +53,13 @@
             Style="{StaticResource ButtonOutline}"
             Text="Connect" />
 
+        <!--JEEWEE-->
+        <!--<Button
+            Grid.Row="6"
+            Grid.Column="1"
+            Margin="8"
+            Text="Test" Style="{StaticResource ButtonOutline}" IsEnabled="False" />-->
+
         <ActivityIndicator
             Grid.RowSpan="2"
             Grid.ColumnSpan="2"

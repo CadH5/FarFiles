@@ -75,7 +75,7 @@ public partial class MainPageViewModel : BaseViewModel
         catch (Exception ex)
         {
             await Shell.Current.DisplayAlert("Error",
-                $"Unable to browse for root folder: {ex.Message}", "OK", null);
+                $"Unable to browse for root folder: {ex.Message}", "OK");
         }
         finally
         {
@@ -129,8 +129,6 @@ public partial class MainPageViewModel : BaseViewModel
                 msg = await MauiProgram.PostToCentralServerAsync("REGISTER",
                     udpSvrPort,        // if 0 then this is client
                     MauiProgram.StrLocalIP);
-                //JEEWEE
-                //await Shell.Current.DisplayAlert("Info", msg, "Cancel");
 
                 string errMsg = GetJsonProp(msg, "errMsg");
                 if ("" != errMsg)
@@ -196,13 +194,13 @@ public partial class MainPageViewModel : BaseViewModel
 
     protected async Task<string> ListenAsSvr(int udpSvrPort)
     {
-        LblInfo = $"listening on port {udpSvrPort} ...";
+        LblInfo = $"Connected; listening on port {udpSvrPort} ...";
         using (var udpServer = new UdpClient(udpSvrPort))
         {
             UdpReceiveResult received = await udpServer.ReceiveAsync();
             string msg = $"Received from {received.RemoteEndPoint}: {Encoding.UTF8.GetString(received.Buffer)}";
 
-            //5️⃣ Respond to client(hole punching)
+            //5️ Respond to client(hole punching)
             byte[] response = Encoding.UTF8.GetBytes("Hello from server!");
             LblInfo = $"sending to {received.RemoteEndPoint} ...";
             await udpServer.SendAsync(response, response.Length, received.RemoteEndPoint);
