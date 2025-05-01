@@ -12,7 +12,7 @@
     <Grid
         ColumnDefinitions="*,*"
         ColumnSpacing="5"
-        RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto"
+        RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}"
         >
 
@@ -42,23 +42,26 @@
         <Label Grid.Row="5" Grid.Column="0" Text="Connect Key:"></Label>
         <Entry Grid.Row="5" Grid.Column="1" Text="{Binding Settings.ConnectKey}"></Entry>
 
-        <Label Grid.Row="6" Grid.Column="0" Text="{Binding LblInfo}"></Label>
+        <Label Grid.Row="6" Grid.Column="0" Text="{Binding LblInfo1}"></Label>
+        <Label Grid.Row="7" Grid.Column="0" Text="{Binding LblInfo2}"></Label>
 
         <Button
             Grid.Row="6"
             Grid.Column="1"
             Margin="8"
-            Command="{Binding ConnectCommand}"
+            Command="{Binding ConnectAndDoConversationCommand}"
             IsEnabled="{Binding IsNotBusy}"
             Style="{StaticResource ButtonOutline}"
             Text="Connect" />
 
-        <!--JEEWEE-->
-        <!--<Button
-            Grid.Row="6"
-            Grid.Column="1"
-            Margin="8"
-            Text="Test" Style="{StaticResource ButtonOutline}" IsEnabled="False" />-->
+        <HorizontalStackLayout Grid.Row="7" Grid.Column="1" IsVisible="{Binding VisClientMsg}">
+            <Entry Text="{Binding ClientMsg}"></Entry>
+            <Button
+                Margin="8,0,0,0"
+                Command="{Binding SendClientMsgCommand}"
+                Style="{StaticResource ButtonOutline}"
+                Text="send" />
+        </HorizontalStackLayout>
 
         <ActivityIndicator
             Grid.RowSpan="2"

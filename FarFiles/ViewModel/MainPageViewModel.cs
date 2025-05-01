@@ -15,6 +15,8 @@ using System.Threading;
 using System;
 using System.Threading.Channels;
 //JEEWEE
+//using Microsoft.Maui.Controls.Compatibility.Platform.Android;
+//using Android.Content.Res;
 //using Android.Content.Res;
 
 namespace FarFiles.ViewModel;
@@ -24,6 +26,9 @@ public partial class MainPageViewModel : BaseViewModel
     //JEEWEE
     //protected SettingsService _settingsService;
     //public MainPageViewModel(SettingsService settingsService)
+
+    protected int _numSent = 0;
+    protected UdpClient _udpClient = null;
     public MainPageViewModel()
     {
         Title = "Far Away Files Access";
@@ -38,18 +43,56 @@ public partial class MainPageViewModel : BaseViewModel
 
     public Settings Settings { get; set; }
 
+    public string _clientMsg = "";
+    public string ClientMsg
+    {
+        get => _clientMsg;
+        set
+        {
+            if (_clientMsg != value)
+            {
+                _clientMsg = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public bool _visClientMsg = false;
+    public bool VisClientMsg
+    {
+        get => _visClientMsg;
+        set
+        {
+            if (_visClientMsg != value)
+            {
+                _visClientMsg = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     //JEEWEE
     //public string FullPathRoot { get; set; } = "";
     //public int Idx0isSvr1isCl { get; set; } = 0;
     //public string ConnectKey { get; set; } = "";
 
-    protected string _lblInfo = "";
-    public string LblInfo
+    protected string _lblInfo1 = "";
+    public string LblInfo1
     {
-        get => _lblInfo;
+        get => _lblInfo1;
         set
         {
-            _lblInfo = value; OnPropertyChanged();
+            _lblInfo1 = value; OnPropertyChanged();
+        }
+    }
+
+    protected string _lblInfo2 = "";
+    public string LblInfo2
+    {
+        get => _lblInfo2;
+        set
+        {
+            _lblInfo2 = value; OnPropertyChanged();
         }
     }
 
@@ -85,7 +128,7 @@ public partial class MainPageViewModel : BaseViewModel
 
 
     [RelayCommand]
-    async Task Connect()
+    async Task ConnectAndDoConversation()
     {
         if (IsBusy)
             return;
@@ -96,94 +139,147 @@ public partial class MainPageViewModel : BaseViewModel
 
             string msg = "";
 
-            if (true)
+            int udpSvrPort = 0;
+            if (0 == MauiProgram.Settings.Idx0isSvr1isCl)
             {
-                int udpSvrPort = 0;
-                if (0 == MauiProgram.Settings.Idx0isSvr1isCl)        // server
+                // server: get udp port from Stun server
+                var udpIEndPoint = await GetUdpSvrIEndPointFromStun();
+                if (null == udpIEndPoint)
+                    throw new Exception("Error getting data from Stun Server");
+                udpSvrPort = udpIEndPoint.Port;
+                if (udpSvrPort <= 0)
+                    throw new Exception("Wrong data from Stun Server");
+            }
+
+            //JEEWEE
+            //using (var client = new HttpClient())
+            //{
+            //    var url = "https://www.cadh5.com/farfiles/farfiles.php";
+
+            //    //JEEWEE
+            //    //var requestData = new { ConnectKey = ConnectKey, SvrCl = Idx0isSvr1isCl, LocalIP = GetLocalIP() };
+            //    var requestData = new { ConnectKey = MauiProgram.Settings.ConnectKey, UdpSvrPort = udpSvrPort, LocalIP = GetLocalIP() };
+            //    var json = JsonSerializer.Serialize(requestData);
+            //    var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            //    var response = await client.PostAsync(url, content);
+            //    response.EnsureSuccessStatusCode();
+            //    msg = await response.Content.ReadAsStringAsync();
+            //}
+            MauiProgram.UdpSvrPort_0isclient = udpSvrPort;
+            MauiProgram.StrLocalIP = GetLocalIP();
+            msg = await MauiProgram.PostToCentralServerAsync("REGISTER",
+                udpSvrPort,        // if 0 then this is client
+                MauiProgram.StrLocalIP);
+
+            string errMsg = GetJsonProp(msg, "errMsg");
+
+            if ("" != errMsg)
+            {
+                throw new Exception(errMsg);
+            }
+
+            MauiProgram.Connected = true;
+            IsBusy = true;
+
+            if (MauiProgram.Settings.Idx0isSvr1isCl == 0)
+            {
+                // server: do conversation: in loop: listen for client msgs and response
+                LblInfo1 = $"Connected; listening for client contact ...";
+                while (true)
                 {
-                    var udpIEndPoint = await GetUdpSvrIEndPointFromStun();
-                    if (null == udpIEndPoint)
-                        throw new Exception("Error getting data from Stun Server");
-                    udpSvrPort = udpIEndPoint.Port;
-                    if (udpSvrPort <= 0)
-                        throw new Exception("Wrong data from Stun Server");
+                    await ListenMsgAndSendMsgAsSvrAsync(udpSvrPort);
                 }
-
-                //JEEWEE
-                //using (var client = new HttpClient())
-                //{
-                //    var url = "https://www.cadh5.com/farfiles/farfiles.php";
-
-                //    //JEEWEE
-                //    //var requestData = new { ConnectKey = ConnectKey, SvrCl = Idx0isSvr1isCl, LocalIP = GetLocalIP() };
-                //    var requestData = new { ConnectKey = MauiProgram.Settings.ConnectKey, UdpSvrPort = udpSvrPort, LocalIP = GetLocalIP() };
-                //    var json = JsonSerializer.Serialize(requestData);
-                //    var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                //    var response = await client.PostAsync(url, content);
-                //    response.EnsureSuccessStatusCode();
-                //    msg = await response.Content.ReadAsStringAsync();
-                //}
-                MauiProgram.UdpSvrPort_0isclient = udpSvrPort;
-                MauiProgram.StrLocalIP = GetLocalIP();
-                msg = await MauiProgram.PostToCentralServerAsync("REGISTER",
-                    udpSvrPort,        // if 0 then this is client
-                    MauiProgram.StrLocalIP);
-
-                string errMsg = GetJsonProp(msg, "errMsg");
-                if ("" != errMsg)
+            }
+            else if (MauiProgram.Settings.Idx0isSvr1isCl == 1)
+            {
+                // client: connect to server
+                string ipData = GetJsonProp(msg, "ipData");
+                if (String.IsNullOrEmpty(ipData))
                 {
-                    await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+                    errMsg = "Internal error (ipData 1)";
                 }
                 else
                 {
-                    MauiProgram.Connected = true;
-                    IsBusy = true;
+                    errMsg = ConnectServerFromClient(ipData);
+                }
+                    
+                if ("" != errMsg)
+                {
+                    throw new Exception(errMsg);
                 }
 
-
-                if (MauiProgram.Settings.Idx0isSvr1isCl == 0)
-                {
-                    msg = await ListenAsSvr(udpSvrPort);
-                    await Shell.Current.DisplayAlert("ListenAsSvr", msg, "Cancel");
-                }
-                else if (MauiProgram.Settings.Idx0isSvr1isCl == 1)
-                {
-                    string ipData = GetJsonProp(msg, "ipData");
-                    if (String.IsNullOrEmpty(ipData))
-                    {
-                        msg = "Internal error (ipData 1)";
-                    }
-                    else
-                    {
-                        msg = await TestConnectionFromClient(ipData);
-                        await Shell.Current.DisplayAlert("Test", msg, "Cancel");
-                    }
-                }
+                // client: conversation is done by other buttons and controls
             }
 
-            if (false)
-            {
-                var stunData = await GetPublicIPAsync();
-                await Shell.Current.DisplayAlert("GetPublicIPAsync",
-                    $"publicIP={stunData.publicIP}, natType={stunData.natType}", "Cancel");
-            }
+            //JEEWEE
+            //if (false)
+            //{
+            //    var stunData = await GetPublicIPAsync();
+            //    await Shell.Current.DisplayAlert("GetPublicIPAsync",
+            //        $"publicIP={stunData.publicIP}, natType={stunData.natType}", "Cancel");
+            //}
 
-            if (false)
+            //if (false)
+            //{
+            //    msg = await TestStunUdpConnection();
+            //    await Shell.Current.DisplayAlert("Test", msg, "Cancel");
+            //}
+        }
+        catch (Exception exc)
+        {
+            await Shell.Current.DisplayAlert("Error", exc.Message, "OK");
+            IsBusy = false;
+        }
+    }
+
+
+
+
+    [RelayCommand]
+    async Task SendClientMsg()
+    {
+        //JEEWEE: MAYBE IS SENDCLIENTMSGBUSY ?
+        //if (IsBusy)
+        //    return;
+
+        //JEEWEE
+        //OnPropertyChanged(nameof(ClientMsg));
+
+        try
+        {
+            //JEEWEE
+            //IsBusy = true;
+
+            if (1 == MauiProgram.Settings.Idx0isSvr1isCl)        // client
             {
-                msg = await TestStunUdpConnection();
-                await Shell.Current.DisplayAlert("Test", msg, "Cancel");
+                LblInfo2 = "";
+                byte[] sendMsg = Encoding.UTF8.GetBytes(ClientMsg);
+                //JEEWEE seems 20 is minimum?
+                //await udpClient.SendAsync(new byte[20], 20);
+                LblInfo1 = $"sending to server ...";
+                int iResult = await _udpClient.SendAsync(sendMsg, sendMsg.Length);
+
+                LblInfo1 = $"sent to server: '{ClientMsg}'";
+                LblInfo2 = $"iResult={iResult}; waiting for server ...";
+                var response = await _udpClient.ReceiveAsync(
+                                        new CancellationTokenSource(5000).Token);
+
+                LblInfo2 = $"Received from server: '{Encoding.UTF8.GetString(response.Buffer)}'";
+                    //JEEWEE
+                    //{response.RemoteEndPoint}";
             }
         }
         catch (Exception ex)
         {
             await Shell.Current.DisplayAlert("Error",
-                $"Unable to connect: {ex.Message}", "Cancel");
+                $"Unable to send message: {ex.Message}", "OK");
         }
-        finally
-        {
-            IsBusy = false;
-        }
+        //JEEWEE
+        //finally
+        //{
+        //    IsBusy = false;
+        //}
     }
 
     //JEEWEE
@@ -192,25 +288,24 @@ public partial class MainPageViewModel : BaseViewModel
     //    Settings = _settingsService.LoadFromFile();
     //}
 
-    protected async Task<string> ListenAsSvr(int udpSvrPort)
+    protected async Task ListenMsgAndSendMsgAsSvrAsync(int udpSvrPort)
     {
-        LblInfo = $"Connected; listening on port {udpSvrPort} ...";
         using (var udpServer = new UdpClient(udpSvrPort))
         {
             UdpReceiveResult received = await udpServer.ReceiveAsync();
-            string msg = $"Received from {received.RemoteEndPoint}: {Encoding.UTF8.GetString(received.Buffer)}";
+            LblInfo1 = $"Received from client: '{Encoding.UTF8.GetString(received.Buffer)}'";
 
             //5️ Respond to client(hole punching)
-            byte[] response = Encoding.UTF8.GetBytes("Hello from server!");
-            LblInfo = $"sending to {received.RemoteEndPoint} ...";
+            string strResp = $"Hello {++_numSent} from server!";
+            byte[] response = Encoding.UTF8.GetBytes(strResp);
+            LblInfo2 = $"sending '{strResp}' ...";
             await udpServer.SendAsync(response, response.Length, received.RemoteEndPoint);
-            LblInfo = $"";
-            return msg;
+            LblInfo2 = $"sent: '{strResp}'";
         }
     }
 
 
-    protected async Task<string> TestConnectionFromClient(string ipData)
+    protected string ConnectServerFromClient(string ipData)
     {
         string[] parts = ipData.Split(',');
         if (parts.Length < 3)
@@ -225,26 +320,19 @@ public partial class MainPageViewModel : BaseViewModel
             try
             {
                 string ipAddress = 0 == i ? localIpSvr : publicIpSvr;
-                using var udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0)); // Let the OS pick the local address
-                udpClient.Connect(new IPEndPoint(
+                _udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0)); // Let the OS pick the local address
+                _udpClient.Connect(new IPEndPoint(
                         new IPAddress(ipAddress.Split('.')
                             .Select(p => Convert.ToByte(p))
                             .ToArray()),
                         Convert.ToInt32(publicUdpPortSvr)));
-                byte[] sendMsg = Encoding.UTF8.GetBytes("Client test string90");
-                //JEEWEE seems 20 is minimum?
-                //await udpClient.SendAsync(new byte[20], 20);
-                LblInfo = $"sending to {ipAddress}:{publicUdpPortSvr} ...";
-                int iResult = await udpClient.SendAsync(sendMsg, sendMsg.Length);
-
-                LblInfo = $"iResult={iResult}; waiting for {ipAddress}:{publicUdpPortSvr} ...";
-                var response = await udpClient.ReceiveAsync(
-                    new CancellationTokenSource(5000).Token);
-
-                return $"TestConnectionFromClient(): Received {response.Buffer.Length} bytes from server {response.RemoteEndPoint}";
+                LblInfo2 = "Connected to server.";
+                VisClientMsg = true;
+                return "";
             }
             catch (Exception ex)
             {
+                _udpClient = null;
                 if (1 == i)
                 {
                     return ex.Message;
@@ -252,7 +340,7 @@ public partial class MainPageViewModel : BaseViewModel
             }
         }
 
-        return "PROGRAMMERS: TestConnectionFromClient: impossible";
+        return "PROGRAMMERS: TestConnectionFromClientAsync: impossible";
     }
 
 
