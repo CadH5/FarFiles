@@ -144,6 +144,21 @@ public static class MauiProgram
     }
 
 
+    public static string ExcMsgWithInnerMsgs(Exception exc)
+    {
+        string retStr = exc.Message;
+        while (exc.InnerException != null)
+        {
+            retStr += $"; inner: '{exc.InnerException.Message}'";
+            exc = exc.InnerException;
+        }
+
+        return retStr;
+    }
+
+
+
+
     private static void LoadSettings()
     {
         Settings.FullPathRoot = Preferences.Get("FullPathRoot", Settings.FullPathRoot);

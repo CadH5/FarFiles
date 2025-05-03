@@ -115,10 +115,10 @@ public partial class MainPageViewModel : BaseViewModel
             MauiProgram.Settings.FullPathRoot = folderPickerResult.Folder?.Path;
             OnPropertyChanged(nameof(Settings.FullPathRoot));
         }
-        catch (Exception ex)
+        catch (Exception exc)
         {
             await Shell.Current.DisplayAlert("Error",
-                $"Unable to browse for root folder: {ex.Message}", "OK");
+                $"Unable to browse for root folder: {exc.Message}", "OK");
         }
         finally
         {
@@ -132,6 +132,13 @@ public partial class MainPageViewModel : BaseViewModel
     {
         if (IsBusy)
             return;
+
+        if (String.IsNullOrEmpty(Settings.FullPathRoot))
+        {
+            await Shell.Current.DisplayAlert("Info",
+                "Connect: Please browse for root first", "OK");
+            return;
+        }
 
         try
         {
@@ -212,7 +219,8 @@ public partial class MainPageViewModel : BaseViewModel
                 // client: conversation is done by other buttons and controls
             }
 
-            //JEEWEE
+            //JEEWEE: INTERESTING CODE
+            //===============================================
             //if (false)
             //{
             //    var stunData = await GetPublicIPAsync();
@@ -225,13 +233,16 @@ public partial class MainPageViewModel : BaseViewModel
             //    msg = await TestStunUdpConnection();
             //    await Shell.Current.DisplayAlert("Test", msg, "Cancel");
             //}
+            //===============================================
         }
         catch (Exception exc)
         {
-            await Shell.Current.DisplayAlert("Error", exc.Message, "OK");
+            await Shell.Current.DisplayAlert("Error",
+                MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
             IsBusy = false;
         }
     }
+
 
 
 
@@ -270,10 +281,10 @@ public partial class MainPageViewModel : BaseViewModel
                     //{response.RemoteEndPoint}";
             }
         }
-        catch (Exception ex)
+        catch (Exception exc)
         {
             await Shell.Current.DisplayAlert("Error",
-                $"Unable to send message: {ex.Message}", "OK");
+                $"Unable to send message: {MauiProgram.ExcMsgWithInnerMsgs(exc)}", "OK");
         }
         //JEEWEE
         //finally
@@ -330,12 +341,12 @@ public partial class MainPageViewModel : BaseViewModel
                 VisClientMsg = true;
                 return "";
             }
-            catch (Exception ex)
+            catch (Exception exc)
             {
                 _udpClient = null;
                 if (1 == i)
                 {
-                    return ex.Message;
+                    return MauiProgram.ExcMsgWithInnerMsgs(exc);
                 }
             }
         }
@@ -364,9 +375,9 @@ public partial class MainPageViewModel : BaseViewModel
             var response = await udpClient.ReceiveAsync();
             return $"TestStunUdpConnection(): received {response.Buffer.Length} bytes from {response.RemoteEndPoint}";
         }
-        catch (SocketException ex)
+        catch (SocketException exc)
         {
-            return $"TestStunUdpConnection(): error: {ex.Message}";
+            return $"TestStunUdpConnection(): error: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
         }
     }
 
