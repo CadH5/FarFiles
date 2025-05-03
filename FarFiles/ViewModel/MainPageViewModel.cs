@@ -373,7 +373,7 @@ public partial class MainPageViewModel : BaseViewModel
 
     protected static async Task<IPEndPoint> GetUdpSvrIEndPointFromStun()
     {
-        //JEEWEE
+        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! MAKE THIS A SETTING, SOMEHOW
         //var stunServer = "stun.l.google.com";
         //var stunPort = 19302;
         var stunServer = "stun.sipgate.net";
