@@ -57,6 +57,23 @@ public partial class MainPageViewModel : BaseViewModel
         }
     }
 
+    public string FullPathRoot
+    {
+        // unlike ConnectKey, FullPathRoot needs an intermediate variable for binding
+        // otherwise after picking a folder, OnPropertyChanged does not work for
+        // variables in Settings because it's not INotifyPropertyChanged .
+        // Although it works at start app. As ChatGPT explained to me (JWdP)
+        get => Settings.FullPathRoot;
+        set
+        {
+            if (Settings.FullPathRoot != value)
+            {
+                Settings.FullPathRoot = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public bool _visClientMsg = false;
     public bool VisClientMsg
     {
@@ -112,8 +129,7 @@ public partial class MainPageViewModel : BaseViewModel
                 throw new Exception($"FolderPicker not successful or cancelled");
             }
 
-            MauiProgram.Settings.FullPathRoot = folderPickerResult.Folder?.Path;
-            OnPropertyChanged(nameof(Settings.FullPathRoot));
+            FullPathRoot = folderPickerResult.Folder?.Path;
         }
         catch (Exception exc)
         {
@@ -272,19 +288,22 @@ public partial class MainPageViewModel : BaseViewModel
                 int iResult = await _udpClient.SendAsync(sendMsg, sendMsg.Length);
 
                 LblInfo1 = $"sent to server: '{ClientMsg}'";
-                LblInfo2 = $"iResult={iResult}; waiting for server ...";
+                LblInfo2 = $"sent bytes: {iResult}; waiting for server ...";
                 var response = await _udpClient.ReceiveAsync(
                                         new CancellationTokenSource(5000).Token);
 
                 LblInfo2 = $"Received from server: '{Encoding.UTF8.GetString(response.Buffer)}'";
-                    //JEEWEE
-                    //{response.RemoteEndPoint}";
             }
+        }
+        catch (OperationCanceledException)
+        {
+            await Shell.Current.DisplayAlert("Error",
+                $"Response from server timed out", "OK");
         }
         catch (Exception exc)
         {
             await Shell.Current.DisplayAlert("Error",
-                $"Unable to send message: {MauiProgram.ExcMsgWithInnerMsgs(exc)}", "OK");
+                $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}", "OK");
         }
         //JEEWEE
         //finally
@@ -351,7 +370,7 @@ public partial class MainPageViewModel : BaseViewModel
             }
         }
 
-        return "PROGRAMMERS: TestConnectionFromClientAsync: impossible";
+        return "PROGRAMMERS: ConnectServerFromClient: impossible";
     }
 
 

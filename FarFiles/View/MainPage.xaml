@@ -28,7 +28,7 @@
             Text="Browse for Root" />
 
         <Label Grid.Row="2" Grid.Column="0" Text="Root:"></Label>
-        <Label Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Settings.FullPathRoot}"></Label>
+        <Label Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding FullPathRoot, Mode=TwoWay}"></Label>
 
         <Label Grid.Row="4" Grid.Column="0" Text="Connect Mode:"></Label>
         <Picker Grid.Row="4" Grid.Column="1" SelectedIndex="{Binding Settings.Idx0isSvr1isCl}">
