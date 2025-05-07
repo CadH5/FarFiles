@@ -54,14 +54,23 @@
             Style="{StaticResource ButtonOutline}"
             Text="Connect" />
 
-        <HorizontalStackLayout Grid.Row="7" Grid.Column="1" IsVisible="{Binding VisClientMsg}">
+        <Button
+                Grid.Row="7"
+                Grid.Column="1"
+                Margin="8,0,0,0" WidthRequest="200"
+                Command="{Binding OpenAdvancedDlgCommand}"
+                Style="{StaticResource ButtonOutline}"
+                Text="Advanced ..." />
+
+        <!--JEEWEE-->
+        <!--<HorizontalStackLayout Grid.Row="7" Grid.Column="1" IsVisible="{Binding VisClientMsg}">
             <Entry Text="{Binding ClientMsg}"></Entry>
             <Button
                 Margin="8,0,0,0"
                 Command="{Binding SendClientMsgCommand}"
                 Style="{StaticResource ButtonOutline}"
                 Text="send" />
-        </HorizontalStackLayout>
+        </HorizontalStackLayout>-->
 
         <ActivityIndicator
             Grid.RowSpan="2"

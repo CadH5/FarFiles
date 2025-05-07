@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="FarFiles.AdvancedPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewmodel="clr-namespace:FarFiles.ViewModel"
+    Title="Advanced info and settings"
+    x:DataType="viewmodel:AdvancedViewModel">
+    <ScrollView BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
+        <Grid RowDefinitions="Auto,Auto,Auto,*"
+              ColumnDefinitions="*,*">
+
+            <Border StrokeShape="RoundRectangle 80"
+                    Stroke="White"
+                    StrokeThickness="6"
+                    HeightRequest="172"
+                    WidthRequest="172"
+                    Margin="0,8,0,0"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+            </Border>
+
+            <Editor Grid.Row="0" Grid.Column="0" IsReadOnly="True"
+                   Text="{Binding Info}"></Editor>
+            <Label Grid.Row="1" Grid.Column="0"
+                   Text="Sunserver if app is server:"></Label>
+            <StackLayout Orientation="Horizontal" Grid.Row="1" Grid.Column="1">
+                <Label Text="server:" WidthRequest="100"></Label>
+                <Entry Text="{Binding StunServer}"></Entry>
+            </StackLayout>
+            <StackLayout Orientation="Horizontal" Grid.Row="2" Grid.Column="1">
+                <Label Text="port:" WidthRequest="100"></Label>
+                <Entry Text="{Binding StunPort}"></Entry>
+            </StackLayout>
+            <StackLayout Orientation="Horizontal" Grid.Row="3" Grid.Column="1">
+                <Button Margin="5,0,0,0"
+                    Command="{Binding SetStunSipgateCommand}"
+                    Style="{StaticResource ButtonOutline}"
+                    Text="sipgate" />
+                <Button Margin="5,0,0,0"
+                    Command="{Binding SetStunGoogleCommand}"
+                    Style="{StaticResource ButtonOutline}"
+                    Text="google" />
+            </StackLayout>
+        </Grid>
+    </ScrollView>
+</ContentPage>

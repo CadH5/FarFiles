@@ -9,7 +9,7 @@ namespace FarFiles.ViewModel;
 
 public partial class FilesViewModel : BaseViewModel
 {
-    public ObservableCollection<Model.FileData> FilesData { get; } = new();
+    public ObservableCollection<Model.FileOrFolderData> FilesData { get; } = new();
     FileDataService fileDataService;
     IConnectivity connectivity;
     //JEEWEE
@@ -25,15 +25,16 @@ public partial class FilesViewModel : BaseViewModel
     }
     
     [RelayCommand]
-    async Task GoToDetails(Model.FileData fileData)
+    async Task GoToDetails(Model.FileOrFolderData fileData)
     {
-        if (fileData == null)
-            return;
+        //JEEWEE
+        //if (fileData == null)
+        //    return;
 
-        await Shell.Current.GoToAsync(nameof(DetailsPage), true, new Dictionary<string, object>
-        {
-            {"FileData", fileData }
-        });
+        //await Shell.Current.GoToAsync(nameof(DetailsPage), true, new Dictionary<string, object>
+        //{
+        //    {"FileData", fileData }
+        //});
     }
 
     [ObservableProperty]
@@ -59,18 +60,19 @@ public partial class FilesViewModel : BaseViewModel
             //JEEWEETODO: BROWSER
             FilesData.Clear();
 
-            var folderPickerResult = await FolderPicker.PickAsync("");
-            if (! folderPickerResult.IsSuccessful)
-            {
-                throw new Exception($"FolderPicker not successful or cancelled");
-            }
+            //JEEWEE
+            //var folderPickerResult = await FolderPicker.PickAsync("");
+            //if (! folderPickerResult.IsSuccessful)
+            //{
+            //    throw new Exception($"FolderPicker not successful or cancelled");
+            //}
 
-            string rootPath = folderPickerResult.Folder?.Path;
+            //string rootPath = folderPickerResult.Folder?.Path;
 
-            foreach (var fileData in fileDataService.GetFilesData(rootPath))
-            {
-                FilesData.Add(fileData);
-            }
+            //foreach (var fileData in fileDataService.GetFilesData(rootPath))
+            //{
+            //    FilesData.Add(fileData);
+            //}
         }
         catch (Exception ex)
         {

@@ -29,19 +29,20 @@ public partial class MainPageViewModel : BaseViewModel
 
     protected int _numSent = 0;
     protected UdpClient _udpClient = null;
-    public MainPageViewModel()
+    protected FileDataService _fileDataService;
+    public MainPageViewModel(FileDataService fileDataService)
     {
         Title = "Far Away Files Access";
+        _fileDataService = fileDataService;
 
         //JEEWEE
         //_settingsService = settingsService;
         //LoadSettings();
-
-        //JEEWEE: seems xaml cannot bind to MauiProgram.Settings directly
-        Settings = MauiProgram.Settings;
     }
 
-    public Settings Settings { get; set; }
+    // xaml cannot bind to MauiProgram.Settings directly.
+    // And for FullPathRoot an extra measure is necessary
+    public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
     public string _clientMsg = "";
     public string ClientMsg
@@ -63,12 +64,12 @@ public partial class MainPageViewModel : BaseViewModel
         // otherwise after picking a folder, OnPropertyChanged does not work for
         // variables in Settings because it's not INotifyPropertyChanged .
         // Although it works at start app. As ChatGPT explained to me (JWdP)
-        get => Settings.FullPathRoot;
+        get => MauiProgram.Settings.FullPathRoot;
         set
         {
-            if (Settings.FullPathRoot != value)
+            if (MauiProgram.Settings.FullPathRoot != value)
             {
-                Settings.FullPathRoot = value;
+                MauiProgram.Settings.FullPathRoot = value;
                 OnPropertyChanged();
             }
         }
@@ -149,7 +150,7 @@ public partial class MainPageViewModel : BaseViewModel
         if (IsBusy)
             return;
 
-        if (String.IsNullOrEmpty(Settings.FullPathRoot))
+        if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
         {
             await Shell.Current.DisplayAlert("Info",
                 "Connect: Please browse for root first", "OK");
@@ -166,7 +167,7 @@ public partial class MainPageViewModel : BaseViewModel
             if (0 == MauiProgram.Settings.Idx0isSvr1isCl)
             {
                 // server: get udp port from Stun server
-                var udpIEndPoint = await GetUdpSvrIEndPointFromStun();
+                var udpIEndPoint = await GetUdpSvrIEndPointFromStun(Settings);
                 if (null == udpIEndPoint)
                     throw new Exception("Error getting data from Stun Server");
                 udpSvrPort = udpIEndPoint.Port;
@@ -189,13 +190,15 @@ public partial class MainPageViewModel : BaseViewModel
             //    response.EnsureSuccessStatusCode();
             //    msg = await response.Content.ReadAsStringAsync();
             //}
-            MauiProgram.UdpSvrPort_0isclient = udpSvrPort;
+            MauiProgram.Info.UdpSvrPort = udpSvrPort;
             MauiProgram.StrLocalIP = GetLocalIP();
             msg = await MauiProgram.PostToCentralServerAsync("REGISTER",
                 udpSvrPort,        // if 0 then this is client
                 MauiProgram.StrLocalIP);
 
             string errMsg = GetJsonProp(msg, "errMsg");
+            if (String.IsNullOrEmpty(errMsg))
+                errMsg = IpDataToInfo(GetJsonProp(msg, "ipData"));
 
             if ("" != errMsg)
             {
@@ -217,22 +220,29 @@ public partial class MainPageViewModel : BaseViewModel
             else if (MauiProgram.Settings.Idx0isSvr1isCl == 1)
             {
                 // client: connect to server
-                string ipData = GetJsonProp(msg, "ipData");
-                if (String.IsNullOrEmpty(ipData))
-                {
-                    errMsg = "Internal error (ipData 1)";
-                }
-                else
-                {
-                    errMsg = ConnectServerFromClient(ipData);
-                }
-                    
+                errMsg = ConnectServerFromClient();
                 if ("" != errMsg)
                 {
                     throw new Exception(errMsg);
                 }
 
-                // client: conversation is done by other buttons and controls
+                // client: send request info rootpath and recieve answer
+                var msgSvrCl = new MsgSvrClRootInfoRequest();
+                byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
+                                    msgSvrCl.Bytes);
+                if (byRecieved.Length == 0)
+                    return;
+
+                MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
+                if (! (msgSvrClAnswer is MsgSvrClRootInfoAnswer))
+                    throw new Exception(
+                        $"Expected from server: MsgSvrClRootInfoAnswer, got: {msgSvrClAnswer.GetType()}");
+
+                ((MsgSvrClRootInfoAnswer)msgSvrClAnswer).GetFolderAndFileNames(
+                        out string[] folderNames, out string[] fileNames);
+                await Shell.Current.DisplayAlert("Info",
+                    String.Join(", ", folderNames) +
+                    String.Join(", ", fileNames), "OK");
             }
 
             //JEEWEE: INTERESTING CODE
@@ -264,6 +274,16 @@ public partial class MainPageViewModel : BaseViewModel
 
 
     [RelayCommand]
+    async Task OpenAdvancedDlg()
+    {
+        //JEEWEE
+        await Shell.Current.GoToAsync(nameof(AdvancedPage), true);
+    }
+
+
+
+
+    [RelayCommand]
     async Task SendClientMsg()
     {
         //JEEWEE: MAYBE IS SENDCLIENTMSGBUSY ?
@@ -273,27 +293,56 @@ public partial class MainPageViewModel : BaseViewModel
         //JEEWEE
         //OnPropertyChanged(nameof(ClientMsg));
 
-        try
+        //JEEWEE
+        //IsBusy = true;
+
+        if (1 == MauiProgram.Settings.Idx0isSvr1isCl)        // client
         {
             //JEEWEE
-            //IsBusy = true;
+            //LblInfo2 = "";
+            //byte[] sendMsg = Encoding.UTF8.GetBytes(ClientMsg);
+            ////JEEWEE seems 20 is minimum?
+            ////await udpClient.SendAsync(new byte[20], 20);
+            //LblInfo1 = $"sending to server ...";
+            //int iResult = await _udpClient.SendAsync(sendMsg, sendMsg.Length);
 
-            if (1 == MauiProgram.Settings.Idx0isSvr1isCl)        // client
-            {
-                LblInfo2 = "";
-                byte[] sendMsg = Encoding.UTF8.GetBytes(ClientMsg);
-                //JEEWEE seems 20 is minimum?
-                //await udpClient.SendAsync(new byte[20], 20);
-                LblInfo1 = $"sending to server ...";
-                int iResult = await _udpClient.SendAsync(sendMsg, sendMsg.Length);
+            //LblInfo1 = $"sent to server: '{ClientMsg}'";
+            //LblInfo2 = $"sent bytes: {iResult}; waiting for server ...";
+            //var response = await _udpClient.ReceiveAsync(
+            //                        new CancellationTokenSource(5000).Token);
 
-                LblInfo1 = $"sent to server: '{ClientMsg}'";
-                LblInfo2 = $"sent bytes: {iResult}; waiting for server ...";
-                var response = await _udpClient.ReceiveAsync(
-                                        new CancellationTokenSource(5000).Token);
+            //LblInfo2 = $"Received from server: '{Encoding.UTF8.GetString(response.Buffer)}'";
 
-                LblInfo2 = $"Received from server: '{Encoding.UTF8.GetString(response.Buffer)}'";
-            }
+            byte[] recBytes = await SndFromClientRecieve_msgbxs_Async(
+                            Encoding.UTF8.GetBytes(ClientMsg));
+            LblInfo2 = $"Received from server: '{Encoding.UTF8.GetString(recBytes)}'";
+        }
+    }
+
+    //JEEWEE
+    //protected void LoadSettings()
+    //{
+    //    Settings = _settingsService.LoadFromFile();
+    //}
+    protected async Task<byte[]> SndFromClientRecieve_msgbxs_Async(byte[] sendBytes)
+    {
+        try
+        {
+            LblInfo2 = "";
+            LblInfo1 = $"sending to server ...";
+            int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
+
+            LblInfo1 = $"intended for server: {sendBytes.Length} bytes";
+            LblInfo2 = $"bytes really sent: {iResult}; waiting for server ...";
+            var response = await _udpClient.ReceiveAsync(
+                                    new CancellationTokenSource(5000).Token);
+            //JEEWEE: SECONDS MAYBE SETTING
+
+            //JEEWEE
+            //LblInfo2 = $"Received from server: {Encoding.UTF8.GetString(response.Buffer)}'";
+            LblInfo2 = $"Received from server: {response.Buffer.Length} bytes";
+
+            return response.Buffer;
         }
         catch (OperationCanceledException)
         {
@@ -310,53 +359,97 @@ public partial class MainPageViewModel : BaseViewModel
         //{
         //    IsBusy = false;
         //}
+
+        return new byte[0];
     }
 
-    //JEEWEE
-    //protected void LoadSettings()
-    //{
-    //    Settings = _settingsService.LoadFromFile();
-    //}
+
 
     protected async Task ListenMsgAndSendMsgAsSvrAsync(int udpSvrPort)
     {
-        using (var udpServer = new UdpClient(udpSvrPort))
+        try
         {
-            UdpReceiveResult received = await udpServer.ReceiveAsync();
-            LblInfo1 = $"Received from client: '{Encoding.UTF8.GetString(received.Buffer)}'";
+            using (var udpServer = new UdpClient(udpSvrPort))
+            {
+                UdpReceiveResult received = await udpServer.ReceiveAsync();
+                MsgSvrClBase msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
+                MsgSvrClBase msgSvrClAns = null;
 
-            //5️ Respond to client(hole punching)
-            string strResp = $"Hello {++_numSent} from server!";
-            byte[] response = Encoding.UTF8.GetBytes(strResp);
-            LblInfo2 = $"sending '{strResp}' ...";
-            await udpServer.SendAsync(response, response.Length, received.RemoteEndPoint);
-            LblInfo2 = $"sent: '{strResp}'";
+                string receivedTxt = "";
+                if (msgSvrCl is MsgSvrClStringSend)
+                {
+                    receivedTxt = ((MsgSvrClStringSend)msgSvrCl).GetString();
+                    msgSvrClAns = new MsgSvrClStringAnswer();
+                }
+                else if (msgSvrCl is MsgSvrClRootInfoRequest)
+                {
+                    receivedTxt = msgSvrCl.Type.ToString();
+                    FileOrFolderData[] data = _fileDataService.GetFilesData(
+                                Settings.FullPathRoot, SearchOption.TopDirectoryOnly);
+                    string[] folderNames = data.Where(d => d.IsDir).Select(d => d.Name).ToArray();
+                    string[] fileNames = data.Where(d => ! d.IsDir).Select(d => d.Name).ToArray();
+                    msgSvrClAns = new MsgSvrClRootInfoAnswer(folderNames, fileNames);
+                }
+                else
+                {
+                    throw new Exception(
+                        $"Server: unexpected message type {msgSvrCl.GetType()}");
+                }
+
+                LblInfo1 = $"Received from client: '{receivedTxt}'";
+
+                //5️ Respond to client(hole punching)
+                LblInfo2 = $"sending answer ...";
+                await udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
+                                received.RemoteEndPoint);
+                LblInfo2 = $"sent: {msgSvrClAns.Bytes.Length} bytes";
+            }
+        }
+        catch (Exception exc)
+        {
+            await Shell.Current.DisplayAlert("Server: error receiving message or sending answer",
+                        MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
         }
     }
 
 
-    protected string ConnectServerFromClient(string ipData)
+
+    /// <summary>
+    /// Sets received ipData in Info; returns "" or errMsg
+    /// </summary>
+    /// <param name="ipData"></param>
+    /// <returns></returns>
+    protected string IpDataToInfo(string ipData)
     {
         string[] parts = ipData.Split(',');
         if (parts.Length < 3)
             return "Internal error (ipData 2)";
 
-        string publicIpSvr = parts[0];
-        string publicUdpPortSvr = parts[1];
-        string localIpSvr = parts[2];
+        MauiProgram.Info.PublicIpSvrRegistered = parts[0];
+        MauiProgram.Info.PublicUdpPortSvrRegistered = parts[1];
+        MauiProgram.Info.LocalIpSvrRegistered = parts[2];
+        return "";
+    }
 
+
+    protected string ConnectServerFromClient()
+    {
         for (int i = 0; i < 2; i++)
         {
             try
             {
-                string ipAddress = 0 == i ? localIpSvr : publicIpSvr;
+                string ipAddress = 0 == i ?
+                        MauiProgram.Info.LocalIpSvrRegistered :
+                        MauiProgram.Info.PublicIpSvrRegistered;
                 _udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0)); // Let the OS pick the local address
                 _udpClient.Connect(new IPEndPoint(
                         new IPAddress(ipAddress.Split('.')
                             .Select(p => Convert.ToByte(p))
                             .ToArray()),
-                        Convert.ToInt32(publicUdpPortSvr)));
+                        Convert.ToInt32(
+                            MauiProgram.Info.PublicUdpPortSvrRegistered)));
                 LblInfo2 = "Connected to server.";
+                MauiProgram.Info.IpSvrThatClientConnectedTo = ipAddress;
                 VisClientMsg = true;
                 return "";
             }
@@ -401,13 +494,14 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    protected static async Task<IPEndPoint> GetUdpSvrIEndPointFromStun()
+    protected static async Task<IPEndPoint> GetUdpSvrIEndPointFromStun(
+            Settings settings)
     {
         //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! MAKE THIS A SETTING, SOMEHOW
         //var stunServer = "stun.l.google.com";
         //var stunPort = 19302;
-        var stunServer = "stun.sipgate.net";
-        var stunPort = 3478;
+        //var stunServer = "stun.sipgate.net";
+        //var stunPort = 3478;
 
         IPEndPoint localUdpEndPoint;
         using (var udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0)))
@@ -418,10 +512,10 @@ public partial class MainPageViewModel : BaseViewModel
 
         // 2️⃣ Use STUN to find public IP & port
         // Resolve STUN server hostname to an IP address
-        var addresses = await Dns.GetHostAddressesAsync(stunServer);
+        var addresses = await Dns.GetHostAddressesAsync(settings.StunServer);
         var stunServerIP = addresses
             .First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
-        var stunServerEndPoint = new IPEndPoint(stunServerIP, stunPort);
+        var stunServerEndPoint = new IPEndPoint(stunServerIP, settings.StunPort);
 
         // Create StunClient3489 instance
         var stunClient = new StunClient3489(stunServerEndPoint, localUdpEndPoint);

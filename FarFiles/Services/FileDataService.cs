@@ -4,60 +4,45 @@ namespace FarFiles.Services;
 
 public class FileDataService
 {
-    //JEEWEE
-    //HttpClient httpClient;
     public FileDataService()
     {
-        //JEEWEE
-        //this.httpClient = new HttpClient();
     }
 
-    List<Model.FileData> filesList = new();
     //JEEWEE
     //public async Task<List<Model.FileData>> GetFilesData(string fullRootPath)
-    public List<Model.FileData> GetFilesData(string fullRootPath)
+    public FileOrFolderData[] GetFilesData(string fullRootPath,
+            SearchOption searchOption)
     {
-        //JEEWEE
-        //if (filesList?.Count > 0)
-        //    return filesList;
-
-        //JEEWEE
-        //// Online
-        //var response = await httpClient.GetAsync("https://www.montemagno.com/monkeys.json");
-        //if (response.IsSuccessStatusCode)
-        //{
-        //    filesList = await response.Content.ReadFromJsonAsync(MonkeyContext.Default.ListMonkey);
-        //}
-
-
-
-
-        // Offline
-        /*using var stream = await FileSystem.OpenAppPackageFileAsync("monkeydata.json");
-        using var reader = new StreamReader(stream);
-        var contents = await reader.ReadToEndAsync();
-        filesList = JsonSerializer.Deserialize(contents, MonkeyContext.Default.ListMonkey);*/
-
-        filesList.Clear();
+        List<Model.FileOrFolderData> dataList = new();
 
         try
         {
-            filesList.AddRange(Directory.GetFiles(fullRootPath, "*", SearchOption.TopDirectoryOnly)
-                .Select(f => new FileData(f)));
-        }
-        catch { }
-
-        foreach (string fullPathSubDir in Directory.GetDirectories(fullRootPath))
-        {
-            filesList.Add(new FileData(fullPathSubDir));
-            try
+            string[] fullPathSubdirs = Directory.GetDirectories(fullRootPath);
+            string[] fullPathFiles = Directory.GetFiles(fullRootPath, "*", SearchOption.TopDirectoryOnly);
+            for (int i = 0; i < 2; i++)
             {
-                filesList.AddRange(Directory.GetFiles(fullPathSubDir, "*", SearchOption.AllDirectories)
-                    .Select(f => new FileData(f)));
+                string[] fullPaths = (i == 0 ? fullPathSubdirs : fullPathFiles);
+                foreach (string fullPath in fullPaths)
+                {
+                    dataList.Add(new FileOrFolderData(fullPath, i == 0));
+                }
             }
-            catch { }
+
+            if (searchOption == SearchOption.AllDirectories)
+            {
+                foreach (FileOrFolderData fileOrFolderData in dataList.Where(d => d.IsDir))
+                {
+                    fileOrFolderData.Children_NullIfFile = GetFilesData(
+                            Path.Combine(fullRootPath, fileOrFolderData.Name),
+                            searchOption);
+                }
+            }
+        }
+        catch (Exception exc)
+        {
+            return new FileOrFolderData[] { new FileOrFolderData(exc) };
         }
 
-        return filesList;
+        return dataList.ToArray();
     }
 }

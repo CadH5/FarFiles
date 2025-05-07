@@ -13,9 +13,11 @@ namespace FarFiles;
 
 public static class MauiProgram
 {
-    public static int UdpSvrPort_0isclient { get; set; } = 0;
+    //JEEWEE
+    //public static int UdpSvrPort_0isclient { get; set; } = 0;
     public static string StrLocalIP { get; set; } = "";
     public static Settings Settings { get; set; } = new Settings();
+    public static Info Info { get; set; } = new Info();
     public static bool Connected { get; set; } = false;
 
     public static MauiApp CreateMauiApp()
@@ -66,15 +68,16 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IGeolocation>(Geolocation.Default);
 		builder.Services.AddSingleton<IMap>(Map.Default);
 
-		builder.Services.AddSingleton<FileDataService>();
+        builder.Services.AddSingleton<FileDataService>();
 		builder.Services.AddSingleton<FilesViewModel>();
         //JEEWEE
         //builder.Services.AddSingleton<SettingsService>();
 
         builder.Services.AddSingleton<MainPageViewModel>();
 
-        builder.Services.AddTransient<FileDetailsViewModel>();
-		builder.Services.AddSingleton<DetailsPage>();
+        builder.Services.AddSingleton<AdvancedViewModel>();
+		//JEEWEE
+        //builder.Services.AddSingleton<DetailsPage>();
 		return builder.Build();
 	}
 
@@ -88,7 +91,7 @@ public static class MauiProgram
             if (Settings.Idx0isSvr1isCl == 0)           // server
             {
                 var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
-                    "UNREGISTER", UdpSvrPort_0isclient, StrLocalIP, true));
+                    "UNREGISTER", MauiProgram.Info.UdpSvrPort, StrLocalIP, true));
 
                 // Wait max 1 second — no deadlock risk
                 unregisterTask.Wait(TimeSpan.FromSeconds(1));
@@ -164,11 +167,15 @@ public static class MauiProgram
         Settings.FullPathRoot = Preferences.Get("FullPathRoot", Settings.FullPathRoot);
         Settings.Idx0isSvr1isCl = Preferences.Get("Idx0isSvr1isCl", Settings.Idx0isSvr1isCl);
         Settings.ConnectKey = Preferences.Get("ConnectKey", Settings.ConnectKey);
+        Settings.StunServer = Preferences.Get("StunServer", Settings.StunServer);
+        Settings.StunPort = Preferences.Get("StunPort", Settings.StunPort);
     }
     private static void SaveSettings()
     {
         Preferences.Set("FullPathRoot", Settings.FullPathRoot);
         Preferences.Set("Idx0isSvr1isCl", Settings.Idx0isSvr1isCl);
         Preferences.Set("ConnectKey", Settings.ConnectKey);
+        Preferences.Set("StunServer", Settings.StunServer);
+        Preferences.Set("StunPort", Settings.StunPort);
     }
 }
