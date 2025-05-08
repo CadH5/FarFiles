@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31611.283
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{CBB94168-7DD5-4CCA-BF8A-282B7F7A16AA}") = "FarFiles", "FarFiles\FarFiles.csproj", "{C60F2B1C-790E-4432-A719-52182A333ADE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FarFiles", "FarFiles\FarFiles.csproj", "{C60F2B1C-790E-4432-A719-52182A333ADE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

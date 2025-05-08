@@ -18,7 +18,7 @@ public static class MauiProgram
     public static string StrLocalIP { get; set; } = "";
     public static Settings Settings { get; set; } = new Settings();
     public static Info Info { get; set; } = new Info();
-    public static bool Connected { get; set; } = false;
+    public static Tests Tests { get; set; } = new Tests();
 
     public static MauiApp CreateMauiApp()
 	{

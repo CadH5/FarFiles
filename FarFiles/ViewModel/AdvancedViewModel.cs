@@ -12,7 +12,8 @@ public partial class AdvancedViewModel : BaseViewModel
             $"PublicIpSvrRegistered: {MauiProgram.Info.PublicIpSvrRegistered}{nl}" +
             $"PublicUdpPortSvrRegistered: {MauiProgram.Info.PublicUdpPortSvrRegistered}{nl}" +
             $"LocalIpSvrRegistered: {MauiProgram.Info.LocalIpSvrRegistered}{nl}" +
-            $"IpSvrThatClientConnectedTo: {MauiProgram.Info.IpSvrThatClientConnectedTo}";
+            $"IpSvrThatClientConnectedTo: {MauiProgram.Info.IpSvrThatClientConnectedTo}{nl} +" +
+            $"Connected: {MauiProgram.Info.Connected}";
     }
 
     public Settings Settings { get; protected set; } = MauiProgram.Settings;

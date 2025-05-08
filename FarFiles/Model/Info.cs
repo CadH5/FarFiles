@@ -14,5 +14,6 @@ namespace FarFiles.Model
         public string PublicUdpPortSvrRegistered { get; set; } = "";
         public string LocalIpSvrRegistered { get; set; } = "";
         public string IpSvrThatClientConnectedTo { get; set; } = "";
+        public bool Connected { get; set; } = false;
     }
 }

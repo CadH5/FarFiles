@@ -150,6 +150,12 @@ public partial class MainPageViewModel : BaseViewModel
         if (IsBusy)
             return;
 
+        //JWdP 20250507 Introduced "unittests", to be executed from this button if incommented
+        //====================================================================================
+        //await MauiProgram.Tests.DoTestsAsync();
+        //return;
+        //====================================================================================
+
         if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
         {
             await Shell.Current.DisplayAlert("Info",
@@ -205,7 +211,7 @@ public partial class MainPageViewModel : BaseViewModel
                 throw new Exception(errMsg);
             }
 
-            MauiProgram.Connected = true;
+            MauiProgram.Info.Connected = true;
             IsBusy = true;
 
             if (MauiProgram.Settings.Idx0isSvr1isCl == 0)

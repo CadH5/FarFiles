@@ -154,7 +154,7 @@ namespace FarFiles.Model
                     $"PROGRAMMERS: StrPlusLenFromBytes: Length ({bytes.Length}) less than 4 bytes");
 
             int strLen = BitConverter.ToInt32(bytes, indexStart);
-            int till = indexStart + strLen;
+            int till = indexStart + 4 + strLen;
             if (bytes.Length < till)
                 throw new Exception(
                     $"PROGRAMMERS: StrPlusLenFromBytes: Length ({bytes.Length}) less than {till} bytes");
