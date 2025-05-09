@@ -8,20 +8,21 @@
     xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
     ios:Page.UseSafeArea="True"
     Title="Far Files"
-    x:DataType="viewmodel:FilesViewModel">
+    x:DataType="viewmodel:ClientViewModel">
+    <!--JEEWEE-->
     <Grid
         ColumnDefinitions="*,*"
         ColumnSpacing="5"
         RowDefinitions="*,Auto"
         RowSpacing="0"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
-        <RefreshView
+        <!--<RefreshView
             Grid.ColumnSpan="2"
             Command="{Binding GetFilesCommand}"
             IsRefreshing="{Binding IsRefreshing}">
-            <!--JEEWEE-->
+            --><!--JEEWEE-->
             <!--<CollectionView
-                        ItemsSource="{Binding FilesData}"
+                        ItemsSource="{Binding FileOrFolderColl}"
                         SelectionMode="None">
                 <CollectionView.EmptyView>
                     <StackLayout Padding="100">
@@ -65,7 +66,7 @@
                         </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
-            </CollectionView>-->
+            </CollectionView>--><!--
         </RefreshView>
 
         <Button
@@ -75,17 +76,17 @@
             Command="{Binding GetMonkeysCommand}"
             IsEnabled="{Binding IsNotBusy}"
             Style="{StaticResource ButtonOutline}"
-            Text="Get Monkeys" />
+            Text="Get Monkeys" />-->
 
         <!--  Add this  -->
-        <Button
+        <!--<Button
             Grid.Row="1"
             Grid.Column="1"
             Margin="8"
             Command="{Binding GetClosestMonkeyCommand}"
             IsEnabled="{Binding IsNotBusy}"
             Style="{StaticResource ButtonOutline}"
-            Text="Find Closest" />
+            Text="Find Closest" />-->
 
 
         <ActivityIndicator

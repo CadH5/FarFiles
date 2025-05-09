@@ -30,6 +30,7 @@ public partial class MainPageViewModel : BaseViewModel
     protected int _numSent = 0;
     protected UdpClient _udpClient = null;
     protected FileDataService _fileDataService;
+
     public MainPageViewModel(FileDataService fileDataService)
     {
         Title = "Far Away Files Access";
@@ -144,6 +145,44 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+
+    protected async void OpenClientJEEWEE()
+    {
+        string[] folderNames = { "aa", "folderB xxxxxxxxxx yyyyyyyyyyyy zzzzzz" };
+        string[] fileNames = { "bb", "fileC",
+            "file 64567 56756756 56588568 4685588 54788",
+            "file2 64567 56756756 56588568 4685588 54788",
+            "file3 64567 56756756 56588568 4685588 54788",
+            "file4 64567 56756756 56588568 4685588 54788",
+            "file5 64567 56756756 56588568 4685588 54788",
+            "file6 64567 56756756 56588568 4685588 54788",
+            "file7 64567 56756756 56588568 4685588 54788",
+            "file8 64567 56756756 56588568 4685588 54788",
+            "file9 64567 56756756 56588568 4685588 54788",
+            "file0 64567 56756756 56588568 4685588 54788",
+            "file1 64567 56756756 56588568 4685588 54788",
+            "file2 64567 56756756 56588568 4685588 54788",
+            "file3 64567 56756756 56588568 4685588 54788",
+            "file4 64567 56756756 56588568 4685588 54788",
+            "file5 64567 56756756 56588568 4685588 54788",
+            "file6 64567 56756756 56588568 4685588 54788",
+            "file7 64567 56756756 56588568 4685588 54788",
+            "file8 64567 56756756 56588568 4685588 54788",
+            "file9 64567 56756756 56588568 4685588 54788",
+            "file30 64567 56756756 56588568 4685588 54788",
+        };
+        MauiProgram.Info.RootFolders = folderNames.Order().Select(
+            f => new FileOrFolderData(f, true, false)).ToArray();
+        MauiProgram.Info.RootFiles = fileNames.Order().Select(
+            f => new FileOrFolderData(f, false, false)).ToArray();
+        await Shell.Current.GoToAsync(nameof(ClientPage), true);
+    }
+
+
+
+
+
+
     [RelayCommand]
     async Task ConnectAndDoConversation()
     {
@@ -155,6 +194,8 @@ public partial class MainPageViewModel : BaseViewModel
         //await MauiProgram.Tests.DoTestsAsync();
         //return;
         //====================================================================================
+
+        OpenClientJEEWEE();
 
         if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
         {
@@ -246,9 +287,17 @@ public partial class MainPageViewModel : BaseViewModel
 
                 ((MsgSvrClRootInfoAnswer)msgSvrClAnswer).GetFolderAndFileNames(
                         out string[] folderNames, out string[] fileNames);
-                await Shell.Current.DisplayAlert("Info",
-                    String.Join(", ", folderNames) +
-                    String.Join(", ", fileNames), "OK");
+
+                //JEEWEE
+                //await Shell.Current.DisplayAlert("Info",
+                //    String.Join(", ", folderNames) +
+                //    String.Join(", ", fileNames), "OK");
+
+                MauiProgram.Info.RootFolders = folderNames.Order().Select(
+                    f => new FileOrFolderData(f, true, false)).ToArray();
+                MauiProgram.Info.RootFiles = fileNames.Order().Select(
+                    f => new FileOrFolderData(f, false, false)).ToArray();
+                await Shell.Current.GoToAsync(nameof(ClientPage), true);
             }
 
             //JEEWEE: INTERESTING CODE

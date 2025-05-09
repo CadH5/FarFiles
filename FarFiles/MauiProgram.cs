@@ -69,7 +69,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IMap>(Map.Default);
 
         builder.Services.AddSingleton<FileDataService>();
-		builder.Services.AddSingleton<FilesViewModel>();
+		builder.Services.AddSingleton<ClientViewModel>();
         //JEEWEE
         //builder.Services.AddSingleton<SettingsService>();
 

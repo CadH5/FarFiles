@@ -8,23 +8,52 @@
     xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
     ios:Page.UseSafeArea="True"
     Title="Far Files"
-    x:DataType="viewmodel:FilesViewModel">
-    <Grid
-        ColumnDefinitions="*,*"
-        ColumnSpacing="5"
-        RowDefinitions="*,Auto"
-        RowSpacing="0"
-        BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
-        <RefreshView
-            Grid.ColumnSpan="2"
-            IsRefreshing="{Binding IsRefreshing}">
-            <!--Command="{Binding GetFilesCommand}"-->
+    x:DataType="viewmodel:ClientViewModel"
+    Loaded="ClientPage_Loaded">
 
-            <!--JEEWEE-->
-            <!--<CollectionView
-                        ItemsSource="{Binding FilesData}"
-                        SelectionMode="None">
-                <CollectionView.EmptyView>
+    <!--JEEWEE!!!!!!!!!! SHOULD WE DO THIS? BETTER MAKE A BUTTON RETURN TO FILES, IN MAINPAGE FOR CLIENT-->
+    <Shell.BackButtonBehavior>
+        <BackButtonBehavior IsEnabled="False" />
+    </Shell.BackButtonBehavior>
+
+    <Grid
+        ColumnDefinitions="Auto,*"
+        ColumnSpacing="5"
+        RowDefinitions="30,30,30,10,*"
+        BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
+        <!--JEEWEE-->
+        <!--RowSpacing="5"-->
+        <!--<RefreshView
+            Grid.ColumnSpan="2"
+            IsRefreshing="{Binding IsRefreshing}"
+            Command="{Binding GetFilesCommand}">-->
+
+            <Label Grid.Row="0" Text="{Binding TxtLocalRoot}" />
+            <Label Grid.Row="1" x:Name="LblSelectedNofN" />
+            <StackLayout Orientation="Horizontal" Grid.Row="2">
+                <Button Margin="5" Text="clear all" Command="{Binding ClrAllCommand}"
+                        Style="{StaticResource ButtonOutline}"
+                        x:Name="BtnClrAll"></Button>
+                <Button Margin="5" Text="goto" Command="{Binding GotoDirCommand}"
+                        Style="{StaticResource ButtonOutline}"
+                        x:Name="BtnGoto"></Button>
+                <Button Margin="5" Text="copy" Command="{Binding CopyCommand}"
+                        Style="{StaticResource ButtonOutline}"
+                        x:Name="BtnCopy"></Button>
+            </StackLayout>
+
+            <!--here an empty gridrow-->
+        
+            <CollectionView x:Name="FfCollView"
+                        Grid.Row="4"
+                        ItemsSource="{Binding FileOrFolderColl}"
+                        SelectionMode="Multiple"
+                        SelectionChanged="FfCollView_SelectionChanged"
+                        ItemsLayout="VerticalList"
+                        VerticalScrollBarVisibility="Always">
+
+                <!--JEEWEE-->
+                <!--<CollectionView.EmptyView>
                     <StackLayout Padding="100">
                         <Image
                                     HorizontalOptions="Center"
@@ -33,26 +62,72 @@
                                     Source="nodata.png"
                                     VerticalOptions="Center" />
                     </StackLayout>
-                </CollectionView.EmptyView>
-                --><!--<CollectionView.ItemsLayout>
-                            <GridItemsLayout  Orientation="Horizontal" Span="3"/>
-                        </CollectionView.ItemsLayout>--><!--
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="model:FileData">
-                        <Grid Padding="10" HorizontalOptions="Fill">
+                </CollectionView.EmptyView>-->
+                
+                <!--JEEWEE-->
+                <!--<CollectionView.ItemsLayout>
+                            <GridItemsLayout  Orientation="Horizontal"/>
+                </CollectionView.ItemsLayout>-->
+
+
+                    <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="model:FileOrFolderData">
+                        <!--<Grid Padding="10" ColumnSpacing="10">-->
+                        <Grid Padding="3" x:Name="ItemGrid">
+                            <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="60" />
+                                    <!-- Image -->
+                                    <ColumnDefinition Width="*" />
+                                    <!-- Main Text -->
+                                    <ColumnDefinition Width="100" />
+                                    <!-- Right Text -->
+                                </Grid.ColumnDefinitions>
+
+                                <Image Source="{Binding ImageSrc}" 
+                                       WidthRequest="30" HeightRequest="20"
+                                       Grid.Column="0" />
+
+                                <Label Text="{Binding Name}" 
+                                       VerticalOptions="Center"
+                                       Grid.Column="1" />
+                            <!--FontSize="16"-->
+
+                                <Label Text="size" 
+                                       VerticalOptions="Center"
+                                        Grid.Column="2" />
+                            <!--HorizontalOptions="End"-->
+
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup Name="CommonStates">
+                                    <VisualState Name="Normal">
+                                        <VisualState.Setters>
+                                            <Setter TargetName="ItemGrid" Property="BackgroundColor" Value="Transparent" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState Name="Selected">
+                                        <VisualState.Setters>
+                                            <Setter TargetName="ItemGrid" Property="BackgroundColor" Value="#88FF88" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+
+                        </Grid>
+
+                        <!--JEEWEE-->
+                        <!--<Grid Padding="5" HorizontalOptions="Fill">
                             <Border HeightRequest="125" Style="{StaticResource CardView}">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer 
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodel:FilesViewModel}}, x:DataType=viewmodel:FilesViewModel, Path=GoToDetailsCommand}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodel:ClientViewModel}}, x:DataType=viewmodel:FilesViewModel, Path=GoToDetailsCommand}"
                                                 CommandParameter="{Binding .}"/>
                                 </Border.GestureRecognizers>
                                 <Grid Padding="0" ColumnDefinitions="125,*">
-                                    --><!--JEEWEE-->
-                                    <!--<Image
+                                    <Image
                                                 Aspect="AspectFill"
                                                 HeightRequest="125"
                                                 Source="{Binding Image}"
-                                                WidthRequest="125" />--><!--
+                                                WidthRequest="125" />
                                     <CheckBox></CheckBox>
                                     <VerticalStackLayout
                                                 VerticalOptions="Center"
@@ -63,13 +138,17 @@
                                     </VerticalStackLayout>
                                 </Grid>
                             </Border>
-                        </Grid>
+                        </Grid>-->
+                        
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
-            </CollectionView>-->
-        </RefreshView>
+            </CollectionView>
 
-        <Button
+        
+        <!--</RefreshView>-->
+
+        <!--JEEWEE-->
+        <!--<Button
             Grid.Row="1"
             Grid.Column="0"
             Margin="8"
@@ -78,7 +157,7 @@
             Style="{StaticResource ButtonOutline}"
             Text="Get Monkeys" />
 
-        <!--  Add this  -->
+        --><!--  Add this  --><!--
         <Button
             Grid.Row="1"
             Grid.Column="1"
@@ -86,7 +165,7 @@
             Command="{Binding GetClosestMonkeyCommand}"
             IsEnabled="{Binding IsNotBusy}"
             Style="{StaticResource ButtonOutline}"
-            Text="Find Closest" />
+            Text="Find Closest" />-->
 
 
         <ActivityIndicator

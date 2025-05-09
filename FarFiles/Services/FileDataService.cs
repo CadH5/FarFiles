@@ -24,7 +24,7 @@ public class FileDataService
                 string[] fullPaths = (i == 0 ? fullPathSubdirs : fullPathFiles);
                 foreach (string fullPath in fullPaths)
                 {
-                    dataList.Add(new FileOrFolderData(fullPath, i == 0));
+                    dataList.Add(new FileOrFolderData(fullPath, i == 0, true));
                 }
             }
 

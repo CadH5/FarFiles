@@ -5,7 +5,7 @@
              xmlns:view="clr-namespace:FarFiles.View"
              FlyoutBehavior="Disabled">
 
-
+            <!--JWdP: see AppShell.xaml.cs for Routing to pages-->
 
     <Shell.Resources>
         <ResourceDictionary>

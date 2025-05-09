@@ -15,5 +15,7 @@ namespace FarFiles.Model
         public string LocalIpSvrRegistered { get; set; } = "";
         public string IpSvrThatClientConnectedTo { get; set; } = "";
         public bool Connected { get; set; } = false;
+        public FileOrFolderData[] RootFolders { get; set; } = new FileOrFolderData[0];
+        public FileOrFolderData[] RootFiles { get; set; } = new FileOrFolderData[0];
     }
 }

@@ -2,7 +2,7 @@
 
 public partial class ServerPage : ContentPage
 {
-	public ServerPage(FilesViewModel viewModel)
+	public ServerPage(ClientViewModel viewModel)
 	{
 		InitializeComponent();
 		BindingContext = viewModel;

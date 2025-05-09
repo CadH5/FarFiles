@@ -77,8 +77,8 @@
                             </VisualState>
                             <VisualState x:Name="Disabled">
                                 <VisualState.Setters>
-                                    <Setter Property="Background" Value="Gray" />
-                                    <Setter Property="TextColor" Value="{StaticResource LightBackground}" />
+                                    <Setter Property="Background" Value="{StaticResource LightBackground}" />
+                                    <Setter Property="TextColor" Value="Gray" />
                                     <Setter Property="BorderColor" Value="DarkGray" />
                                 </VisualState.Setters>
                             </VisualState>
@@ -86,7 +86,7 @@
                     </VisualStateGroupList>
                 </Setter>
             </Style>
-           
+
             <Style x:Key="CardView" TargetType="Border">
                 <Setter Property="Stroke" Value="#DDDDDD" />
                 <Setter Property="StrokeThickness" Value="1" />

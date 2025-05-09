@@ -11,18 +11,20 @@ public class FileOrFolderData
     public DateTime DtLastWrite { get; set; }
     public FileOrFolderData[] Children_NullIfFile { get; set; }
     public bool IsDir { get => null != Children_NullIfFile; }
-
+    public string ImageSrc { get => IsDir ? "folder.png" : "file.png"; }
 
     /// <summary>
     /// This does not fill the children if it's a folder (a dir)
     /// </summary>
     /// <param name="fullPath">this does not get stored in a member, only Name</param>
     /// <param name="isDir"></param>
-    public FileOrFolderData(string fullPath, bool isDir)
+    /// <param name="shouldExist">pass true if file was found on this side's file system</param>
+    public FileOrFolderData(string fullPath, bool isDir, bool shouldExist)
     {
         Name = Path.GetFileName(fullPath);
         Children_NullIfFile = isDir ? new FileOrFolderData[0] : null;
-        bool exists = isDir ? Directory.Exists(fullPath) : File.Exists(fullPath);
+        bool exists = (! shouldExist) ? false :
+                (isDir ? Directory.Exists(fullPath) : File.Exists(fullPath));
         if (exists)
         {
             if (isDir)
