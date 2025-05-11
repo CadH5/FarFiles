@@ -35,6 +35,7 @@ public partial class MainPageViewModel : BaseViewModel
     {
         Title = "Far Away Files Access";
         _fileDataService = fileDataService;
+        MauiProgram.Info.MainPage = this;
 
         //JEEWEE
         //_settingsService = settingsService;
@@ -57,6 +58,27 @@ public partial class MainPageViewModel : BaseViewModel
                 OnPropertyChanged();
             }
         }
+    }
+
+    
+    public bool _isBtnConnectVisible = true;
+    public bool IsBtnConnectVisible
+    {
+        get => _isBtnConnectVisible;
+        set
+        {
+            if (_isBtnConnectVisible != value)
+            {
+                _isBtnConnectVisible = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsBtnBackToFilesVisible));
+            }
+        }
+    }
+
+    public bool IsBtnBackToFilesVisible
+    {
+        get => ! IsBtnConnectVisible;
     }
 
     public string FullPathRoot
@@ -170,10 +192,21 @@ public partial class MainPageViewModel : BaseViewModel
             "file8 64567 56756756 56588568 4685588 54788",
             "file9 64567 56756756 56588568 4685588 54788",
             "file30 64567 56756756 56588568 4685588 54788",
+            "file31 64567 56756756 56588568 4685588 54788",
+            "file32 64567 56756756 56588568 4685588 54788",
+            "file33 64567 56756756 56588568 4685588 54788",
+            "file34 64567 56756756 56588568 4685588 54788",
+            "file35 64567 56756756 56588568 4685588 54788",
+            "file36 64567 56756756 56588568 4685588 54788",
+            "file37 64567 56756756 56588568 4685588 54788",
+            "file38 64567 56756756 56588568 4685588 54788",
+            "file39 64567 56756756 56588568 4685588 54788",
+            "file40 64567 56756756 56588568 4685588 54788",
+            "file41 64567 56756756 56588568 4685588 54788",
         };
-        MauiProgram.Info.RootFolders = folderNames.Order().Select(
+        MauiProgram.Info.CurrSvrFolders = folderNames.Order().Select(
             f => new FileOrFolderData(f, true, false)).ToArray();
-        MauiProgram.Info.RootFiles = fileNames.Order().Select(
+        MauiProgram.Info.CurrSvrFiles = fileNames.Order().Select(
             f => new FileOrFolderData(f, false, false)).ToArray();
         await Shell.Current.GoToAsync(nameof(ClientPage), true);
     }
@@ -195,7 +228,7 @@ public partial class MainPageViewModel : BaseViewModel
         //return;
         //====================================================================================
 
-        OpenClientJEEWEE();
+        //OpenClientJEEWEE();
 
         if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
         {
@@ -274,30 +307,10 @@ public partial class MainPageViewModel : BaseViewModel
                 }
 
                 // client: send request info rootpath and recieve answer
-                var msgSvrCl = new MsgSvrClRootInfoRequest();
-                byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
-                                    msgSvrCl.Bytes);
-                if (byRecieved.Length == 0)
-                    return;
+                await SndFromClientRecievePathInfo_msgbxs_Async();
 
-                MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
-                if (! (msgSvrClAnswer is MsgSvrClRootInfoAnswer))
-                    throw new Exception(
-                        $"Expected from server: MsgSvrClRootInfoAnswer, got: {msgSvrClAnswer.GetType()}");
-
-                ((MsgSvrClRootInfoAnswer)msgSvrClAnswer).GetFolderAndFileNames(
-                        out string[] folderNames, out string[] fileNames);
-
-                //JEEWEE
-                //await Shell.Current.DisplayAlert("Info",
-                //    String.Join(", ", folderNames) +
-                //    String.Join(", ", fileNames), "OK");
-
-                MauiProgram.Info.RootFolders = folderNames.Order().Select(
-                    f => new FileOrFolderData(f, true, false)).ToArray();
-                MauiProgram.Info.RootFiles = fileNames.Order().Select(
-                    f => new FileOrFolderData(f, false, false)).ToArray();
                 await Shell.Current.GoToAsync(nameof(ClientPage), true);
+                IsBtnConnectVisible = false;
             }
 
             //JEEWEE: INTERESTING CODE
@@ -325,6 +338,44 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+	/// <summary>
+	/// Send MauiProgram.Info.SvrPathParts to server, receive folders and files,
+	/// set those in MauiProgram.Info.CurrSvrFolders, MauiProgram.Info.CurrSvrFiles
+	/// </summary>
+	/// <returns></returns>
+	/// <exception cref="Exception"></exception>
+	public async Task SndFromClientRecievePathInfo_msgbxs_Async()
+    {
+        var msgSvrCl = new MsgSvrClPathInfoRequest(MauiProgram.Info.SvrPathParts);
+        byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
+                            msgSvrCl.Bytes);
+        if (byRecieved.Length == 0)
+            return;
+
+        MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
+        if (!(msgSvrClAnswer is MsgSvrClPathInfoAnswer))
+            throw new Exception(
+                $"Expected from server: MsgSvrClPathInfoAnswer, got: {msgSvrClAnswer.GetType()}");
+
+        ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetFolderAndFileNamesAndSizes(
+                out string[] folderNames, out string[] fileNames, out long[] fileSizes);
+
+        MauiProgram.Info.CurrSvrFolders = folderNames.Order().Select(
+            f => new FileOrFolderData(f, true, false)).ToArray();
+        int i = 0;
+        MauiProgram.Info.CurrSvrFiles = fileNames.Select(
+            f => new FileOrFolderData(f, false, false, fileSizes[i++]))
+            .OrderBy(f => f.Name)
+            .ToArray();
+    }
+
+
+
+	[RelayCommand]
+    async Task BackToFiles()
+    {
+        await Shell.Current.GoToAsync(nameof(ClientPage), true);
+    }
 
 
 
@@ -436,14 +487,20 @@ public partial class MainPageViewModel : BaseViewModel
                     receivedTxt = ((MsgSvrClStringSend)msgSvrCl).GetString();
                     msgSvrClAns = new MsgSvrClStringAnswer();
                 }
-                else if (msgSvrCl is MsgSvrClRootInfoRequest)
+                else if (msgSvrCl is MsgSvrClPathInfoRequest)
                 {
                     receivedTxt = msgSvrCl.Type.ToString();
-                    FileOrFolderData[] data = _fileDataService.GetFilesData(
-                                Settings.FullPathRoot, SearchOption.TopDirectoryOnly);
+                    
+                    string path = Settings.FullPathRoot;
+                    foreach (string subPathPart in ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts())
+                        path = Path.Combine(path, subPathPart);
+
+					FileOrFolderData[] data = _fileDataService.GetFilesData(
+                                path, SearchOption.TopDirectoryOnly);
                     string[] folderNames = data.Where(d => d.IsDir).Select(d => d.Name).ToArray();
                     string[] fileNames = data.Where(d => ! d.IsDir).Select(d => d.Name).ToArray();
-                    msgSvrClAns = new MsgSvrClRootInfoAnswer(folderNames, fileNames);
+					long[] fileSizes = data.Where(d => !d.IsDir).Select(d => d.FileSize).ToArray();
+					msgSvrClAns = new MsgSvrClPathInfoAnswer(folderNames, fileNames, fileSizes);
                 }
                 else
                 {
@@ -454,11 +511,13 @@ public partial class MainPageViewModel : BaseViewModel
                 LblInfo1 = $"Received from client: '{receivedTxt}'";
 
                 //5️ Respond to client(hole punching)
-                LblInfo2 = $"sending answer ...";
+                int numAnswer = MauiProgram.Info.NumAnswersSent + 1;
+                LblInfo2 = $"sending answer {numAnswer} ...";
                 await udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
                                 received.RemoteEndPoint);
-                LblInfo2 = $"sent: {msgSvrClAns.Bytes.Length} bytes";
-            }
+                LblInfo2 = $"answer {numAnswer} sent: {msgSvrClAns.Bytes.Length} bytes";
+                MauiProgram.Info.NumAnswersSent = numAnswer;
+			}
         }
         catch (Exception exc)
         {

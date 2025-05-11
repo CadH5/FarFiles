@@ -12,12 +12,13 @@
     Loaded="ClientPage_Loaded">
 
     <!--JEEWEE!!!!!!!!!! SHOULD WE DO THIS? BETTER MAKE A BUTTON RETURN TO FILES, IN MAINPAGE FOR CLIENT-->
-    <Shell.BackButtonBehavior>
+    <!--<Shell.BackButtonBehavior>
         <BackButtonBehavior IsEnabled="False" />
-    </Shell.BackButtonBehavior>
+    </Shell.BackButtonBehavior>-->
 
+    <!--ColumnDefinitions="Auto,*"-->
     <Grid
-        ColumnDefinitions="Auto,*"
+        ColumnDefinitions="*"
         ColumnSpacing="5"
         RowDefinitions="30,30,30,10,*"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
@@ -34,7 +35,8 @@
                 <Button Margin="5" Text="clear all" Command="{Binding ClrAllCommand}"
                         Style="{StaticResource ButtonOutline}"
                         x:Name="BtnClrAll"></Button>
-                <Button Margin="5" Text="goto" Command="{Binding GotoDirCommand}"
+                <Button Margin="5" Text="goto" Command="{Binding 
+                        GotoDirCommand}"
                         Style="{StaticResource ButtonOutline}"
                         x:Name="BtnGoto"></Button>
                 <Button Margin="5" Text="copy" Command="{Binding CopyCommand}"
@@ -90,9 +92,10 @@
                                 <Label Text="{Binding Name}" 
                                        VerticalOptions="Center"
                                        Grid.Column="1" />
+
                             <!--FontSize="16"-->
 
-                                <Label Text="size" 
+                                <Label Text="{Binding FormatFileSize}" 
                                        VerticalOptions="Center"
                                         Grid.Column="2" />
                             <!--HorizontalOptions="End"-->

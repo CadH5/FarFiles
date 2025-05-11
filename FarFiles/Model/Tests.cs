@@ -36,25 +36,40 @@ namespace FarFiles.Model
             {
                 MsgSvrClBase msgSvrCl;
 
-                msgSvrCl = new MsgSvrClRootInfoRequest();
-                AssertEq(wrLog, MsgSvrClType.ROOTINFO_REQ, msgSvrCl.Type,
-                        "MsgSvrClRootInfoRequest.Type");
+                string[] svrPathPartsIn = new string[] { "" };
+                string[] svrPathPartsOut;
+				msgSvrCl = new MsgSvrClPathInfoRequest(svrPathPartsIn);
+                AssertEq(wrLog, MsgSvrClType.PATHINFO_REQ, msgSvrCl.Type,
+                        "MsgSvrClPathInfoRequest.Type");
+				svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
+				AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
+						"MsgSvrClPathInfoRequest svrPathParts");
 
-                string[] folderNames = new string[] {
+				svrPathPartsIn = new string[] { "aaa", "bb" };
+				msgSvrCl = new MsgSvrClPathInfoRequest(svrPathPartsIn);
+				svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
+				AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
+						"MsgSvrClPathInfoRequest svrPathParts");
+
+				string[] folderNames = new string[] {
                         "fo1", "folder2", "f3", "", "f5" };
                 string[] fileNames = new string[] {
                         "fi1", "file2", "f3", "", "f5" };
-                msgSvrCl = new MsgSvrClRootInfoAnswer(folderNames, fileNames);
-                AssertEq(wrLog, MsgSvrClType.ROOTINFO_ANS, msgSvrCl.Type,
-                        "MsgSvrClRootInfoAnswer.Type");
-                ((MsgSvrClRootInfoAnswer)msgSvrCl).GetFolderAndFileNames(
-                        out string[] foldersOut, out string[] filesOut);
+                long[] filesSizes = new long[] {
+                        0, 4000, 5000000, 0, 5 };
+                msgSvrCl = new MsgSvrClPathInfoAnswer(folderNames, fileNames, filesSizes);
+                AssertEq(wrLog, MsgSvrClType.PATHINFO_ANS, msgSvrCl.Type,
+                        "MsgSvrClPathInfoAnswer.Type");
+                ((MsgSvrClPathInfoAnswer)msgSvrCl).GetFolderAndFileNamesAndSizes(
+                        out string[] foldersOut, out string[] filesOut, out long[] filesSizesOut);
                 AssertEq(wrLog, folderNames, foldersOut,
-                        "MsgSvrClRootInfoAnswer folderNames");
+                        "MsgSvrClPathInfoAnswer folderNames");
                 AssertEq(wrLog, fileNames, filesOut,
-                        "MsgSvrClRootInfoAnswer fileNames");
+                        "MsgSvrClPathInfoAnswer fileNames");
+				AssertEq(wrLog, filesSizes, filesSizesOut,
+						"MsgSvrClPathInfoAnswer filesSizes");
 
-                string strTest = "Test String";
+				string strTest = "Test String";
                 msgSvrCl = new MsgSvrClStringSend(strTest);
                 AssertEq(wrLog, MsgSvrClType.STRING_SEND, msgSvrCl.Type,
                         "MsgSvrClStringSend.Type");
@@ -100,8 +115,24 @@ namespace FarFiles.Model
                     }
                 }
             }
-            else
-            {
+			else if (oExpected is long[])
+			{
+				var arrExpected = (long[])oExpected;
+				var arrResult = (long[])oResult;
+				eq = AssertEq(wrLog, arrExpected.Length, arrResult.Length,
+						"   arrayLengths");
+				if (eq)
+				{
+					for (int i = 0; i < arrExpected.Length; i++)
+					{
+						eq = AssertEq(wrLog, arrExpected[i], arrResult[i], $"   array[{i}]");
+						if (!eq)
+							break;
+					}
+				}
+			}
+			else
+			{
                 string qu = (oExpected is string ? "'" : "");
                 eq = oExpected.Equals(oResult);
                 wrLog.WriteLine((eq ? "   EQ  " : "** DIF ") +

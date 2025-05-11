@@ -8,6 +8,7 @@ namespace FarFiles.Model
 {
     public class Info
     {
+        public MainPageViewModel MainPage { get; set; }
         public int UdpSvrPort { get; set; } = -1;   // -1=not set, 0=client, > 0 = svrport from Stunserver
 
         public string PublicIpSvrRegistered { get; set; } = "";
@@ -15,7 +16,9 @@ namespace FarFiles.Model
         public string LocalIpSvrRegistered { get; set; } = "";
         public string IpSvrThatClientConnectedTo { get; set; } = "";
         public bool Connected { get; set; } = false;
-        public FileOrFolderData[] RootFolders { get; set; } = new FileOrFolderData[0];
-        public FileOrFolderData[] RootFiles { get; set; } = new FileOrFolderData[0];
+        public int NumAnswersSent { get; set; } = 0;
+        public List<string> SvrPathParts { get; set; } = new List<string>();
+        public FileOrFolderData[] CurrSvrFolders { get; set; } = new FileOrFolderData[0];
+        public FileOrFolderData[] CurrSvrFiles { get; set; } = new FileOrFolderData[0];
     }
 }

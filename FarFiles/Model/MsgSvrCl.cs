@@ -11,8 +11,8 @@ namespace FarFiles.Model
         ERROR,
         STRING_SEND,
         STRING_ANS,
-        ROOTINFO_REQ,
-        ROOTINFO_ANS,
+        PATHINFO_REQ,
+        PATHINFO_ANS,
     }
 
     public class MsgSvrClBase
@@ -34,7 +34,9 @@ namespace FarFiles.Model
             }
         }
 
-        //JEEWEE: I THINK WE DONT NEED TypeAnswer
+        /// <summary>
+        /// JEEWEE: I THINK WE DONT NEED TypeAnswer
+        /// </summary>
         public MsgSvrClType? TypeAnswer { get; protected set; } = null;
 
 
@@ -74,11 +76,11 @@ namespace FarFiles.Model
                 case MsgSvrClType.STRING_ANS:
                     return new MsgSvrClStringAnswer(bytes);
 
-                case MsgSvrClType.ROOTINFO_REQ:
-                    return new MsgSvrClRootInfoRequest(bytes);
+                case MsgSvrClType.PATHINFO_REQ:
+                    return new MsgSvrClPathInfoRequest(bytes);
 
-                case MsgSvrClType.ROOTINFO_ANS:
-                    return new MsgSvrClRootInfoAnswer(bytes);
+                case MsgSvrClType.PATHINFO_ANS:
+                    return new MsgSvrClPathInfoAnswer(bytes);
 
                 default:
                     throw new Exception(
@@ -167,7 +169,37 @@ namespace FarFiles.Model
 
             return retStr;
         }
+
+        public static void AddNumAndStringsToLisBytes(List<byte> lisBytes,
+                    IEnumerable<string> strings)
+        {
+            lisBytes.AddRange(BitConverter.GetBytes(strings.Count()));
+            foreach (string str in strings)
+            {
+                lisBytes.AddRange(StrPlusLenToBytes(str));
+            }
+        }
+
+        /// <summary>
+        /// Returns string[] from Bytes member
+        /// </summary>
+        /// <param name="idx">after this, is at start next part of Bytes</param>
+        /// <returns></returns>
+        public string[] GetStringsAtIndex(ref int idx)
+        {
+            int numStrs = BitConverter.ToInt32(Bytes, idx);
+            var retStrs = new string[numStrs];
+            idx += sizeof(int);
+            for (int i = 0; i < numStrs; i++)
+            {
+                retStrs[i] = StrPlusLenFromBytes(Bytes, ref idx);
+            }
+            return retStrs;
+        }
     }
+}
+
+
 
 
     /// <summary>
@@ -216,83 +248,108 @@ namespace FarFiles.Model
 
 
     /// <summary>
-    /// MsgSvrClRootInfoRequest
+    /// MsgSvrClPathInfoRequest
     /// </summary>
-    public class MsgSvrClRootInfoRequest : MsgSvrClBase
+    public class MsgSvrClPathInfoRequest : MsgSvrClBase
     {
-        public MsgSvrClRootInfoRequest() : base(MsgSvrClType.ROOTINFO_REQ)
+        public MsgSvrClPathInfoRequest(IEnumerable<string> svrSubpathParts) : base(MsgSvrClType.PATHINFO_REQ)
         {
-            TypeAnswer = MsgSvrClType.ROOTINFO_ANS;
+            TypeAnswer = MsgSvrClType.PATHINFO_ANS;
+            var lisBytes = Bytes.ToList();
+            AddNumAndStringsToLisBytes(lisBytes, svrSubpathParts);
+            Bytes = lisBytes.ToArray();
         }
 
-        public MsgSvrClRootInfoRequest(byte[] bytes)
-            : base(bytes, MsgSvrClType.ROOTINFO_REQ)
+        public MsgSvrClPathInfoRequest(byte[] bytes)
+            : base(bytes, MsgSvrClType.PATHINFO_REQ)
         {
+        }
+
+        public string[] GetSvrSubParts()
+        {
+            try
+            {
+                int idx = 4;
+                return GetStringsAtIndex(ref idx);
+            }
+            catch (Exception exc)
+            {
+                throw new Exception(
+                    $"Error interpreting serverPathParts from message: {exc.Message}");
+            }
         }
     }
 
 
 
 
-    /// <summary>
-    /// MsgSvrClRootInfoAnswer
-    /// </summary>
-    public class MsgSvrClRootInfoAnswer : MsgSvrClBase
+/// <summary>
+/// MsgSvrClPathInfoAnswer
+/// </summary>
+public class MsgSvrClPathInfoAnswer : MsgSvrClBase
+{
+    public MsgSvrClPathInfoAnswer(IEnumerable<string> folderNames,
+                        IEnumerable<string> fileNames, IEnumerable<long> fileSizes)
+        : base(MsgSvrClType.PATHINFO_ANS)
     {
-        public MsgSvrClRootInfoAnswer(IEnumerable<string> folderNames,
-                            IEnumerable<string> fileNames)
-            : base(MsgSvrClType.ROOTINFO_ANS)
+        if (fileNames.Count() != fileSizes.Count())
+            throw new Exception($"PROGRAMMERS: MsgSvrClPathInfoAnswer: fileNames: {fileNames.Count()}, fileSize: {fileSizes.Count()}");
+
+        var lisBytes = Bytes.ToList();
+        AddNumAndStringsToLisBytes(lisBytes, folderNames);
+        AddNumAndStringsToLisBytes(lisBytes, fileNames);
+        foreach (long fileSize in fileSizes)
+            lisBytes.AddRange(BitConverter.GetBytes(fileSize));
+        Bytes = lisBytes.ToArray();
+    }
+
+
+    public MsgSvrClPathInfoAnswer(byte[] bytes)
+        : base(bytes, MsgSvrClType.PATHINFO_ANS)
+    {
+    }
+
+
+    public void GetFolderAndFileNamesAndSizes(out string[] folderNames, out string[] fileNames,
+                out long[] fileSizes)
+    {
+        try
         {
-            var lisBytes = Bytes.ToList();
-            lisBytes.AddRange(BitConverter.GetBytes(folderNames.Count()));
-            foreach (string folderName in folderNames)
+            int idx = 4;
+
+            //JEEWEE
+            //numFolders = BitConverter.ToInt32(Bytes, idx);
+            //folderNames = new string[numFolders];
+            //idx += 4;
+            //for (i = 0; i < numFolders; i++)
+            //{
+            //    folderNames[i] = StrPlusLenFromBytes(Bytes, ref idx);
+            //}
+
+            folderNames = GetStringsAtIndex(ref idx);
+
+            //JEEWEE
+            //numFiles = BitConverter.ToInt32(Bytes, idx);
+            //fileNames = new string[numFiles];
+            //idx += 4;
+            //for (i = 0; i < numFiles; i++)
+            //{
+            //    fileNames[i] = StrPlusLenFromBytes(Bytes, ref idx);
+            //}
+
+            fileNames = GetStringsAtIndex(ref idx);
+
+            fileSizes = new long[fileNames.Length];
+            for (int i = 0; i < fileNames.Length; i++)
             {
-                lisBytes.AddRange(StrPlusLenToBytes(folderName));
+                fileSizes[i] = BitConverter.ToInt64(Bytes, idx);
+                idx += sizeof(long);
             }
-            lisBytes.AddRange(BitConverter.GetBytes(fileNames.Count()));
-            foreach (string fileName in fileNames)
-            {
-                lisBytes.AddRange(StrPlusLenToBytes(fileName));
-            }
-            Bytes = lisBytes.ToArray();
         }
-
-
-        public MsgSvrClRootInfoAnswer(byte[] bytes)
-            : base(bytes, MsgSvrClType.ROOTINFO_ANS)
+        catch (Exception exc)
         {
-        }
-
-
-
-        public void GetFolderAndFileNames(out string[] folderNames, out string[] fileNames)
-        {
-            int numFolders = 0;
-            int numFiles = 0;
-
-            try
-            {
-                int i, idx = 4;
-                numFolders = BitConverter.ToInt32(Bytes, idx);
-                folderNames = new string[numFolders];
-                idx += 4;
-                for (i = 0; i < numFolders; i++)
-                {
-                    folderNames[i] = StrPlusLenFromBytes(Bytes, ref idx);
-                }
-                numFiles = BitConverter.ToInt32(Bytes, idx);
-                fileNames = new string[numFiles];
-                idx += 4;
-                for (i = 0; i < numFiles; i++)
-                {
-                    fileNames[i] = StrPlusLenFromBytes(Bytes, ref idx);
-                }
-            }
-            catch (Exception exc)
-            {
-                throw new Exception(
-                    $"Error interpreting folder- and filenames from message: {exc.Message}");
-            }
+            throw new Exception(
+                $"Error interpreting folder- and filenames and filesizes from message: {exc.Message}");
         }
     }
 }

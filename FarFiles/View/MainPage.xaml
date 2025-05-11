@@ -52,7 +52,17 @@
             Command="{Binding ConnectAndDoConversationCommand}"
             IsEnabled="{Binding IsNotBusy}"
             Style="{StaticResource ButtonOutline}"
-            Text="Connect" />
+            Text="Connect"
+            IsVisible="{Binding IsBtnConnectVisible}"/>
+
+        <Button
+            Grid.Row="6"
+            Grid.Column="1"
+            Margin="8"
+            Command="{Binding BackToFilesCommand}"
+            Style="{StaticResource ButtonOutline}"
+            Text="Back to files"
+            IsVisible="{Binding IsBtnBackToFilesVisible}"/>
 
         <Button
                 Grid.Row="7"
