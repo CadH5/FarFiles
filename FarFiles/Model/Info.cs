@@ -8,7 +8,7 @@ namespace FarFiles.Model
 {
     public class Info
     {
-        public MainPageViewModel MainPage { get; set; }
+        public MainPageViewModel MainPageVwModel { get; set; }
         public int UdpSvrPort { get; set; } = -1;   // -1=not set, 0=client, > 0 = svrport from Stunserver
 
         public string PublicIpSvrRegistered { get; set; } = "";

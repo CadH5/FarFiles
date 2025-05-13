@@ -30,12 +30,13 @@ public partial class MainPageViewModel : BaseViewModel
     protected int _numSent = 0;
     protected UdpClient _udpClient = null;
     protected FileDataService _fileDataService;
+    protected CopyMgr _copyMgr = null;
 
     public MainPageViewModel(FileDataService fileDataService)
     {
         Title = "Far Away Files Access";
         _fileDataService = fileDataService;
-        MauiProgram.Info.MainPage = this;
+        MauiProgram.Info.MainPageVwModel = this;
 
         //JEEWEE
         //_settingsService = settingsService;
@@ -213,7 +214,10 @@ public partial class MainPageViewModel : BaseViewModel
 
 
 
-
+    public void OnCloseThings()
+    {
+        _copyMgr?.Dispose();
+    }
 
 
     [RelayCommand]
@@ -353,9 +357,7 @@ public partial class MainPageViewModel : BaseViewModel
             return;
 
         MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
-        if (!(msgSvrClAnswer is MsgSvrClPathInfoAnswer))
-            throw new Exception(
-                $"Expected from server: MsgSvrClPathInfoAnswer, got: {msgSvrClAnswer.GetType()}");
+        msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
 
         ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetFolderAndFileNamesAndSizes(
                 out string[] folderNames, out string[] fileNames, out long[] fileSizes);
@@ -370,8 +372,51 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+    public async Task CopyFromSvr_msgbxs_Async(FileOrFolderData[] selecteds)
+    {
+        MsgSvrClBase msgSvrCl = new MsgSvrClCopyRequest(MauiProgram.Info.SvrPathParts,
+                selecteds.Where(f => f.IsDir).Select(f => f.Name),
+                selecteds.Where(f => ! f.IsDir).Select(f => f.Name));
 
-	[RelayCommand]
+        using (var copyMgr = new CopyMgr(_fileDataService))
+        {
+            while (true)
+            {
+                byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
+                                    msgSvrCl.Bytes);
+                if (byRecieved.Length == 0)
+                    return;
+
+                MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
+                msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClCopyAnswer));
+
+                if (copyMgr.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrClAnswer))
+                    break;          // ready
+
+                msgSvrCl = new MsgSvrClCopyNextpartRequest();
+
+                //JEEWEE
+                //if (!(msgSvrClAnswer is MsgSvrClCopyAnswer))
+                //    throw new Exception(
+                //        $"Expected from server: MsgSvrClCopyAnswer, got: {msgSvrClAnswer.GetType()}");
+
+            }
+
+            string nl = Environment.NewLine;
+            await Shell.Current.DisplayAlert("Copied",
+                $"Folders created: {copyMgr.NumFoldersCreated}{nl}" +
+                $"Files created: {copyMgr.NumFilesCreated}{nl}" +
+                $"Files overwritten: {copyMgr.NumFilesOverwritten}{nl}" +
+                $"Files skipped: {copyMgr.NumFilesSkipped}{nl}" +
+                (copyMgr.NumErrs > 0 ? $"ERRORS: {copyMgr.NumErrs}{nl}" : ""),
+                "OK");
+        }
+    }
+
+
+
+
+    [RelayCommand]
     async Task BackToFiles()
     {
         await Shell.Current.GoToAsync(nameof(ClientPage), true);
@@ -430,6 +475,12 @@ public partial class MainPageViewModel : BaseViewModel
     //{
     //    Settings = _settingsService.LoadFromFile();
     //}
+
+    /// <summary>
+    /// Sends bytes to server and receives bytes. If exception, displays alert and returns [0] bytes
+    /// </summary>
+    /// <param name="sendBytes"></param>
+    /// <returns></returns>
     protected async Task<byte[]> SndFromClientRecieve_msgbxs_Async(byte[] sendBytes)
     {
         try
@@ -482,6 +533,7 @@ public partial class MainPageViewModel : BaseViewModel
                 MsgSvrClBase msgSvrClAns = null;
 
                 string receivedTxt = "";
+                string errToSendTxt = "";
                 if (msgSvrCl is MsgSvrClStringSend)
                 {
                     receivedTxt = ((MsgSvrClStringSend)msgSvrCl).GetString();
@@ -490,22 +542,41 @@ public partial class MainPageViewModel : BaseViewModel
                 else if (msgSvrCl is MsgSvrClPathInfoRequest)
                 {
                     receivedTxt = msgSvrCl.Type.ToString();
-                    
-                    string path = Settings.FullPathRoot;
-                    foreach (string subPathPart in ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts())
-                        path = Path.Combine(path, subPathPart);
 
-					FileOrFolderData[] data = _fileDataService.GetFilesData(
+                    string path = Settings.PathFromRootAndSubParts(
+                                ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
+                    FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersData(
                                 path, SearchOption.TopDirectoryOnly);
                     string[] folderNames = data.Where(d => d.IsDir).Select(d => d.Name).ToArray();
-                    string[] fileNames = data.Where(d => ! d.IsDir).Select(d => d.Name).ToArray();
-					long[] fileSizes = data.Where(d => !d.IsDir).Select(d => d.FileSize).ToArray();
-					msgSvrClAns = new MsgSvrClPathInfoAnswer(folderNames, fileNames, fileSizes);
+                    string[] fileNames = data.Where(d => !d.IsDir).Select(d => d.Name).ToArray();
+                    long[] fileSizes = data.Where(d => !d.IsDir).Select(d => d.FileSize).ToArray();
+                    msgSvrClAns = new MsgSvrClPathInfoAnswer(folderNames, fileNames, fileSizes);
+                }
+                else if (msgSvrCl is MsgSvrClCopyRequest)
+                {
+                    _copyMgr?.Dispose();
+                    _copyMgr = new CopyMgr(_fileDataService);
+                    _copyMgr.StartCopyFromSvr((MsgSvrClCopyRequest)msgSvrCl);
+                    msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
+                }
+                else if (msgSvrCl is MsgSvrClCopyNextpartRequest)
+                {
+                    if (null == _copyMgr)
+                    {
+                        errToSendTxt =
+                            $"Server: wrong request last {msgSvrCl.GetType()}, no active copy process";
+                        msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+                    }
+                    else
+                    {
+                        msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
+                    }
                 }
                 else
                 {
-                    throw new Exception(
-                        $"Server: unexpected message type {msgSvrCl.GetType()}");
+                    errToSendTxt =
+                        $"Server: received unexpected message type {msgSvrCl.GetType()}";
+                    msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
                 }
 
                 LblInfo1 = $"Received from client: '{receivedTxt}'";
@@ -515,7 +586,9 @@ public partial class MainPageViewModel : BaseViewModel
                 LblInfo2 = $"sending answer {numAnswer} ...";
                 await udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
                                 received.RemoteEndPoint);
-                LblInfo2 = $"answer {numAnswer} sent: {msgSvrClAns.Bytes.Length} bytes";
+                LblInfo2 = $"answer {numAnswer} sent: " +
+                    (! String.IsNullOrEmpty(errToSendTxt) ? errToSendTxt :
+                    $"{msgSvrClAns.Bytes.Length} bytes");
                 MauiProgram.Info.NumAnswersSent = numAnswer;
 			}
         }

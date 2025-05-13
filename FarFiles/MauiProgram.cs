@@ -99,6 +99,8 @@ public static class MauiProgram
                 // (Note: if UNREGISTER fails somehow, the after a day the registration
                 // also becomes invalid; see PHP).
             }
+
+            Info.MainPageVwModel.OnCloseThings();
         }
         catch
         {

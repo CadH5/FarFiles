@@ -8,9 +8,7 @@ public class FileDataService
     {
     }
 
-    //JEEWEE
-    //public async Task<List<Model.FileData>> GetFilesData(string fullRootPath)
-    public FileOrFolderData[] GetFilesData(string fullRootPath,
+    public FileOrFolderData[] GetFilesAndFoldersData(string fullRootPath,
             SearchOption searchOption)
     {
         List<Model.FileOrFolderData> dataList = new();
@@ -32,7 +30,7 @@ public class FileDataService
             {
                 foreach (FileOrFolderData fileOrFolderData in dataList.Where(d => d.IsDir))
                 {
-                    fileOrFolderData.Children_NullIfFile = GetFilesData(
+                    fileOrFolderData.Children_NullIfFile = GetFilesAndFoldersData(
                             Path.Combine(fullRootPath, fileOrFolderData.Name),
                             searchOption);
                 }

@@ -94,7 +94,7 @@ public partial class ClientViewModel : BaseViewModel
                 MauiProgram.Info.SvrPathParts.Add(gotoDir.Name);
             }
 
-            await MauiProgram.Info.MainPage.SndFromClientRecievePathInfo_msgbxs_Async();
+            await MauiProgram.Info.MainPageVwModel.SndFromClientRecievePathInfo_msgbxs_Async();
             UpdateCollView();
         }
         catch (Exception ex)
@@ -113,38 +113,16 @@ public partial class ClientViewModel : BaseViewModel
 
 
     [RelayCommand]
-    async Task GetMonkeysAsync()
+    async Task CopyAsync()
     {
         if (IsBusy)
             return;
 
         try
         {
-            //JEEWEE
-            //if (connectivity.NetworkAccess != NetworkAccess.Internet)
-            //{
-            //    await Shell.Current.DisplayAlert("No connectivity!",
-            //        $"Please check internet and try again.", "OK");
-            //    return;
-            //}
-
             IsBusy = true;
-            //JEEWEETODO: BROWSER
-            FileOrFolderColl.Clear();
-
-            //JEEWEE
-            //var folderPickerResult = await FolderPicker.PickAsync("");
-            //if (! folderPickerResult.IsSuccessful)
-            //{
-            //    throw new Exception($"FolderPicker not successful or cancelled");
-            //}
-
-            //string rootPath = folderPickerResult.Folder?.Path;
-
-            //foreach (var fileData in fileDataService.GetFilesData(rootPath))
-            //{
-            //    FileOrFolderColl.Add(fileData);
-            //}
+            FileOrFolderData[] selecteds = ContentPageRef.GetSelecteds();
+            await MauiProgram.Info.MainPageVwModel.CopyFromSvr_msgbxs_Async(selecteds);
         }
         catch (Exception ex)
         {
