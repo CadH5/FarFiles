@@ -49,6 +49,7 @@ namespace FarFiles.Model
         protected FileAttributes _currFileAttrsOnClient;
         protected DateTime _currFileDtCreationOnClient;
         protected DateTime _currFileDtLastWriteOnClient;
+        protected Settings _settings;
 
         //JEEWEE
         //protected byte[] _rdBytesCompress;
@@ -60,9 +61,10 @@ namespace FarFiles.Model
         public int NumErrs { get; protected set; } = 0;
         public List<string> _errMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
 
-        public CopyMgr(FileDataService fileDataService)
+        public CopyMgr(FileDataService fileDataService, Settings alternativeSettings = null)
         {
             _fileDataService = fileDataService;
+            _settings = alternativeSettings ?? MauiProgram.Settings;
         }
 
         public void StartCopyFromSvr(MsgSvrClCopyRequest copyRequest)
@@ -70,7 +72,7 @@ namespace FarFiles.Model
             CloseThings();
             copyRequest.GetSvrSubPartsAndFolderAndFileNames(out string[] svrSubParts,
                 out string[] folderNamesToCopy, out string[] fileNamesToCopy);
-            string pathOnSvr = MauiProgram.Settings.PathFromRootAndSubParts(svrSubParts);
+            string pathOnSvr = _settings.PathFromRootAndSubParts(svrSubParts);
             string relPathOnClient = "";
             _seqNr = 0;
 
@@ -239,7 +241,7 @@ namespace FarFiles.Model
                         DateTime dtLastWrite = DateTime.FromBinary(BitConverter.ToInt64(data, idxData));
                         idxData += sizeof(long);
 
-                        _currPathOnClient = Path.Combine(MauiProgram.Settings.FullPathRoot, relPathOnClient);
+                        _currPathOnClient = Path.Combine(_settings.FullPathRoot, relPathOnClient);
                         if (! Directory.Exists(_currPathOnClient))
                         {
                             Directory.CreateDirectory(_currPathOnClient);

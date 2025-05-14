@@ -1,9 +1,13 @@
-﻿using System.Net.Http.Json;
+﻿using System.Collections.Generic;
+using System.Net.Http.Json;
 
 namespace FarFiles.Services;
 
 public class FileDataService
 {
+    // JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // This Service doesn't make sense thus far, because all methods can become static
+
     public FileDataService()
     {
     }
@@ -42,5 +46,54 @@ public class FileDataService
         }
 
         return dataList.ToArray();
+    }
+
+
+    /// <summary>
+    /// Returns: array errmsgs per file or dir that could not be deleted
+    /// </summary>
+    /// <param name="fullPathTopDir"></param>
+    /// <returns></returns>
+    public string[] DeleteDirPlusSubdirsPlusFiles(string fullPathTopDir)
+    {
+        var retList = new List<string>();
+
+        if (Directory.Exists(fullPathTopDir))
+        {
+            foreach (string fullPathFile in Directory.GetFiles(fullPathTopDir))
+            {
+                try
+                {
+                    File.Delete(fullPathFile);
+                    if (File.Exists(fullPathFile))
+                        throw new Exception("reason unknown");
+                }
+                catch (Exception exc)
+                {
+                    retList.Add($"Could not delete file '{fullPathFile}': {exc.Message}");
+                }
+            }
+
+            var foldersToDeleteList = Directory.GetDirectories(fullPathTopDir).ToList();
+            foldersToDeleteList.Add(fullPathTopDir);
+            for (int i = 0; i < foldersToDeleteList.Count; i++)
+            {
+                string fullPathFolder = foldersToDeleteList[i];
+                if (i < foldersToDeleteList.Count - 1)              // not again for fullPathTopDir
+                {
+                    retList.AddRange(DeleteDirPlusSubdirsPlusFiles(fullPathFolder));    // recursive
+                }
+                try
+                {
+                    Directory.Delete(fullPathFolder);
+                }
+                catch (Exception exc)
+                {
+                    retList.Add($"Could not delete directory '{fullPathFolder}': {exc.Message}");
+                }
+            }
+        }
+
+        return retList.ToArray();
     }
 }

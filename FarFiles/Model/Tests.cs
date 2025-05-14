@@ -1,5 +1,6 @@
 ﻿//JEEWEE
 //using CoreFoundation;
+using FarFiles.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,8 +14,12 @@ namespace FarFiles.Model
         protected int _numPassed = 0;
         protected int _numFailed = 0;
         protected int _numExceptions = 0;
-        public async Task DoTestsAsync()
+        protected FileDataService _fileDataService;
+
+
+        public async Task DoTestsAsync(FileDataService fileDataService)
         {
+            _fileDataService = fileDataService;
             _numPassed = 0;
             _numFailed = 0;
             _numExceptions = 0;
@@ -23,6 +28,7 @@ namespace FarFiles.Model
             using (var wrLog = new StreamWriter(fullPathLog))
             {
                 DoTestMsgSvrCl(wrLog);
+                DoTestCopyMgr(wrLog, @"C:\temp\_FARFILESTEST_FILES_MAY_BE_OVERWRITTEN");
             }
 
             await Shell.Current.DisplayAlert("Info",
@@ -34,8 +40,36 @@ namespace FarFiles.Model
         {
             try
             {
+                wrLog.WriteLine("DoTestMsgSvrCl()");
+                wrLog.WriteLine("================");
+
                 MsgSvrClBase msgSvrCl;
 
+                // MsgSvrClErrorAnswer
+                string errMsg = "Error message";
+                msgSvrCl = new MsgSvrClErrorAnswer(errMsg);
+                AssertEq(wrLog, MsgSvrClType.ERROR, msgSvrCl.Type,
+                        "MsgSvrClErrorAnswer.Type");
+                AssertEq(wrLog, errMsg, ((MsgSvrClErrorAnswer)msgSvrCl).GetErrMsg(),
+                        "MsgSvrClErrorAnswer errmsg");
+
+                // MsgSvrClStringSend
+                string strToSend = "str to send";
+                msgSvrCl = new MsgSvrClStringSend(strToSend);
+                AssertEq(wrLog, MsgSvrClType.STRING_SEND, msgSvrCl.Type,
+                        "MsgSvrClStringSend.Type");
+                AssertEq(wrLog, strToSend, ((MsgSvrClStringSend)msgSvrCl).GetString(),
+                        "MsgSvrClStringSend string to send");
+                msgSvrCl = new MsgSvrClStringSend("");
+                AssertEq(wrLog, "", ((MsgSvrClStringSend)msgSvrCl).GetString(),
+                        "MsgSvrClStringSend empty string to send");
+
+                // MsgSvrClStringAnswer
+                msgSvrCl = new MsgSvrClStringAnswer();
+                AssertEq(wrLog, MsgSvrClType.STRING_ANS, msgSvrCl.Type,
+                        "MsgSvrClStringAnswer.Type");
+
+                // MsgSvrClPathInfoRequest
                 string[] svrPathPartsIn = new string[] { "" };
                 string[] svrPathPartsOut;
 				msgSvrCl = new MsgSvrClPathInfoRequest(svrPathPartsIn);
@@ -51,7 +85,8 @@ namespace FarFiles.Model
 				AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
 						"MsgSvrClPathInfoRequest svrPathParts");
 
-				string[] folderNames = new string[] {
+                // MsgSvrClPathInfoAnswer
+                string[] folderNames = new string[] {
                         "fo1", "folder2", "f3", "", "f5" };
                 string[] fileNames = new string[] {
                         "fi1", "file2", "f3", "", "f5" };
@@ -69,21 +104,126 @@ namespace FarFiles.Model
 				AssertEq(wrLog, filesSizes, filesSizesOut,
 						"MsgSvrClPathInfoAnswer filesSizes");
 
-				string strTest = "Test String";
-                msgSvrCl = new MsgSvrClStringSend(strTest);
-                AssertEq(wrLog, MsgSvrClType.STRING_SEND, msgSvrCl.Type,
-                        "MsgSvrClStringSend.Type");
-                AssertEq(wrLog, strTest, ((MsgSvrClStringSend)msgSvrCl).GetString(),
-                        "MsgSvrClStringSend string");
+                // MsgSvrClCopyRequest
+                svrPathPartsIn = new string[] { "str1", "", "str2" };
+                msgSvrCl = new MsgSvrClCopyRequest(svrPathPartsIn, folderNames, fileNames);
+                AssertEq(wrLog, MsgSvrClType.COPY_REQ, msgSvrCl.Type,
+                        "MsgSvrClCopyRequest.Type");
+                ((MsgSvrClCopyRequest)msgSvrCl).GetSvrSubPartsAndFolderAndFileNames(
+                        out svrPathPartsOut, out foldersOut, out filesOut);
+                AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
+                        "MsgSvrClCopyRequest svrPathParts");
+                AssertEq(wrLog, folderNames, foldersOut,
+                        "MsgSvrClCopyRequest folderNames");
+                AssertEq(wrLog, fileNames, filesOut,
+                        "MsgSvrClCopyRequest fileNames");
 
-                msgSvrCl = new MsgSvrClStringAnswer();
-                AssertEq(wrLog, MsgSvrClType.STRING_ANS, msgSvrCl.Type,
-                        "MsgSvrClStringAnswer.Type");
+                // MsgSvrClCopyNextpartRequest
+                msgSvrCl = new MsgSvrClCopyNextpartRequest();
+                AssertEq(wrLog, MsgSvrClType.COPYNEXT_REQ, msgSvrCl.Type,
+                        "MsgSvrClCopyNextpartRequest.Type");
+
+                // MsgSvrClCopyAnswer
+                int seqNrIn = 3;
+                bool isLastIn = true;
+                byte[] dataIn = { 0, 1, 2, 255, 0 };
+                msgSvrCl = new MsgSvrClCopyAnswer(3, isLastIn, dataIn);
+                AssertEq(wrLog, MsgSvrClType.COPY_ANS, msgSvrCl.Type,
+                        "MsgSvrClCopyAnswer.Type");
+                ((MsgSvrClCopyAnswer)msgSvrCl).GetSeqnrAndIslastAndData(
+                        out int seqNrOut, out bool isLastOut, out byte[] dataOut);
+                AssertEq(wrLog, seqNrIn, seqNrOut,
+                        "MsgSvrClCopyAnswer seqNr");
+                AssertEq(wrLog, isLastIn, isLastOut,
+                        "MsgSvrClCopyAnswer isLast");
+                AssertEq(wrLog, dataIn.Select(b => (long)b).ToArray(),
+                        dataOut.Select(b => (long)b).ToArray(),
+                        "MsgSvrClCopyAnswer data");
             }
             catch (Exception exc)
             {
                 LogExc(wrLog, "DoTestMsgSvrCl", exc);
             }
+
+            wrLog.WriteLine();
+        }
+
+
+        protected void DoTestCopyMgr(StreamWriter wrLog, string testPath)
+        {
+            try
+            {
+                wrLog.WriteLine("DoTestCopyMgr() testPath='" + testPath + "'");
+                wrLog.WriteLine("===============");
+
+                // Extra security to avoid disasters on my computer:
+                if (!testPath.StartsWith(@"C:\temp\_FARFILES"))
+                    throw new Exception("IS IT CORRECT TO DELETE ALL FROM " + testPath);
+
+                var errMsgs = _fileDataService.DeleteDirPlusSubdirsPlusFiles(testPath);
+                AssertEq(wrLog, 0, errMsgs.Length, "Num errMsgs DeleteDirPlusSubdirsPlusFiles");
+
+                string testPathSvr = Path.Combine(testPath, "Svr");
+                var settingsSvr = new Settings()
+                {
+                    FullPathRoot = testPathSvr,
+                };
+                var clientSvrPathParts = new List<string> { "aa", "bb" };
+                string topDirOnSvr = settingsSvr.PathFromRootAndSubParts(
+                                    clientSvrPathParts.ToArray());
+                Directory.CreateDirectory(topDirOnSvr);
+                Directory.CreateDirectory(Path.Combine(topDirOnSvr, "sub1"));
+                Directory.CreateDirectory(Path.Combine(topDirOnSvr, "sub1", "sub1sub1"));
+                Directory.CreateDirectory(Path.Combine(topDirOnSvr, "sub1", "sub1sub2"));
+                Directory.CreateDirectory(Path.Combine(topDirOnSvr, "sub2"));
+                var createFilesSvr = new List<string> {
+                        @"test_1.txt", @"test_notCopy.txt",
+                        @"sub1\test_2.txt", @"sub1\test_3_size0.txt",
+                        @"sub1\sub1sub1\test_4.txt", @"sub1\sub1sub2\test_5.txt" };
+                var folderNamesToCopy = new string[] { "sub1" };
+                var fileNamesToCopy = new string[] { "test_1.txt" };
+
+                string testPathClient = Path.Combine(testPath, "Client");
+                Directory.CreateDirectory(testPathClient);
+                var settingsClient = new Settings()
+                {
+                    FullPathRoot = testPathClient,
+                };
+
+                foreach (var relPathFile in createFilesSvr)
+                {
+                    using (var wr = new StreamWriter(Path.Combine(topDirOnSvr, relPathFile)))
+                    {
+                        if (! relPathFile.Contains("size0"))
+                            wr.WriteLine(relPathFile);
+                    }
+                }
+
+                // Now the test:
+                int prevSeqNr = 0;
+                var copyMgrSvr = new CopyMgr(_fileDataService, settingsSvr);
+                var copyMgrClient = new CopyMgr(_fileDataService, settingsClient);
+                copyMgrSvr.StartCopyFromSvr(new MsgSvrClCopyRequest(clientSvrPathParts,
+                        folderNamesToCopy, fileNamesToCopy));
+                while (true)
+                {
+                    MsgSvrClBase msgSvrCl = copyMgrSvr.GetNextPartCopyansFromSvr();
+                    AssertEq(wrLog, MsgSvrClType.COPY_ANS, msgSvrCl.Type,
+                            "answer from svr");
+                    ((MsgSvrClCopyAnswer)msgSvrCl).GetSeqnrAndIslastAndData(
+                            out int seqNr, out bool isLast, out byte[] data);
+                    AssertEq(wrLog, prevSeqNr + 1, seqNr,
+                            "seqNr from svr");
+                    if (copyMgrClient.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrCl))
+                        break;
+                }
+            }
+            catch (Exception exc)
+            {
+                LogExc(wrLog, "DoTestCopyMgr", exc);
+            }
+
+            wrLog.WriteLine();
         }
 
 
