@@ -481,6 +481,11 @@ namespace FarFiles.Model
         }
 
 
+        public int SeqNr { get =>
+                BitConverter.ToInt32(Bytes, 4); }
+        public bool IsLastPart { get =>
+                BitConverter.ToBoolean(Bytes, 4 + sizeof(int)); }
+        
         public void GetSeqnrAndIslastAndData(out int seqNr, out bool isLast, out byte[] data)
         {
             try

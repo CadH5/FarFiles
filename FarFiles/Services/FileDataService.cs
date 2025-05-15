@@ -75,22 +75,19 @@ public class FileDataService
             }
 
             var foldersToDeleteList = Directory.GetDirectories(fullPathTopDir).ToList();
-            foldersToDeleteList.Add(fullPathTopDir);
             for (int i = 0; i < foldersToDeleteList.Count; i++)
             {
                 string fullPathFolder = foldersToDeleteList[i];
-                if (i < foldersToDeleteList.Count - 1)              // not again for fullPathTopDir
-                {
-                    retList.AddRange(DeleteDirPlusSubdirsPlusFiles(fullPathFolder));    // recursive
-                }
-                try
-                {
-                    Directory.Delete(fullPathFolder);
-                }
-                catch (Exception exc)
-                {
-                    retList.Add($"Could not delete directory '{fullPathFolder}': {exc.Message}");
-                }
+                retList.AddRange(DeleteDirPlusSubdirsPlusFiles(fullPathFolder));    // recursive
+            }
+
+            try
+            {
+                Directory.Delete(fullPathTopDir);
+            }
+            catch (Exception exc)
+            {
+                retList.Add($"Could not delete directory '{fullPathTopDir}': {exc.Message}");
             }
         }
 

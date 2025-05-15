@@ -39,11 +39,15 @@ namespace FarFiles.Model
         protected BinaryWriter _writer = null;
         protected BinaryReader _reader = null;
         protected const int BUFSIZEMOREORLESS = 2000;
+        protected const int REMAININGLIMIT = 100;
+        protected int _bufSizeMoreOrLess = BUFSIZEMOREORLESS;
+        protected int _remainingLimit = REMAININGLIMIT;
         protected List<byte> _bufSvrMsg = new List<byte>();
         protected List<NavLevel> _navLevels = new List<NavLevel>();
         protected int _seqNr = 0;
         protected string _currPathOnClient = "";
-        protected string _currfileNameOnClient = "";
+        protected string _currFileNameOnClient = "";
+        protected string _currFileFullPathOnClient = "";
         protected long _currFileSizeOnClient;
         protected long _fileSizeCounter;
         protected FileAttributes _currFileAttrsOnClient;
@@ -59,12 +63,16 @@ namespace FarFiles.Model
         public int NumFilesOverwritten { get; protected set; } = 0;
         public int NumFilesSkipped { get; protected set; } = 0;
         public int NumErrs { get; protected set; } = 0;
-        public List<string> _errMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
+        public List<string> ErrMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
 
-        public CopyMgr(FileDataService fileDataService, Settings alternativeSettings = null)
+        public CopyMgr(FileDataService fileDataService, Settings alternativeSettings = null,
+                int bufSizeMoreOrLess = BUFSIZEMOREORLESS,
+                int remainingLimit = REMAININGLIMIT)
         {
             _fileDataService = fileDataService;
             _settings = alternativeSettings ?? MauiProgram.Settings;
+            _bufSizeMoreOrLess = bufSizeMoreOrLess;
+            _remainingLimit = remainingLimit;
         }
 
         public void StartCopyFromSvr(MsgSvrClCopyRequest copyRequest)
@@ -100,15 +108,15 @@ namespace FarFiles.Model
 
                 bool isLastPart = false;
                 NavLevel currNavLevel = _navLevels.Last();
-                int numRemaining = BUFSIZEMOREORLESS;
+                int numRemaining = _bufSizeMoreOrLess;
                 while (numRemaining > 0)
                 {
                     if (null != _reader)
                     {
-                        if (numRemaining < 500)
+                        if (numRemaining < _remainingLimit)
                             break;
                         byte[] rdBytes = _reader.ReadBytes(numRemaining + numRemaining / 2);
-                        if (rdBytes.Length > 0)
+                        if (rdBytes.Length > 0 || _reader.BaseStream.Length == 0)
                         {
                             byte[] compressedBytes = Compress(rdBytes);
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.COMPRESSEDPART));
@@ -159,11 +167,9 @@ namespace FarFiles.Model
                         try
                         {
                             folderName = currNavLevel.FolderNames[currNavLevel.CurrIdxFolders];
+                            currNavLevel.CurrIdxFolders++;
                             string fullPathOnSvr = Path.Combine(currNavLevel.PathOnSvr, folderName);
                             string relPathOnClient = Path.Combine(currNavLevel.RelPathOnClient, folderName);
-
-                            _navLevels.Add(new NavLevel(fullPathOnSvr, relPathOnClient));
-                            navlvAdded = true;
 
                             var fData = new FileOrFolderData(fullPathOnSvr, true, true);
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.FOLDER));
@@ -171,9 +177,11 @@ namespace FarFiles.Model
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.DtCreation.ToBinary()));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.DtLastWrite.ToBinary()));
 
+                            _navLevels.Add(new NavLevel(fullPathOnSvr, relPathOnClient));
+                            navlvAdded = true;
+
                             // no exception, so:
                             currNavLevel = _navLevels.Last();
-                            currNavLevel.CurrIdxFolders = -1;   // so that it becomes 0
                         }
                         catch (Exception exc)
                         {
@@ -183,7 +191,6 @@ namespace FarFiles.Model
                             if (navlvAdded)
                                 _navLevels.RemoveAt(_navLevels.Count - 1);
                         }
-                        currNavLevel.CurrIdxFolders++;
                     }
                     else
                     {
@@ -193,11 +200,13 @@ namespace FarFiles.Model
 
                         currNavLevel = _navLevels.Last();
                     }
+
+                    numRemaining = _bufSizeMoreOrLess - _bufSvrMsg.Count;
                 }
 
-                _seqNr++;           // starts with 1
                 isLastPart = true;
-                return new MsgSvrClCopyAnswer(_seqNr, isLastPart, _bufSvrMsg.ToArray());
+                this.Dispose();
+                return new MsgSvrClCopyAnswer(_seqNr++, isLastPart, _bufSvrMsg.ToArray());
             }
             catch (Exception exc)
             {
@@ -222,16 +231,22 @@ namespace FarFiles.Model
             //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! CHECK ON _seqNr
             //AND HASH, AND FILESIZE
 
+            if (seqNr == 0)
+            {
+                _currPathOnClient = _settings.FullPathRoot;
+            }
+
             int idxData = 0;
             while (true)
             {
                 short code = BitConverter.ToInt16(data, idxData);
+                idxData += sizeof(short);
                 switch (code)
                 {
                     case (short)StartCode.ERROR:
                         NumErrs++;
                         string errMsg = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
-                        _errMsgs.Add(errMsg);
+                        ErrMsgs.Add(errMsg);
                         break;
 
                     case (short)StartCode.FOLDER:
@@ -252,7 +267,9 @@ namespace FarFiles.Model
                         break;
 
                     case (short)StartCode.FILE:
-                        _currfileNameOnClient = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
+                        _currFileNameOnClient = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
+                        _currFileFullPathOnClient = Path.Combine(
+                            _currPathOnClient, _currFileNameOnClient);
                         _currFileSizeOnClient = BitConverter.ToInt64(data, idxData);
                         idxData += sizeof(long);
                         _currFileAttrsOnClient = (FileAttributes)BitConverter.ToInt32(data, idxData);
@@ -263,10 +280,12 @@ namespace FarFiles.Model
                         idxData += sizeof(long);
 
                         if (_writer != null)        // should not be possible
+                        {
                             _writer.Close();
+                        }
                         //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SUPPORT "KEEP"
-                        _writer = new BinaryWriter(File.Open(Path.Combine(
-                            _currPathOnClient, _currfileNameOnClient), FileMode.Create));
+                        _writer = new BinaryWriter(File.Open(_currFileFullPathOnClient,
+                                            FileMode.Create));
                         _fileSizeCounter = 0;
                         break;
 
@@ -277,7 +296,7 @@ namespace FarFiles.Model
                         idxData += numBytes;
                         if (_writer == null)
                         {
-                            _errMsgs.Add(
+                            ErrMsgs.Add(
                                 $"_writer is null! _fileSizeCounter={_fileSizeCounter}, _currFileSizeOnClient={_currFileSizeOnClient}");
                         }
                         else
@@ -289,7 +308,7 @@ namespace FarFiles.Model
                         {
                             if (_fileSizeCounter > _currFileSizeOnClient)
                             {
-                                _errMsgs.Add(
+                                ErrMsgs.Add(
                                     $"_fileSizeCounter not exactly ends right! _fileSizeCounter={_fileSizeCounter}, _currFileSizeOnClient={_currFileSizeOnClient}");
                             }
                             if (_writer != null)
@@ -297,11 +316,18 @@ namespace FarFiles.Model
                                 _writer.Close();
                                 _writer = null;
                             }
+
+                            File.SetAttributes(_currFileFullPathOnClient,
+                                            _currFileAttrsOnClient);
+                            File.SetCreationTime(_currFileFullPathOnClient,
+                                            _currFileDtCreationOnClient);
+                            File.SetLastWriteTime(_currFileFullPathOnClient,
+                                            _currFileDtLastWriteOnClient);
                         }
                         break;
 
                     default:
-                        _errMsgs.Add(
+                        ErrMsgs.Add(
                             $"Unknown StartCode ({code}) encountered in data from server!");
                         break;
                 }
@@ -309,7 +335,7 @@ namespace FarFiles.Model
                 if (idxData >= data.Length)
                 {
                     if (idxData > data.Length)
-                        _errMsgs.Add(
+                        ErrMsgs.Add(
                             $"idxData ({idxData}) does not exactly end on end data ({data.Length}");
                         return isLast;
                 }
@@ -398,6 +424,8 @@ namespace FarFiles.Model
             public NavLevel(string pathOnSvr, string relPathOnClient,
                     string[] folderNamesSelection = null, string[] fileNamesSelection = null)
             {
+                PathOnSvr = pathOnSvr;
+                RelPathOnClient = relPathOnClient;
                 FolderNames = folderNamesSelection ??
                     Directory.GetDirectories(PathOnSvr).Select(f => Path.GetFileName(f)).ToArray(); ;
                 FileNames = fileNamesSelection ??

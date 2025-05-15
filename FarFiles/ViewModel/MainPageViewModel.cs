@@ -570,6 +570,12 @@ public partial class MainPageViewModel : BaseViewModel
                     else
                     {
                         msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
+                        if (msgSvrClAns is MsgSvrClCopyAnswer &&
+                            ((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart)
+                        {
+                            _copyMgr.Dispose();
+                            _copyMgr = null;
+                        }
                     }
                 }
                 else

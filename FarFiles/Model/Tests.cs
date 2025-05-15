@@ -72,18 +72,18 @@ namespace FarFiles.Model
                 // MsgSvrClPathInfoRequest
                 string[] svrPathPartsIn = new string[] { "" };
                 string[] svrPathPartsOut;
-				msgSvrCl = new MsgSvrClPathInfoRequest(svrPathPartsIn);
+                msgSvrCl = new MsgSvrClPathInfoRequest(svrPathPartsIn);
                 AssertEq(wrLog, MsgSvrClType.PATHINFO_REQ, msgSvrCl.Type,
                         "MsgSvrClPathInfoRequest.Type");
-				svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
-				AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
-						"MsgSvrClPathInfoRequest svrPathParts");
+                svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
+                AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
+                        "MsgSvrClPathInfoRequest svrPathParts");
 
-				svrPathPartsIn = new string[] { "aaa", "bb" };
-				msgSvrCl = new MsgSvrClPathInfoRequest(svrPathPartsIn);
-				svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
-				AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
-						"MsgSvrClPathInfoRequest svrPathParts");
+                svrPathPartsIn = new string[] { "aaa", "bb" };
+                msgSvrCl = new MsgSvrClPathInfoRequest(svrPathPartsIn);
+                svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
+                AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
+                        "MsgSvrClPathInfoRequest svrPathParts");
 
                 // MsgSvrClPathInfoAnswer
                 string[] folderNames = new string[] {
@@ -101,8 +101,8 @@ namespace FarFiles.Model
                         "MsgSvrClPathInfoAnswer folderNames");
                 AssertEq(wrLog, fileNames, filesOut,
                         "MsgSvrClPathInfoAnswer fileNames");
-				AssertEq(wrLog, filesSizes, filesSizesOut,
-						"MsgSvrClPathInfoAnswer filesSizes");
+                AssertEq(wrLog, filesSizes, filesSizesOut,
+                        "MsgSvrClPathInfoAnswer filesSizes");
 
                 // MsgSvrClCopyRequest
                 svrPathPartsIn = new string[] { "str1", "", "str2" };
@@ -162,6 +162,7 @@ namespace FarFiles.Model
 
                 var errMsgs = _fileDataService.DeleteDirPlusSubdirsPlusFiles(testPath);
                 AssertEq(wrLog, 0, errMsgs.Length, "Num errMsgs DeleteDirPlusSubdirsPlusFiles");
+                LogErrMsgsIfAny(wrLog, "ErrMsgs DeleteDirPlusSubdirsPlusFiles:", errMsgs);
 
                 string testPathSvr = Path.Combine(testPath, "Svr");
                 var settingsSvr = new Settings()
@@ -182,6 +183,10 @@ namespace FarFiles.Model
                         @"sub1\sub1sub1\test_4.txt", @"sub1\sub1sub2\test_5.txt" };
                 var folderNamesToCopy = new string[] { "sub1" };
                 var fileNamesToCopy = new string[] { "test_1.txt" };
+                var expectedFilesClient = new List<string> {
+                        @"test_1.txt",
+                        @"sub1\test_2.txt", @"sub1\test_3_size0.txt",
+                        @"sub1\sub1sub1\test_4.txt", @"sub1\sub1sub2\test_5.txt" };
 
                 string testPathClient = Path.Combine(testPath, "Client");
                 Directory.CreateDirectory(testPathClient);
@@ -194,14 +199,18 @@ namespace FarFiles.Model
                 {
                     using (var wr = new StreamWriter(Path.Combine(topDirOnSvr, relPathFile)))
                     {
-                        if (! relPathFile.Contains("size0"))
+                        if (!relPathFile.Contains("size0"))
                             wr.WriteLine(relPathFile);
                     }
                 }
 
                 // Now the test:
-                int prevSeqNr = 0;
-                var copyMgrSvr = new CopyMgr(_fileDataService, settingsSvr);
+                int alterBufSizeMoreOrLess = 200;
+                int alterRemainingLimit = 40;
+
+                int prevSeqNr = -1;
+                var copyMgrSvr = new CopyMgr(_fileDataService, settingsSvr,
+                        alterBufSizeMoreOrLess, alterRemainingLimit);
                 var copyMgrClient = new CopyMgr(_fileDataService, settingsClient);
                 copyMgrSvr.StartCopyFromSvr(new MsgSvrClCopyRequest(clientSvrPathParts,
                         folderNamesToCopy, fileNamesToCopy));
@@ -210,12 +219,23 @@ namespace FarFiles.Model
                     MsgSvrClBase msgSvrCl = copyMgrSvr.GetNextPartCopyansFromSvr();
                     AssertEq(wrLog, MsgSvrClType.COPY_ANS, msgSvrCl.Type,
                             "answer from svr");
-                    ((MsgSvrClCopyAnswer)msgSvrCl).GetSeqnrAndIslastAndData(
-                            out int seqNr, out bool isLast, out byte[] data);
+                    int seqNr = ((MsgSvrClCopyAnswer)msgSvrCl).SeqNr;
                     AssertEq(wrLog, prevSeqNr + 1, seqNr,
                             "seqNr from svr");
+                    prevSeqNr++;
                     if (copyMgrClient.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrCl))
                         break;
+                }
+
+                LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrScr:", copyMgrSvr.ErrMsgs);
+                LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrClient:", copyMgrClient.ErrMsgs);
+
+                foreach (string expectedRelPathFile in expectedFilesClient)
+                {
+                    string fullPathClient = Path.Combine(testPathClient, expectedRelPathFile);
+                    string fullPathSvr = Path.Combine(topDirOnSvr, expectedRelPathFile);
+
+                    AssertEqFile(wrLog, fullPathClient, fullPathSvr);
                 }
             }
             catch (Exception exc)
@@ -247,7 +267,7 @@ namespace FarFiles.Model
                         "   arrayLengths");
                 if (eq)
                 {
-                    for (int i=0; i < arrExpected.Length; i++)
+                    for (int i = 0; i < arrExpected.Length; i++)
                     {
                         eq = AssertEq(wrLog, arrExpected[i], arrResult[i], $"   array[{i}]");
                         if (!eq)
@@ -255,24 +275,24 @@ namespace FarFiles.Model
                     }
                 }
             }
-			else if (oExpected is long[])
-			{
-				var arrExpected = (long[])oExpected;
-				var arrResult = (long[])oResult;
-				eq = AssertEq(wrLog, arrExpected.Length, arrResult.Length,
-						"   arrayLengths");
-				if (eq)
-				{
-					for (int i = 0; i < arrExpected.Length; i++)
-					{
-						eq = AssertEq(wrLog, arrExpected[i], arrResult[i], $"   array[{i}]");
-						if (!eq)
-							break;
-					}
-				}
-			}
-			else
-			{
+            else if (oExpected is long[])
+            {
+                var arrExpected = (long[])oExpected;
+                var arrResult = (long[])oResult;
+                eq = AssertEq(wrLog, arrExpected.Length, arrResult.Length,
+                        "   arrayLengths");
+                if (eq)
+                {
+                    for (int i = 0; i < arrExpected.Length; i++)
+                    {
+                        eq = AssertEq(wrLog, arrExpected[i], arrResult[i], $"   array[{i}]");
+                        if (!eq)
+                            break;
+                    }
+                }
+            }
+            else
+            {
                 string qu = (oExpected is string ? "'" : "");
                 eq = oExpected.Equals(oResult);
                 wrLog.WriteLine((eq ? "   EQ  " : "** DIF ") +
@@ -287,11 +307,76 @@ namespace FarFiles.Model
         }
 
 
+        protected bool AssertEqFile(StreamWriter wrLog, string fullPathSvrFile,
+                    string fullPathClientFile)
+        {
+            bool eq = true;
+            if (! File.Exists(fullPathSvrFile))
+            {
+                wrLog.WriteLine($"Error in test: not found 'server' file: '{fullPathSvrFile}'");
+                eq = false;
+            }
+            if (!File.Exists(fullPathClientFile))
+            {
+                wrLog.WriteLine($"Not found client file: '{fullPathClientFile}'");
+                eq = false;
+            }
+
+            if (eq)
+            {
+                long fileSizeSvr = new FileInfo(fullPathSvrFile).Length;
+                long fileSizeClient = new FileInfo(fullPathClientFile).Length;
+                eq = AssertEq(wrLog, fileSizeSvr, fileSizeClient, $"file sizes for {fullPathClientFile}");
+            }
+            if (eq)
+            {
+                byte[] byArrSvr = File.ReadAllBytes(fullPathSvrFile);
+                byte[] byArrClient = File.ReadAllBytes(fullPathClientFile);
+                eq = AssertEq(wrLog, true, byArrSvr.SequenceEqual(byArrClient),
+                        $"contents for {fullPathClientFile}");
+            }
+            if (eq)
+            {
+                eq = AssertEq(wrLog, File.GetAttributes(fullPathSvrFile),
+                        File.GetAttributes(fullPathClientFile),
+                        $"attrs for {fullPathClientFile}");
+            }
+            if (eq)
+            {
+                eq = AssertEq(wrLog, File.GetCreationTime(fullPathSvrFile),
+                        File.GetCreationTime(fullPathClientFile),
+                        $"creationtime for {fullPathClientFile}");
+            }
+            if (eq)
+            {
+                eq = AssertEq(wrLog, File.GetLastWriteTime(fullPathSvrFile),
+                        File.GetLastWriteTime(fullPathClientFile),
+                        $"lastwritetime for {fullPathClientFile}");
+            }
+
+            return eq;
+        }
+
 
         protected void LogExc(StreamWriter wrLog, string descrExc, Exception exc)
         {
             wrLog.WriteLine($"** EXCEPTON: {descrExc}: {MauiProgram.ExcMsgWithInnerMsgs(exc)}");
             _numExceptions++;
+        }
+
+
+        protected void LogErrMsgsIfAny(StreamWriter wrLog, string descrMsgs, IEnumerable<string> errMsgs)
+        {
+            if (errMsgs.Count() > 0)
+            {
+                wrLog.WriteLine();
+                wrLog.WriteLine(descrMsgs);
+                int nE = 1;
+                foreach (string msg in errMsgs)
+                {
+                    wrLog.WriteLine($"{nE++}. {msg}");
+                }
+            }
         }
     }
 }
