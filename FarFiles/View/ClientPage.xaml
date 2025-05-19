@@ -20,7 +20,7 @@
     <Grid
         ColumnDefinitions="*"
         ColumnSpacing="5"
-        RowDefinitions="30,30,30,10,*"
+        RowDefinitions="30,30,30,30,10,*"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
         <!--JEEWEE-->
         <!--RowSpacing="5"-->
@@ -30,8 +30,9 @@
             Command="{Binding GetFilesCommand}">-->
 
             <Label Grid.Row="0" Text="{Binding TxtLocalRoot}" />
-            <Label Grid.Row="1" x:Name="LblSelectedNofN" />
-            <StackLayout Orientation="Horizontal" Grid.Row="2">
+            <Label Grid.Row="1" Text="{Binding TxtSvrPath}" />
+            <Label Grid.Row="2" x:Name="LblSelectedNofN" />
+            <StackLayout Orientation="Horizontal" Grid.Row="3">
                 <Button Margin="5" Text="clear all" Command="{Binding ClrAllCommand}"
                         Style="{StaticResource ButtonOutline}"
                         x:Name="BtnClrAll"></Button>
@@ -47,7 +48,7 @@
             <!--here an empty gridrow-->
         
             <CollectionView x:Name="FfCollView"
-                        Grid.Row="4"
+                        Grid.Row="5"
                         ItemsSource="{Binding FileOrFolderColl}"
                         SelectionMode="Multiple"
                         SelectionChanged="FfCollView_SelectionChanged"

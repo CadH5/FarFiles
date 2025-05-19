@@ -19,6 +19,10 @@ namespace FarFiles.Model
 
         public async Task DoTestsAsync(FileDataService fileDataService)
         {
+#if ANDROID
+            throw new Exception("DoTestsAsync: not for Android!");
+#endif
+
             _fileDataService = fileDataService;
             _numPassed = 0;
             _numFailed = 0;
@@ -151,6 +155,8 @@ namespace FarFiles.Model
 
         protected void DoTestCopyMgr(StreamWriter wrLog, string testPath)
         {
+#if ANDROID
+#else
             try
             {
                 wrLog.WriteLine("DoTestCopyMgr() testPath='" + testPath + "'");
@@ -244,6 +250,7 @@ namespace FarFiles.Model
             }
 
             wrLog.WriteLine();
+#endif
         }
 
 

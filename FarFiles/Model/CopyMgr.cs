@@ -84,10 +84,6 @@ namespace FarFiles.Model
             string relPathOnClient = "";
             _seqNr = 0;
 
-            //JEEWEE
-            //_allFileDataInCurrPath = _fileDataService.GetFilesAndFoldersData(
-            //            _currPath, SearchOption.TopDirectoryOnly);
-
             _navLevels.Clear();
             _navLevels.Add(new NavLevel(pathOnSvr, relPathOnClient,
                     folderNamesToCopy, fileNamesToCopy));
@@ -108,6 +104,7 @@ namespace FarFiles.Model
 
                 bool isLastPart = false;
                 NavLevel currNavLevel = _navLevels.Last();
+                _bufSvrMsg.Clear();
                 int numRemaining = _bufSizeMoreOrLess;
                 while (numRemaining > 0)
                 {
@@ -196,7 +193,11 @@ namespace FarFiles.Model
                     {
                         _navLevels.RemoveAt(_navLevels.Count - 1);
                         if (_navLevels.Count == 0)
+                        {
+                            isLastPart = true;
+                            this.Dispose();
                             break;
+                        }
 
                         currNavLevel = _navLevels.Last();
                     }
@@ -204,8 +205,6 @@ namespace FarFiles.Model
                     numRemaining = _bufSizeMoreOrLess - _bufSvrMsg.Count;
                 }
 
-                isLastPart = true;
-                this.Dispose();
                 return new MsgSvrClCopyAnswer(_seqNr++, isLastPart, _bufSvrMsg.ToArray());
             }
             catch (Exception exc)

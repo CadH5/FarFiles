@@ -41,11 +41,18 @@ public partial class ClientPage : ContentPage
 
         FfCollView.ItemsSource = null;
         FfCollView.ItemsSource = fileOrFolderData;
+        UpdatePage();
     }
     private void ClientPage_Loaded(object sender, EventArgs e)
     {
         _clientViewModel = (ClientViewModel)BindingContext;
-        UpdatePage();
+
+        //JEEWEE
+        //var dummy = Task.Run(async () =>
+        //{
+        //    await Task.Delay(1);
+        //    MainThread.BeginInvokeOnMainThread(UpdatePage);
+        //});
     }
     public void FfCollView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

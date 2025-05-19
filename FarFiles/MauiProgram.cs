@@ -18,7 +18,13 @@ public static class MauiProgram
     public static string StrLocalIP { get; set; } = "";
     public static Settings Settings { get; set; } = new Settings();
     public static Info Info { get; set; } = new Info();
+    public static Log Log { get; set; } = new Log();
     public static Tests Tests { get; set; } = new Tests();
+
+#if ANDROID
+    public static IAndroidFolderPicker AndroidFolderPicker =
+                    new Platforms.Android.AndroidFolderPicker();
+#endif
 
     public static MauiApp CreateMauiApp()
 	{
@@ -76,10 +82,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<MainPageViewModel>();
 
         builder.Services.AddSingleton<AdvancedViewModel>();
-		//JEEWEE
+        //JEEWEE
         //builder.Services.AddSingleton<DetailsPage>();
-		return builder.Build();
-	}
+
+        return builder.Build();
+    }
 
 
     private async static void OnCloseThings()
@@ -166,15 +173,27 @@ public static class MauiProgram
 
     private static void LoadSettings()
     {
+#if ANDROID
+        string androidUriRootAsStr = Preferences.Get("AndroidUriRoot", "");
+        Settings.AndroidUriRoot = Android.Net.Uri.Parse(androidUriRootAsStr);
+#else
         Settings.FullPathRoot = Preferences.Get("FullPathRoot", Settings.FullPathRoot);
+#endif
         Settings.Idx0isSvr1isCl = Preferences.Get("Idx0isSvr1isCl", Settings.Idx0isSvr1isCl);
         Settings.ConnectKey = Preferences.Get("ConnectKey", Settings.ConnectKey);
         Settings.StunServer = Preferences.Get("StunServer", Settings.StunServer);
         Settings.StunPort = Preferences.Get("StunPort", Settings.StunPort);
     }
-    private static void SaveSettings()
+    public static void SaveSettings()
     {
+#if ANDROID
+        // JWdP 20250518 note: you are here already when on the Android phone the button
+        // to see all minimized applications is hit, application is not even wiped away
+        string androidUriRootAsStr = Settings.AndroidUriRoot?.ToString() ?? "";
+        Preferences.Set("AndroidUriRoot", androidUriRootAsStr);
+#else
         Preferences.Set("FullPathRoot", Settings.FullPathRoot);
+#endif
         Preferences.Set("Idx0isSvr1isCl", Settings.Idx0isSvr1isCl);
         Preferences.Set("ConnectKey", Settings.ConnectKey);
         Preferences.Set("StunServer", Settings.StunServer);

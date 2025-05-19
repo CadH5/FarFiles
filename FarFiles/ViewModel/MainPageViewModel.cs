@@ -14,7 +14,9 @@ using System.Text;
 using System.Threading;
 using System;
 using System.Threading.Channels;
+
 //JEEWEE
+//using FarFiles.Platforms.Android;
 //using Microsoft.Maui.Controls.Compatibility.Platform.Android;
 //using Android.Content.Res;
 //using Android.Content.Res;
@@ -37,6 +39,7 @@ public partial class MainPageViewModel : BaseViewModel
         Title = "Far Away Files Access";
         _fileDataService = fileDataService;
         MauiProgram.Info.MainPageVwModel = this;
+        MauiProgram.Log.LogLine($"FarFiles: started");
 
         //JEEWEE
         //_settingsService = settingsService;
@@ -89,6 +92,8 @@ public partial class MainPageViewModel : BaseViewModel
         // variables in Settings because it's not INotifyPropertyChanged .
         // Although it works at start app. As ChatGPT explained to me (JWdP)
         get => MauiProgram.Settings.FullPathRoot;
+#if ANDROID
+#else
         set
         {
             if (MauiProgram.Settings.FullPathRoot != value)
@@ -97,7 +102,11 @@ public partial class MainPageViewModel : BaseViewModel
                 OnPropertyChanged();
             }
         }
+#endif
     }
+
+    //JEEWEE
+    //public object AndroidUri { get; set; } = null;      // Android.Net.Uri
 
     public bool _visClientMsg = false;
     public bool VisClientMsg
@@ -138,6 +147,16 @@ public partial class MainPageViewModel : BaseViewModel
         }
     }
 
+
+    /// <summary>
+    /// Log if secret log option is on (see Log class)
+    /// </summary>
+    /// <param name="str"></param>
+    protected void Log(string str)
+    {
+        MauiProgram.Log.LogLine(str);
+    }
+
     [RelayCommand]
     async Task Browse()
     {
@@ -148,13 +167,37 @@ public partial class MainPageViewModel : BaseViewModel
         {
             IsBusy = true;
 
+#if ANDROID
+            //JEEWEE
+            //AndroidUri = Android.Net.Uri.Parse(folderPickerResult.Folder.Path);
+            //AndroidUri = (Android.Net.Uri)(Java.Lang.Object)folderPickerResult.Folder.Uri;
+            //AndroidUri = folderPickerResult.Folder.Uri;
+
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PUT COMMENT (why the heck is this necessary)
+            MauiProgram.SaveSettings();
+            Settings.AndroidUriRoot = await MauiProgram.AndroidFolderPicker.PickFolderAsync();
+            var context = global::Android.App.Application.Context;
+
+            // JWdP 20250518 Another necessary ^&*%^%^, provided to me by ChatGPT,
+            // else the deserialized AndroidUri from settings results in Invalid Uri, next time.
+            context.ContentResolver.TakePersistableUriPermission(
+                Settings.AndroidUriRoot,
+                Android.Content.ActivityFlags.GrantReadUriPermission |
+                Android.Content.ActivityFlags.GrantWriteUriPermission);
+
+            MauiProgram.SaveSettings();
+            OnPropertyChanged("FullPathRoot");
+
+#else
             var folderPickerResult = await FolderPicker.PickAsync("");
             if (!folderPickerResult.IsSuccessful)
             {
                 throw new Exception($"FolderPicker not successful or cancelled");
             }
 
-            FullPathRoot = folderPickerResult.Folder?.Path;
+            FullPathRoot = folderPickerResult.Folder?.Path;     // this calls OnPropertyChanged
+#endif
+
         }
         catch (Exception exc)
         {
@@ -228,8 +271,8 @@ public partial class MainPageViewModel : BaseViewModel
 
         //JWdP 20250507 Introduced "unittests", to be executed from this button if incommented
         //====================================================================================
-        await MauiProgram.Tests.DoTestsAsync(_fileDataService);
-        return;
+        //await MauiProgram.Tests.DoTestsAsync(_fileDataService);
+        //return;
         //====================================================================================
 
         //OpenClientJEEWEE();
@@ -296,9 +339,12 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 // server: do conversation: in loop: listen for client msgs and response
                 LblInfo1 = $"Connected; listening for client contact ...";
-                while (true)
+                using (var udpServer = new UdpClient(udpSvrPort))
                 {
-                    await ListenMsgAndSendMsgAsSvrAsync(udpSvrPort);
+                    while (true)
+                    {
+                        await ListenMsgAndSendMsgAsSvrAsync(udpServer);
+                    }
                 }
             }
             else if (MauiProgram.Settings.Idx0isSvr1isCl == 1)
@@ -358,6 +404,7 @@ public partial class MainPageViewModel : BaseViewModel
 
         MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
         msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
+        Log($"client: received bytes: {byRecieved.Length}, MsgSvrClPathInfoAnswer");
 
         ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetFolderAndFileNamesAndSizes(
                 out string[] folderNames, out string[] fileNames, out long[] fileSizes);
@@ -389,6 +436,7 @@ public partial class MainPageViewModel : BaseViewModel
 
                 MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
                 msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClCopyAnswer));
+                Log($"client: received bytes: {byRecieved.Length}, MsgSvrClCopyAnswer");
 
                 if (copyMgr.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrClAnswer))
                     break;          // ready
@@ -466,6 +514,7 @@ public partial class MainPageViewModel : BaseViewModel
 
             byte[] recBytes = await SndFromClientRecieve_msgbxs_Async(
                             Encoding.UTF8.GetBytes(ClientMsg));
+            Log($"client: received bytes: {recBytes.Length}");
             LblInfo2 = $"Received from server: '{Encoding.UTF8.GetString(recBytes)}'";
         }
     }
@@ -483,34 +532,51 @@ public partial class MainPageViewModel : BaseViewModel
     /// <returns></returns>
     protected async Task<byte[]> SndFromClientRecieve_msgbxs_Async(byte[] sendBytes)
     {
-        try
+        int iTry = 0;
+        int maxTries = 1;       //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 3 GIVES TROUBLE
+        while (iTry < maxTries)
         {
-            LblInfo2 = "";
-            LblInfo1 = $"sending to server ...";
-            int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
+            try
+            {
+                LblInfo2 = "";
+                LblInfo1 = $"sending to server ...";
+                int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
 
-            LblInfo1 = $"intended for server: {sendBytes.Length} bytes";
-            LblInfo2 = $"bytes really sent: {iResult}; waiting for server ...";
-            var response = await _udpClient.ReceiveAsync(
-                                    new CancellationTokenSource(5000).Token);
-            //JEEWEE: SECONDS MAYBE SETTING
+                LblInfo1 = $"intended for server: {sendBytes.Length} bytes";
+                LblInfo2 = $"bytes really sent: {iResult}; waiting for server ...";
+                Log("client: " + LblInfo2);
 
-            //JEEWEE
-            //LblInfo2 = $"Received from server: {Encoding.UTF8.GetString(response.Buffer)}'";
-            LblInfo2 = $"Received from server: {response.Buffer.Length} bytes";
+                UdpReceiveResult response = await _udpClient.ReceiveAsync(
+                                    new CancellationTokenSource(40000).Token);
 
-            return response.Buffer;
+                //JEEWEE: SECONDS MAYBE SETTING
+                //JEEWEE: ALSO DIR MUST BECOME SPLITTED
+                //JEEWEE
+                //LblInfo2 = $"Received from server: {Encoding.UTF8.GetString(response.Buffer)}'";
+                LblInfo2 = $"Received from server: {response.Buffer.Length} bytes";
+                return response.Buffer;
+            }
+            catch (OperationCanceledException)
+            {
+                string errMsg = $"Response from server timed out";
+                Log($"Try {iTry+1} of {maxTries}: {errMsg}");
+                if (iTry == maxTries - 1)
+                    await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+            }
+            catch (Exception exc)
+            {
+                Log("client: exception; LblInfo1=" + LblInfo1);
+                Log("client: exception; LblInfo2=" + LblInfo2);
+                string errMsg = $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
+                Log($"Try {iTry + 1} of {maxTries}: {errMsg}");
+                if (iTry == maxTries - 1)
+                    await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+            }
+
+            iTry++;
+            Log($"client: iTry={iTry}");
         }
-        catch (OperationCanceledException)
-        {
-            await Shell.Current.DisplayAlert("Error",
-                $"Response from server timed out", "OK");
-        }
-        catch (Exception exc)
-        {
-            await Shell.Current.DisplayAlert("Error",
-                $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}", "OK");
-        }
+
         //JEEWEE
         //finally
         //{
@@ -522,84 +588,100 @@ public partial class MainPageViewModel : BaseViewModel
 
 
 
-    protected async Task ListenMsgAndSendMsgAsSvrAsync(int udpSvrPort)
+    protected async Task ListenMsgAndSendMsgAsSvrAsync(UdpClient udpServer)
     {
         try
         {
-            using (var udpServer = new UdpClient(udpSvrPort))
+            UdpReceiveResult received = await udpServer.ReceiveAsync();
+            MsgSvrClBase msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
+            Log($"server: received bytes: {received.Buffer.Length}, type: {msgSvrCl.Type}");
+
+            MsgSvrClBase msgSvrClAns = null;
+
+            string receivedTxt = "";
+            string errToSendTxt = "";
+            if (msgSvrCl is MsgSvrClStringSend)
             {
-                UdpReceiveResult received = await udpServer.ReceiveAsync();
-                MsgSvrClBase msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
-                MsgSvrClBase msgSvrClAns = null;
+                receivedTxt = ((MsgSvrClStringSend)msgSvrCl).GetString();
+                msgSvrClAns = new MsgSvrClStringAnswer();
+            }
+            else if (msgSvrCl is MsgSvrClPathInfoRequest)
+            {
+                receivedTxt = msgSvrCl.Type.ToString();
 
-                string receivedTxt = "";
-                string errToSendTxt = "";
-                if (msgSvrCl is MsgSvrClStringSend)
+#if ANDROID
+                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataAndroid(
+                            Settings.AndroidUriRoot,
+                            ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
+#else
+                string path = Settings.PathFromRootAndSubParts(
+                            ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
+                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataWindows(
+                            path, SearchOption.TopDirectoryOnly);
+#endif
+                var dataWithExc = data.Where(d => null != d.ExcThrown).FirstOrDefault();
+                if (dataWithExc != null)
                 {
-                    receivedTxt = ((MsgSvrClStringSend)msgSvrCl).GetString();
-                    msgSvrClAns = new MsgSvrClStringAnswer();
+                    msgSvrClAns = new MsgSvrClErrorAnswer(dataWithExc.ExcThrown.Message);
                 }
-                else if (msgSvrCl is MsgSvrClPathInfoRequest)
+                else
                 {
-                    receivedTxt = msgSvrCl.Type.ToString();
-
-                    string path = Settings.PathFromRootAndSubParts(
-                                ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
-                    FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersData(
-                                path, SearchOption.TopDirectoryOnly);
                     string[] folderNames = data.Where(d => d.IsDir).Select(d => d.Name).ToArray();
                     string[] fileNames = data.Where(d => !d.IsDir).Select(d => d.Name).ToArray();
                     long[] fileSizes = data.Where(d => !d.IsDir).Select(d => d.FileSize).ToArray();
                     msgSvrClAns = new MsgSvrClPathInfoAnswer(folderNames, fileNames, fileSizes);
                 }
-                else if (msgSvrCl is MsgSvrClCopyRequest)
+            }
+            else if (msgSvrCl is MsgSvrClCopyRequest)
+            {
+                _copyMgr?.Dispose();
+                _copyMgr = new CopyMgr(_fileDataService);
+                _copyMgr.StartCopyFromSvr((MsgSvrClCopyRequest)msgSvrCl);
+                msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
+            }
+            else if (msgSvrCl is MsgSvrClCopyNextpartRequest)
+            {
+                if (null == _copyMgr)
                 {
-                    _copyMgr?.Dispose();
-                    _copyMgr = new CopyMgr(_fileDataService);
-                    _copyMgr.StartCopyFromSvr((MsgSvrClCopyRequest)msgSvrCl);
-                    msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
-                }
-                else if (msgSvrCl is MsgSvrClCopyNextpartRequest)
-                {
-                    if (null == _copyMgr)
-                    {
-                        errToSendTxt =
-                            $"Server: wrong request last {msgSvrCl.GetType()}, no active copy process";
-                        msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
-                    }
-                    else
-                    {
-                        msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
-                        if (msgSvrClAns is MsgSvrClCopyAnswer &&
-                            ((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart)
-                        {
-                            _copyMgr.Dispose();
-                            _copyMgr = null;
-                        }
-                    }
+                    errToSendTxt =
+                        $"Server: wrong request last {msgSvrCl.GetType()}, no active copy process";
+                    msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
                 }
                 else
                 {
-                    errToSendTxt =
-                        $"Server: received unexpected message type {msgSvrCl.GetType()}";
-                    msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+                    msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
+                    if (msgSvrClAns is MsgSvrClCopyAnswer &&
+                        ((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart)
+                    {
+                        _copyMgr.Dispose();
+                        _copyMgr = null;
+                    }
                 }
+            }
+            else
+            {
+                errToSendTxt =
+                    $"Server: received unexpected message type {msgSvrCl.GetType()}";
+                msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+            }
 
-                LblInfo1 = $"Received from client: '{receivedTxt}'";
+            LblInfo1 = $"Received from client: '{receivedTxt}'";
 
-                //5️ Respond to client(hole punching)
-                int numAnswer = MauiProgram.Info.NumAnswersSent + 1;
-                LblInfo2 = $"sending answer {numAnswer} ...";
-                await udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
-                                received.RemoteEndPoint);
-                LblInfo2 = $"answer {numAnswer} sent: " +
-                    (! String.IsNullOrEmpty(errToSendTxt) ? errToSendTxt :
-                    $"{msgSvrClAns.Bytes.Length} bytes");
-                MauiProgram.Info.NumAnswersSent = numAnswer;
-			}
+            //5️ Respond to client(hole punching)
+            int numAnswer = MauiProgram.Info.NumAnswersSent + 1;
+            LblInfo2 = $"sending answer {numAnswer} ...";
+            Log($"server: going to send bytes: {msgSvrClAns.Bytes.Length}, {msgSvrClAns.GetType()}");
+            await udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
+                        received.RemoteEndPoint);
+            LblInfo2 = $"answer {numAnswer} sent: " +
+                (!String.IsNullOrEmpty(errToSendTxt) ? errToSendTxt :
+                $"{msgSvrClAns.Bytes.Length} bytes");
+            MauiProgram.Info.NumAnswersSent = numAnswer;
         }
         catch (Exception exc)
         {
+            Log($"server: EXCEPTION: ListenMsgAndSendMsgAsSvrAsync: " +
+                    MauiProgram.ExcMsgWithInnerMsgs(exc));
             await Shell.Current.DisplayAlert("Server: error receiving message or sending answer",
                         MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
         }

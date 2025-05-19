@@ -8,7 +8,13 @@ namespace FarFiles.Model
 {
     public class Settings
     {
+#if ANDROID
+        public Android.Net.Uri AndroidUriRoot { get; set; } = null;
+        public string FullPathRoot { get => AndroidUriRoot.Path; }    // no setter
+#else
+        public object AndroidUriRoot { get => null; }
         public string FullPathRoot { get; set; } = "";
+#endif
         public int Idx0isSvr1isCl { get; set; } = 0;
         public string ConnectKey { get; set; } = "";
 
@@ -16,13 +22,17 @@ namespace FarFiles.Model
         public int StunPort { get; set; } = 3478;
 
 
-
         public string PathFromRootAndSubParts(string[] subParts)
         {
+#if ANDROID
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            return "JEEWEE";
+#else
             string path = FullPathRoot;
             foreach (string subPathPart in subParts)
                 path = Path.Combine(path, subPathPart);
             return path;
+#endif
         }
     }
 }

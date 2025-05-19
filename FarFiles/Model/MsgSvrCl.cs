@@ -75,6 +75,9 @@ namespace FarFiles.Model
             MsgSvrClType type = TypeFromBytes(bytes);
             switch (type)
             {
+                case MsgSvrClType.ERROR:
+                    return new MsgSvrClErrorAnswer(bytes);
+
                 case MsgSvrClType.STRING_SEND:
                     return new MsgSvrClStringSend(bytes);
 

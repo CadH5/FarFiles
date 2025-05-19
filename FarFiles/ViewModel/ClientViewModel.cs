@@ -14,8 +14,8 @@ public partial class ClientViewModel : BaseViewModel
     public ClientPage ContentPageRef;
     public ObservableCollection<Model.FileOrFolderData> FileOrFolderColl { get; } = new();
     FileDataService fileDataService;
-    //IConnectivity connectivity;
     //JEEWEE
+    //IConnectivity connectivity;
     //IGeolocation geolocation;
     //public FilesViewModel(FileDataService fileDataService, IConnectivity connectivity, IGeolocation geolocation)
     public ClientViewModel(FileDataService fileDataService, IConnectivity connectivity)
@@ -50,6 +50,11 @@ public partial class ClientViewModel : BaseViewModel
     public string TxtLocalRoot
     {
         get => $"Local path: {MauiProgram.Settings.FullPathRoot}";
+    }
+
+    public string TxtSvrPath
+    {
+        get => $"Sub path on server: '{String.Join('/', MauiProgram.Info.SvrPathParts)}'";
     }
 
     [RelayCommand]
@@ -93,6 +98,7 @@ public partial class ClientViewModel : BaseViewModel
             {
                 MauiProgram.Info.SvrPathParts.Add(gotoDir.Name);
             }
+            OnPropertyChanged("TxtSvrPath");
 
             await MauiProgram.Info.MainPageVwModel.SndFromClientRecievePathInfo_msgbxs_Async();
             UpdateCollView();

@@ -5,14 +5,58 @@ namespace FarFiles.Services;
 
 public class FileDataService
 {
-    // JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // This Service doesn't make sense thus far, because all methods can become static
+
+#if ANDROID
+    protected FarFiles.Platforms.Android.AndroidFileAccessHelper _androidFileAccessHelper = new();
+#endif
 
     public FileDataService()
     {
     }
 
-    public FileOrFolderData[] GetFilesAndFoldersData(string fullRootPath,
+#if ANDROID
+
+    /// <summary>
+    /// if Exception is thrown: returns array of one member with non-null ExcThrown 
+    /// </summary>
+    /// <param name="androidUriRoot"></param>
+    /// <param name="dirNamesSubPath"></param>
+    /// <returns></returns>
+    public FileOrFolderData[] GetFilesAndFoldersDataAndroid(Android.Net.Uri androidUriRoot,
+            string[] dirNamesSubPath)
+    {
+        List<Model.FileOrFolderData> dataList = new();
+
+        try
+        {
+            string[] namesSubdirs = _androidFileAccessHelper.ListFilesInUriAndSubpath(
+                        androidUriRoot, dirNamesSubPath, true).ToArray();
+            string[] namesFiles = _androidFileAccessHelper.ListFilesInUriAndSubpath(
+                        androidUriRoot, dirNamesSubPath, false).ToArray();
+
+            for (int i = 0; i < 2; i++)
+            {
+                string[] names = (i == 0 ? namesSubdirs : namesFiles);
+                foreach (string name in names)
+                {
+                    dataList.Add(new FileOrFolderData(name, i == 0, true));
+                }
+            }
+        }
+        catch (Exception exc)
+        {
+            return new FileOrFolderData[] { new FileOrFolderData(exc) };
+        }
+
+        return dataList.ToArray();
+    }
+
+#else
+
+    /// <summary>
+    /// if Exception is thrown: returns array of one member with non-null ExcThrown 
+    /// </summary>
+    public FileOrFolderData[] GetFilesAndFoldersDataWindows(string fullRootPath,
             SearchOption searchOption)
     {
         List<Model.FileOrFolderData> dataList = new();
@@ -21,6 +65,8 @@ public class FileDataService
         {
             string[] fullPathSubdirs = Directory.GetDirectories(fullRootPath);
             string[] fullPathFiles = Directory.GetFiles(fullRootPath, "*", SearchOption.TopDirectoryOnly);
+
+
             for (int i = 0; i < 2; i++)
             {
                 string[] fullPaths = (i == 0 ? fullPathSubdirs : fullPathFiles);
@@ -30,11 +76,13 @@ public class FileDataService
                 }
             }
 
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NOT SUPPORTED YET ON ANDROID,
+            //how to get an uri for a subdir (but actually for this app we dont need AllDirectories)
             if (searchOption == SearchOption.AllDirectories)
             {
                 foreach (FileOrFolderData fileOrFolderData in dataList.Where(d => d.IsDir))
                 {
-                    fileOrFolderData.Children_NullIfFile = GetFilesAndFoldersData(
+                    fileOrFolderData.Children_NullIfFile = GetFilesAndFoldersDataWindows(
                             Path.Combine(fullRootPath, fileOrFolderData.Name),
                             searchOption);
                 }
@@ -47,6 +95,12 @@ public class FileDataService
 
         return dataList.ToArray();
     }
+#endif
+
+
+
+
+
 
 
     /// <summary>
