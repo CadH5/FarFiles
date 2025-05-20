@@ -38,9 +38,8 @@ namespace FarFiles.Model
 
         protected BinaryWriter _writer = null;
         protected BinaryReader _reader = null;
-        protected const int BUFSIZEMOREORLESS = 2000;
         protected const int REMAININGLIMIT = 100;
-        protected int _bufSizeMoreOrLess = BUFSIZEMOREORLESS;
+        protected int _bufSizeMoreOrLess = MsgSvrClBase.BUFSIZEMOREORLESS;
         protected int _remainingLimit = REMAININGLIMIT;
         protected List<byte> _bufSvrMsg = new List<byte>();
         protected List<NavLevel> _navLevels = new List<NavLevel>();
@@ -66,7 +65,7 @@ namespace FarFiles.Model
         public List<string> ErrMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
 
         public CopyMgr(FileDataService fileDataService, Settings alternativeSettings = null,
-                int bufSizeMoreOrLess = BUFSIZEMOREORLESS,
+                int bufSizeMoreOrLess = MsgSvrClBase.BUFSIZEMOREORLESS,
                 int remainingLimit = REMAININGLIMIT)
         {
             _fileDataService = fileDataService;

@@ -33,6 +33,7 @@ public partial class MainPageViewModel : BaseViewModel
     protected UdpClient _udpClient = null;
     protected FileDataService _fileDataService;
     protected CopyMgr _copyMgr = null;
+    protected PathInfoAnswerState _currPathInfoAnswerState = null;
 
     public MainPageViewModel(FileDataService fileDataService)
     {
@@ -396,24 +397,42 @@ public partial class MainPageViewModel : BaseViewModel
 	/// <exception cref="Exception"></exception>
 	public async Task SndFromClientRecievePathInfo_msgbxs_Async()
     {
-        var msgSvrCl = new MsgSvrClPathInfoRequest(MauiProgram.Info.SvrPathParts);
-        byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
-                            msgSvrCl.Bytes);
-        if (byRecieved.Length == 0)
-            return;
+        MsgSvrClBase msgSvrCl;
+        
+        msgSvrCl = new MsgSvrClPathInfoRequest(MauiProgram.Info.SvrPathParts);
 
-        MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
-        msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
-        Log($"client: received bytes: {byRecieved.Length}, MsgSvrClPathInfoAnswer");
+        var lisFolders = new List<string>();
+        var lisFiles = new List<string>();
+        var lisSizes = new List<long>();
 
-        ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetFolderAndFileNamesAndSizes(
-                out string[] folderNames, out string[] fileNames, out long[] fileSizes);
+        while (true)
+        {
+            byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
+                                msgSvrCl.Bytes);
+            if (byRecieved.Length == 0)
+                return;
 
-        MauiProgram.Info.CurrSvrFolders = folderNames.Order().Select(
+            MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
+            msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
+            Log($"client: received bytes: {byRecieved.Length}, MsgSvrClPathInfoAnswer");
+
+            ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
+                    out int seqNr, out bool isLast, out string[] folderNames, out string[] fileNames, out long[] fileSizes);
+            lisFolders.AddRange(folderNames);
+            lisFiles.AddRange(fileNames);
+            lisSizes.AddRange(fileSizes);
+
+            if (isLast)
+                break;
+
+            msgSvrCl = new MsgSvrClPathInfoNextpartRequest();
+        }
+
+        MauiProgram.Info.CurrSvrFolders = lisFolders.Order().Select(
             f => new FileOrFolderData(f, true, false)).ToArray();
         int i = 0;
-        MauiProgram.Info.CurrSvrFiles = fileNames.Select(
-            f => new FileOrFolderData(f, false, false, fileSizes[i++]))
+        MauiProgram.Info.CurrSvrFiles = lisFiles.Select(
+            f => new FileOrFolderData(f, false, false, lisSizes[i++]))
             .OrderBy(f => f.Name)
             .ToArray();
     }
@@ -532,56 +551,38 @@ public partial class MainPageViewModel : BaseViewModel
     /// <returns></returns>
     protected async Task<byte[]> SndFromClientRecieve_msgbxs_Async(byte[] sendBytes)
     {
-        int iTry = 0;
-        int maxTries = 1;       //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 3 GIVES TROUBLE
-        while (iTry < maxTries)
+        try
         {
-            try
-            {
-                LblInfo2 = "";
-                LblInfo1 = $"sending to server ...";
-                int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
+            LblInfo2 = "";
+            LblInfo1 = $"sending to server ...";
+            int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
 
-                LblInfo1 = $"intended for server: {sendBytes.Length} bytes";
-                LblInfo2 = $"bytes really sent: {iResult}; waiting for server ...";
-                Log("client: " + LblInfo2);
+            LblInfo1 = $"intended for server: {sendBytes.Length} bytes";
+            LblInfo2 = $"bytes really sent: {iResult}; waiting for server ...";
+            Log("client: " + LblInfo2);
 
-                UdpReceiveResult response = await _udpClient.ReceiveAsync(
-                                    new CancellationTokenSource(40000).Token);
+            UdpReceiveResult response = await _udpClient.ReceiveAsync(
+                                new CancellationTokenSource(
+                                    MauiProgram.Settings.TimeoutSecsClient * 1000).Token);
 
-                //JEEWEE: SECONDS MAYBE SETTING
-                //JEEWEE: ALSO DIR MUST BECOME SPLITTED
-                //JEEWEE
-                //LblInfo2 = $"Received from server: {Encoding.UTF8.GetString(response.Buffer)}'";
-                LblInfo2 = $"Received from server: {response.Buffer.Length} bytes";
-                return response.Buffer;
-            }
-            catch (OperationCanceledException)
-            {
-                string errMsg = $"Response from server timed out";
-                Log($"Try {iTry+1} of {maxTries}: {errMsg}");
-                if (iTry == maxTries - 1)
-                    await Shell.Current.DisplayAlert("Error", errMsg, "OK");
-            }
-            catch (Exception exc)
-            {
-                Log("client: exception; LblInfo1=" + LblInfo1);
-                Log("client: exception; LblInfo2=" + LblInfo2);
-                string errMsg = $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
-                Log($"Try {iTry + 1} of {maxTries}: {errMsg}");
-                if (iTry == maxTries - 1)
-                    await Shell.Current.DisplayAlert("Error", errMsg, "OK");
-            }
+            //JEEWEE
+            //LblInfo2 = $"Received from server: {Encoding.UTF8.GetString(response.Buffer)}'";
+            LblInfo2 = $"Received from server: {response.Buffer.Length} bytes";
 
-            iTry++;
-            Log($"client: iTry={iTry}");
+            return response.Buffer;
         }
-
-        //JEEWEE
-        //finally
-        //{
-        //    IsBusy = false;
-        //}
+        catch (OperationCanceledException)
+        {
+            string errMsg = $"Response from server timed out";
+            await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+        }
+        catch (Exception exc)
+        {
+            Log("client: exception; LblInfo1=" + LblInfo1);
+            Log("client: exception; LblInfo2=" + LblInfo2);
+            string errMsg = $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
+            await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+        }
 
         return new byte[0];
     }
@@ -619,9 +620,11 @@ public partial class MainPageViewModel : BaseViewModel
                 FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataWindows(
                             path, SearchOption.TopDirectoryOnly);
 #endif
+
                 var dataWithExc = data.Where(d => null != d.ExcThrown).FirstOrDefault();
                 if (dataWithExc != null)
                 {
+                    _currPathInfoAnswerState = null;
                     msgSvrClAns = new MsgSvrClErrorAnswer(dataWithExc.ExcThrown.Message);
                 }
                 else
@@ -629,7 +632,22 @@ public partial class MainPageViewModel : BaseViewModel
                     string[] folderNames = data.Where(d => d.IsDir).Select(d => d.Name).ToArray();
                     string[] fileNames = data.Where(d => !d.IsDir).Select(d => d.Name).ToArray();
                     long[] fileSizes = data.Where(d => !d.IsDir).Select(d => d.FileSize).ToArray();
-                    msgSvrClAns = new MsgSvrClPathInfoAnswer(folderNames, fileNames, fileSizes);
+                    _currPathInfoAnswerState = new PathInfoAnswerState(folderNames,
+                                fileNames, fileSizes);
+                    msgSvrClAns = new MsgSvrClPathInfoAnswer(_currPathInfoAnswerState);
+                }
+            }
+            else if (msgSvrCl is MsgSvrClPathInfoNextpartRequest)
+            {
+                if (null == _currPathInfoAnswerState)
+                {
+                    errToSendTxt =
+                        $"Server: wrong request last {msgSvrCl.GetType()}, no active path info answer state";
+                    msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+                }
+                else
+                {
+                    msgSvrClAns = new MsgSvrClPathInfoAnswer(_currPathInfoAnswerState);
                 }
             }
             else if (msgSvrCl is MsgSvrClCopyRequest)
@@ -880,6 +898,4 @@ public partial class MainPageViewModel : BaseViewModel
 
         return strJson.Substring(idx, idx2 - idx);
     }
-
-
 }

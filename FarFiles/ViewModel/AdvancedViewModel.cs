@@ -8,7 +8,8 @@ public partial class AdvancedViewModel : BaseViewModel
     public string Info
     {
         get =>
-            $"UdpSvrPort: {MauiProgram.Info.UdpSvrPort}{nl}" +
+            (MauiProgram.Info.UdpSvrPort <= 0 ? "" :
+                $"UdpSvrPort: {MauiProgram.Info.UdpSvrPort}{nl}") +
             $"PublicIpSvrRegistered: {MauiProgram.Info.PublicIpSvrRegistered}{nl}" +
             $"PublicUdpPortSvrRegistered: {MauiProgram.Info.PublicUdpPortSvrRegistered}{nl}" +
             $"LocalIpSvrRegistered: {MauiProgram.Info.LocalIpSvrRegistered}{nl}" +
@@ -17,6 +18,9 @@ public partial class AdvancedViewModel : BaseViewModel
     }
 
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
+
+    public bool SettingsSvrVis { get => MauiProgram.Settings.Idx0isSvr1isCl == 0; }
+    public bool SettingsClientVis { get => MauiProgram.Settings.Idx0isSvr1isCl == 1; }
 
     public string StunServer
     {
@@ -39,6 +43,19 @@ public partial class AdvancedViewModel : BaseViewModel
             if (Settings.StunPort != value)
             {
                 Settings.StunPort = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int TimeoutSecsClient
+    {
+        get => Settings.TimeoutSecsClient;
+        set
+        {
+            if (Settings.TimeoutSecsClient != value)
+            {
+                Settings.TimeoutSecsClient = value;
                 OnPropertyChanged();
             }
         }

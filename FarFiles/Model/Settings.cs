@@ -20,6 +20,7 @@ namespace FarFiles.Model
 
         public string StunServer { get; set; } = "stun.sipgate.net";
         public int StunPort { get; set; } = 3478;
+        public int TimeoutSecsClient { get; set; } = 20;
 
 
         public string PathFromRootAndSubParts(string[] subParts)

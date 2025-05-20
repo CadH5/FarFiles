@@ -14,6 +14,7 @@ namespace FarFiles.Model
         STRING_SEND,
         STRING_ANS,
         PATHINFO_REQ,
+        PATHINFONEXT_REQ,
         PATHINFO_ANS,
         COPY_REQ,
         COPYNEXT_REQ,
@@ -22,6 +23,8 @@ namespace FarFiles.Model
 
     public class MsgSvrClBase
     {
+        public const int BUFSIZEMOREORLESS = 2000;
+
         public byte[] Bytes;
 
         public MsgSvrClType Type
@@ -86,6 +89,9 @@ namespace FarFiles.Model
 
                 case MsgSvrClType.PATHINFO_REQ:
                     return new MsgSvrClPathInfoRequest(bytes);
+
+                case MsgSvrClType.PATHINFONEXT_REQ:
+                    return new MsgSvrClPathInfoNextpartRequest(bytes);
 
                 case MsgSvrClType.PATHINFO_ANS:
                     return new MsgSvrClPathInfoAnswer(bytes);
@@ -232,6 +238,30 @@ namespace FarFiles.Model
             }
             return retStrs;
         }
+
+
+        /// <summary>
+        /// Returns fileNames and fileSizes from bytes
+        /// </summary>
+        /// <param name="idx">after this, is at start next part of Bytes</param>
+        /// <returns></returns>
+        public string[] GetFileNamesAndSizesAtIndex(ref int idx, out long[] fileSizes)
+        {
+            int num = BitConverter.ToInt32(Bytes, idx);
+            idx += sizeof(int);
+
+            fileSizes = new long[num];
+            var fileNames = new string[num];
+
+            for (int i = 0; i < num; i++)
+            {
+                fileSizes[i] = BitConverter.ToInt64(Bytes, idx);
+                idx += sizeof(long);
+                fileNames[i] = StrPlusLenFromBytes(Bytes, ref idx);
+            }
+            return fileNames;
+        }
+
     }
 
 
@@ -346,22 +376,87 @@ namespace FarFiles.Model
 
 
     /// <summary>
+    /// Request next part of path info
+    /// </summary>
+    public class MsgSvrClPathInfoNextpartRequest : MsgSvrClBase
+    {
+        public MsgSvrClPathInfoNextpartRequest()
+            : base(MsgSvrClType.PATHINFONEXT_REQ)
+        {
+        }
+
+
+        public MsgSvrClPathInfoNextpartRequest(byte[] bytes)
+            : base(bytes, MsgSvrClType.PATHINFONEXT_REQ)
+        {
+        }
+    }
+
+
+
+
+
+    /// <summary>
     /// MsgSvrClPathInfoAnswer
     /// </summary>
     public class MsgSvrClPathInfoAnswer : MsgSvrClBase
     {
-        public MsgSvrClPathInfoAnswer(IEnumerable<string> folderNames,
-                            IEnumerable<string> fileNames, IEnumerable<long> fileSizes)
+        public MsgSvrClPathInfoAnswer(PathInfoAnswerState pathInfoAnswerState)
             : base(MsgSvrClType.PATHINFO_ANS)
         {
-            if (fileNames.Count() != fileSizes.Count())
-                throw new Exception($"PROGRAMMERS: MsgSvrClPathInfoAnswer: fileNames: {fileNames.Count()}, fileSize: {fileSizes.Count()}");
-
             var lisBytes = Bytes.ToList();
-            AddNumAndStringsToLisBytes(lisBytes, folderNames);
-            AddNumAndStringsToLisBytes(lisBytes, fileNames);
-            foreach (long fileSize in fileSizes)
-                lisBytes.AddRange(BitConverter.GetBytes(fileSize));
+            lisBytes.AddRange(BitConverter.GetBytes(pathInfoAnswerState.SeqNrAnswer++));
+
+            for (int ff=0; ff < 2; ff++)
+            {
+                if (0 == ff && 1 == pathInfoAnswerState.Idx0isFolders1isFiles)
+                {
+                    AddNumAndStringsToLisBytes(lisBytes, new string[0]);    // 0 folders
+                    continue;
+                }
+
+                string[] strs = 0 == ff ? pathInfoAnswerState.FolderNames :
+                    pathInfoAnswerState.FileNames;
+
+                int idxNumberOf = lisBytes.Count;
+                lisBytes.AddRange(BitConverter.GetBytes(0));    // temp number
+                int numberOf = 0;
+                while (true)
+                {
+                    if (pathInfoAnswerState.IdxInArray >= strs.Length)
+                        break;
+                    if (lisBytes.Count >= BUFSIZEMOREORLESS)
+                        break;
+                    if (1 == ff)
+                    {
+                        lisBytes.AddRange(BitConverter.GetBytes(
+                                pathInfoAnswerState.FileSizes[
+                                pathInfoAnswerState.IdxInArray]));
+                    }
+                    lisBytes.AddRange(StrPlusLenToBytes(
+                            strs[pathInfoAnswerState.IdxInArray++]));
+                    numberOf++;
+                }
+                // overwrite tempNumberOf, copy from Array to List:
+                foreach (byte b in BitConverter.GetBytes(numberOf))
+                {
+                    lisBytes[idxNumberOf++] = b;
+                }
+
+                if (pathInfoAnswerState.IdxInArray >= strs.Length &&
+                        0 == pathInfoAnswerState.Idx0isFolders1isFiles)
+                {
+                    pathInfoAnswerState.Idx0isFolders1isFiles = 1;
+                    pathInfoAnswerState.IdxInArray = 0;
+                }
+
+                if (lisBytes.Count >= BUFSIZEMOREORLESS)
+                    break;
+            }
+
+            // isLast:
+            lisBytes.AddRange(BitConverter.GetBytes(pathInfoAnswerState.EndReached));
+
             Bytes = lisBytes.ToArray();
         }
 
@@ -372,21 +467,19 @@ namespace FarFiles.Model
         }
 
 
-        public void GetFolderAndFileNamesAndSizes(out string[] folderNames, out string[] fileNames,
-                    out long[] fileSizes)
+        public void GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(out int seqNr, out bool isLast,
+                    out string[] folderNames, out string[] fileNames, out long[] fileSizes)
         {
             try
             {
                 int idx = 4;
 
+                seqNr = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
                 folderNames = GetStringsAtIndex(ref idx);
-                fileNames = GetStringsAtIndex(ref idx);
-                fileSizes = new long[fileNames.Length];
-                for (int i = 0; i < fileNames.Length; i++)
-                {
-                    fileSizes[i] = BitConverter.ToInt64(Bytes, idx);
-                    idx += sizeof(long);
-                }
+                fileNames = GetFileNamesAndSizesAtIndex(ref idx, out fileSizes);
+                isLast = BitConverter.ToBoolean(Bytes, idx);
+                idx += sizeof(bool);
             }
             catch (Exception exc)
             {
@@ -498,7 +591,6 @@ namespace FarFiles.Model
                 idx += sizeof(int);
                 isLast = BitConverter.ToBoolean(Bytes, idx);
                 idx += sizeof(bool);
-                //JEEWEE: INSTEAD I THINK THIS CLASS MUST HELP INTERPRETE DATA
                 int dataLen = Bytes.Length - idx;
                 data = new byte[dataLen];
                 Array.Copy(Bytes, idx, data, 0, dataLen);

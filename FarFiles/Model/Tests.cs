@@ -89,6 +89,11 @@ namespace FarFiles.Model
                 AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
                         "MsgSvrClPathInfoRequest svrPathParts");
 
+                // MsgSvrClPathInfoNextpartRequest
+                msgSvrCl = new MsgSvrClPathInfoNextpartRequest();
+                AssertEq(wrLog, MsgSvrClType.PATHINFONEXT_REQ, msgSvrCl.Type,
+                        "MsgSvrClPathInfoNextpartRequest.Type");
+
                 // MsgSvrClPathInfoAnswer
                 string[] folderNames = new string[] {
                         "fo1", "folder2", "f3", "", "f5" };
@@ -96,11 +101,17 @@ namespace FarFiles.Model
                         "fi1", "file2", "f3", "", "f5" };
                 long[] filesSizes = new long[] {
                         0, 4000, 5000000, 0, 5 };
-                msgSvrCl = new MsgSvrClPathInfoAnswer(folderNames, fileNames, filesSizes);
+                var pathInfoAnswerState = new PathInfoAnswerState(folderNames, fileNames, filesSizes);
+                msgSvrCl = new MsgSvrClPathInfoAnswer(pathInfoAnswerState);
                 AssertEq(wrLog, MsgSvrClType.PATHINFO_ANS, msgSvrCl.Type,
                         "MsgSvrClPathInfoAnswer.Type");
-                ((MsgSvrClPathInfoAnswer)msgSvrCl).GetFolderAndFileNamesAndSizes(
+                ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
+                        out int seqNrOut, out bool isLastOut,
                         out string[] foldersOut, out string[] filesOut, out long[] filesSizesOut);
+                AssertEq(wrLog, 0, seqNrOut,
+                        "MsgSvrClPathInfoAnswer seqNr");
+                AssertEq(wrLog, true, isLastOut,
+                        "MsgSvrClPathInfoAnswer isLast");
                 AssertEq(wrLog, folderNames, foldersOut,
                         "MsgSvrClPathInfoAnswer folderNames");
                 AssertEq(wrLog, fileNames, filesOut,
@@ -135,7 +146,7 @@ namespace FarFiles.Model
                 AssertEq(wrLog, MsgSvrClType.COPY_ANS, msgSvrCl.Type,
                         "MsgSvrClCopyAnswer.Type");
                 ((MsgSvrClCopyAnswer)msgSvrCl).GetSeqnrAndIslastAndData(
-                        out int seqNrOut, out bool isLastOut, out byte[] dataOut);
+                        out seqNrOut, out isLastOut, out byte[] dataOut);
                 AssertEq(wrLog, seqNrIn, seqNrOut,
                         "MsgSvrClCopyAnswer seqNr");
                 AssertEq(wrLog, isLastIn, isLastOut,

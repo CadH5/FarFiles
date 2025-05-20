@@ -183,6 +183,7 @@ public static class MauiProgram
         Settings.ConnectKey = Preferences.Get("ConnectKey", Settings.ConnectKey);
         Settings.StunServer = Preferences.Get("StunServer", Settings.StunServer);
         Settings.StunPort = Preferences.Get("StunPort", Settings.StunPort);
+        Settings.TimeoutSecsClient = Preferences.Get("TimeoutSecsClient", Settings.TimeoutSecsClient);
     }
     public static void SaveSettings()
     {
@@ -198,5 +199,6 @@ public static class MauiProgram
         Preferences.Set("ConnectKey", Settings.ConnectKey);
         Preferences.Set("StunServer", Settings.StunServer);
         Preferences.Set("StunPort", Settings.StunPort);
+        Preferences.Set("TimeoutSecsClient", Settings.TimeoutSecsClient);
     }
 }

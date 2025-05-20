@@ -7,41 +7,51 @@
     Title="Advanced info and settings"
     x:DataType="viewmodel:AdvancedViewModel">
     <ScrollView BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
-        <Grid RowDefinitions="Auto,Auto,Auto,*"
-              ColumnDefinitions="*,*">
+        <Grid RowDefinitions="150,40,40,40,40"
+              ColumnDefinitions="200,*">
 
-            <Border StrokeShape="RoundRectangle 80"
-                    Stroke="White"
-                    StrokeThickness="6"
-                    HeightRequest="172"
-                    WidthRequest="172"
-                    Margin="0,8,0,0"
-                    HorizontalOptions="Center"
-                    VerticalOptions="Center">
-            </Border>
-
-            <Editor Grid.Row="0" Grid.Column="0" IsReadOnly="True"
+            <Editor Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" IsReadOnly="True"
                    Text="{Binding Info}"></Editor>
-            <Label Grid.Row="1" Grid.Column="0"
-                   Text="Sunserver if app is server:"></Label>
-            <StackLayout Orientation="Horizontal" Grid.Row="1" Grid.Column="1">
-                <Label Text="server:" WidthRequest="100"></Label>
+
+            <Label Grid.Row="1" Grid.Column="0" IsVisible="{Binding SettingsSvrVis}"
+                Text="Server settings:" FontAttributes="Bold" VerticalTextAlignment="Center"></Label>
+            <Label Grid.Row="1" Grid.Column="0" IsVisible="{Binding SettingsClientVis}"
+                Text="Client settings:" FontAttributes="Bold" VerticalTextAlignment="Center"></Label>
+
+            <!--Server settings:-->
+            <Label Grid.Row="2" Grid.Column="0" IsVisible="{Binding SettingsSvrVis}"
+                Text="Sunserver:" VerticalTextAlignment="Center"></Label>
+            <StackLayout Orientation="Horizontal" Grid.Row="2" Grid.Column="1"
+                            IsVisible="{Binding SettingsSvrVis}">
+                <Label Text="server:" WidthRequest="100" VerticalTextAlignment="Center"></Label>
                 <Entry Text="{Binding StunServer}"></Entry>
             </StackLayout>
-            <StackLayout Orientation="Horizontal" Grid.Row="2" Grid.Column="1">
-                <Label Text="port:" WidthRequest="100"></Label>
+            <StackLayout Orientation="Horizontal" Grid.Row="3" Grid.Column="1"
+                            IsVisible="{Binding SettingsSvrVis}">
+                <Label Text="port:" WidthRequest="100" VerticalTextAlignment="Center"></Label>
                 <Entry Text="{Binding StunPort}"></Entry>
             </StackLayout>
-            <StackLayout Orientation="Horizontal" Grid.Row="3" Grid.Column="1">
-                <Button Margin="5,0,0,0"
+            <StackLayout Orientation="Horizontal" Grid.Row="4" Grid.Column="1"
+                            IsVisible="{Binding SettingsSvrVis}">
+                <Button Margin="5,0,0,0" HeightRequest="30"
                     Command="{Binding SetStunSipgateCommand}"
                     Style="{StaticResource ButtonOutline}"
                     Text="sipgate" />
-                <Button Margin="5,0,0,0"
+                <Button Margin="5,0,0,0" HeightRequest="30"
                     Command="{Binding SetStunGoogleCommand}"
                     Style="{StaticResource ButtonOutline}"
                     Text="google" />
             </StackLayout>
+
+            <!--Client settings:-->
+            <Label Grid.Row="2" Grid.Column="0" IsVisible="{Binding SettingsClientVis}"
+                Text="Timeout waiting server:" VerticalTextAlignment="Center"></Label>
+            <StackLayout Orientation="Horizontal" Grid.Row="2" Grid.Column="1"
+                            IsVisible="{Binding SettingsClientVis}">
+                <Entry Text="{Binding TimeoutSecsClient}"></Entry>
+                <Label Text="(seconds)" Margin="5" VerticalTextAlignment="Center"></Label>
+            </StackLayout>
+
         </Grid>
     </ScrollView>
 </ContentPage>
