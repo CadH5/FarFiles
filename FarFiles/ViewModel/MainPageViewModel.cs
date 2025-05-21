@@ -34,6 +34,7 @@ public partial class MainPageViewModel : BaseViewModel
     protected FileDataService _fileDataService;
     protected CopyMgr _copyMgr = null;
     protected PathInfoAnswerState _currPathInfoAnswerState = null;
+    protected int _seqNrPathInfoAns = 0;
 
     public MainPageViewModel(FileDataService fileDataService)
     {
@@ -609,6 +610,7 @@ public partial class MainPageViewModel : BaseViewModel
             else if (msgSvrCl is MsgSvrClPathInfoRequest)
             {
                 receivedTxt = msgSvrCl.Type.ToString();
+                _seqNrPathInfoAns = 0;
 
 #if ANDROID
                 FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataAndroid(
@@ -634,7 +636,8 @@ public partial class MainPageViewModel : BaseViewModel
                     long[] fileSizes = data.Where(d => !d.IsDir).Select(d => d.FileSize).ToArray();
                     _currPathInfoAnswerState = new PathInfoAnswerState(folderNames,
                                 fileNames, fileSizes);
-                    msgSvrClAns = new MsgSvrClPathInfoAnswer(_currPathInfoAnswerState);
+                    msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
+                                        _currPathInfoAnswerState);
                 }
             }
             else if (msgSvrCl is MsgSvrClPathInfoNextpartRequest)
@@ -647,7 +650,8 @@ public partial class MainPageViewModel : BaseViewModel
                 }
                 else
                 {
-                    msgSvrClAns = new MsgSvrClPathInfoAnswer(_currPathInfoAnswerState);
+                    msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
+                                    _currPathInfoAnswerState);
                 }
             }
             else if (msgSvrCl is MsgSvrClCopyRequest)

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FarFiles.Services;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,15 +26,19 @@ namespace FarFiles.Model
 
         public string PathFromRootAndSubParts(string[] subParts)
         {
-#if ANDROID
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            return "JEEWEE";
-#else
-            string path = FullPathRoot;
-            foreach (string subPathPart in subParts)
-                path = Path.Combine(path, subPathPart);
-            return path;
-#endif
+            return FileDataService.PathFromRootAndSubParts(FullPathRoot, subParts);
+
+//JEEWEE
+//#if ANDROID
+//            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//            return "JEEWEE";
+//#else
+//            string path = FullPathRoot;
+//            foreach (string subPathPart in subParts)
+//                path = Path.Combine(path, subPathPart);
+//            return path;
+//#endif
+
         }
     }
 }

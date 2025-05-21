@@ -2,6 +2,7 @@
 //using CoreFoundation;
 using FarFiles.Services;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -95,6 +96,7 @@ namespace FarFiles.Model
                         "MsgSvrClPathInfoNextpartRequest.Type");
 
                 // MsgSvrClPathInfoAnswer
+                int seqNrIn = 0;
                 string[] folderNames = new string[] {
                         "fo1", "folder2", "f3", "", "f5" };
                 string[] fileNames = new string[] {
@@ -102,13 +104,13 @@ namespace FarFiles.Model
                 long[] filesSizes = new long[] {
                         0, 4000, 5000000, 0, 5 };
                 var pathInfoAnswerState = new PathInfoAnswerState(folderNames, fileNames, filesSizes);
-                msgSvrCl = new MsgSvrClPathInfoAnswer(pathInfoAnswerState);
+                msgSvrCl = new MsgSvrClPathInfoAnswer(seqNrIn, pathInfoAnswerState);
                 AssertEq(wrLog, MsgSvrClType.PATHINFO_ANS, msgSvrCl.Type,
                         "MsgSvrClPathInfoAnswer.Type");
                 ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
                         out int seqNrOut, out bool isLastOut,
                         out string[] foldersOut, out string[] filesOut, out long[] filesSizesOut);
-                AssertEq(wrLog, 0, seqNrOut,
+                AssertEq(wrLog, seqNrIn, seqNrOut,
                         "MsgSvrClPathInfoAnswer seqNr");
                 AssertEq(wrLog, true, isLastOut,
                         "MsgSvrClPathInfoAnswer isLast");
@@ -119,7 +121,104 @@ namespace FarFiles.Model
                 AssertEq(wrLog, filesSizes, filesSizesOut,
                         "MsgSvrClPathInfoAnswer filesSizes");
 
+                folderNames = new string[0];
+                fileNames = new string[0];
+                filesSizes = new long[0];
+                pathInfoAnswerState = new PathInfoAnswerState(folderNames, fileNames, filesSizes);
+                msgSvrCl = new MsgSvrClPathInfoAnswer(seqNrIn, pathInfoAnswerState);
+                ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
+                        out seqNrOut, out isLastOut,
+                        out foldersOut, out filesOut, out filesSizesOut);
+                AssertEq(wrLog, true, isLastOut,
+                        "MsgSvrClPathInfoAnswer empty isLast");
+                AssertEq(wrLog, folderNames, foldersOut,
+                        "MsgSvrClPathInfoAnswer empty folderNames");
+                AssertEq(wrLog, fileNames, filesOut,
+                        "MsgSvrClPathInfoAnswer empty fileNames");
+                AssertEq(wrLog, filesSizes, filesSizesOut,
+                        "MsgSvrClPathInfoAnswer empty filesSizes");
+
+                var testNames = new string[1000];
+                var testSizes = new long[1000];
+                for (int i=0; i < 1000; i++)
+                {
+                    testNames[i] = $"f{i}";
+                    testSizes[i] = i;
+                }
+                // do two tests: first only folders, then only files
+                for (int i = 0; i < 2; i++)
+                {
+                    int seqNr = 0;
+                    folderNames = 0 == i ? testNames : new string[0];
+                    fileNames = 1 == i ? testNames : new string[0];
+                    filesSizes = 1 == i ? testSizes : new long[0];
+
+                    pathInfoAnswerState = new PathInfoAnswerState(
+                                folderNames, fileNames, filesSizes);
+                    int prevCounterNum = 0;
+                    do
+                    {
+                        msgSvrCl = new MsgSvrClPathInfoAnswer(seqNr, pathInfoAnswerState);
+                        ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
+                                out seqNrOut, out isLastOut,
+                                out foldersOut, out filesOut, out filesSizesOut);
+                        AssertEq(wrLog, seqNr, seqNrOut,
+                                "MsgSvrClPathInfoAnswer big seqNr");
+                        AssertEq(wrLog, pathInfoAnswerState.EndReached, isLastOut,
+                                "MsgSvrClPathInfoAnswer big isLast");
+
+                        int till = prevCounterNum + (0 == i ? foldersOut.Length : filesOut.Length);
+
+                        if (0 == i)
+                        {
+                            AssertEq(wrLog, 0, filesOut.Length,
+                                    "MsgSvrClPathInfoAnswer big zero files");
+                            AssertEq(wrLog, 0, filesSizesOut.Length,
+                                    "MsgSvrClPathInfoAnswer big zero sizes");
+                            // I don't want to log all array members:
+                            AssertEq(wrLog, true,
+                                AssertEq(wrLog, folderNames, foldersOut, "",
+                                false, prevCounterNum, till),
+                                "MsgSvrClPathInfoAnswer folderNames" +
+                                        $" [{prevCounterNum} to {till}]");
+
+                            prevCounterNum += foldersOut.Length;
+                        }
+                        else
+                        {
+                            AssertEq(wrLog, 0, foldersOut.Length,
+                                    "MsgSvrClPathInfoAnswer big zero folders");
+                            AssertEq(wrLog, true,
+                                AssertEq(wrLog, fileNames, filesOut, "",
+                                false, prevCounterNum, till),
+                                "MsgSvrClPathInfoAnswer fileNames" +
+                                        $" [{prevCounterNum} to {till}]");
+                            AssertEq(wrLog, true,
+                                AssertEq(wrLog, filesSizes, filesSizesOut, "",
+                                false, prevCounterNum, till),
+                                "MsgSvrClPathInfoAnswer fileSizes" +
+                                        $" [{prevCounterNum} to {till}");
+                            AssertEq(wrLog, filesOut.Length, filesSizesOut.Length,
+                                "MsgSvrClPathInfoAnswer num files, sizes");
+
+                            prevCounterNum += filesOut.Length;
+                        }
+                        
+                        seqNr++;
+                    }
+                    while (!pathInfoAnswerState.EndReached);
+                    AssertEq(wrLog, 1000, prevCounterNum,
+                                "MsgSvrClPathInfoAnswer big endtotal");
+                }
+
+
                 // MsgSvrClCopyRequest
+                folderNames = new string[] {
+                        "fo1", "folder2", "f3", "", "f5" };
+                fileNames = new string[] {
+                        "fi1", "file2", "f3", "", "f5" };
+                filesSizes = new long[] {
+                        0, 4000, 5000000, 0, 5 };
                 svrPathPartsIn = new string[] { "str1", "", "str2" };
                 msgSvrCl = new MsgSvrClCopyRequest(svrPathPartsIn, folderNames, fileNames);
                 AssertEq(wrLog, MsgSvrClType.COPY_REQ, msgSvrCl.Type,
@@ -139,10 +238,10 @@ namespace FarFiles.Model
                         "MsgSvrClCopyNextpartRequest.Type");
 
                 // MsgSvrClCopyAnswer
-                int seqNrIn = 3;
+                seqNrIn = 3;
                 bool isLastIn = true;
                 byte[] dataIn = { 0, 1, 2, 255, 0 };
-                msgSvrCl = new MsgSvrClCopyAnswer(3, isLastIn, dataIn);
+                msgSvrCl = new MsgSvrClCopyAnswer(seqNrIn, isLastIn, dataIn);
                 AssertEq(wrLog, MsgSvrClType.COPY_ANS, msgSvrCl.Type,
                         "MsgSvrClCopyAnswer.Type");
                 ((MsgSvrClCopyAnswer)msgSvrCl).GetSeqnrAndIslastAndData(
@@ -268,52 +367,92 @@ namespace FarFiles.Model
         /// <summary>
         /// Returns: true if equal
         /// </summary>
-        /// <param name="wrLog"></param>
+        /// <param name="wrLogOrNull">if null, then don't log</param>
         /// <param name="oExpected"></param>
         /// <param name="oResult"></param>
         /// <param name="descr"></param>
+        /// <param name="logAllArrayMembers">true for all logged, if oExpected and oResult are Arrays</param>
         /// <returns></returns>
-        protected bool AssertEq(StreamWriter wrLog, object oExpected, object oResult,
-                        string descr)
+        protected bool AssertEq(StreamWriter wrLogOrNull, object oExpected, object oResult,
+                        string descr,
+                        bool logAllArrayMembers = true,
+                        int startIdxExp = 0, int tillIdxExp = -1,
+                        int startIdxRes = 0, int tillIdxRes = -1)
         {
             bool eq = true;
+            Array arrExpected = null;
+            Array arrResult = null;
+
             if (oExpected is string[])
             {
-                var arrExpected = (string[])oExpected;
-                var arrResult = (string[])oResult;
-                eq = AssertEq(wrLog, arrExpected.Length, arrResult.Length,
-                        "   arrayLengths");
-                if (eq)
-                {
-                    for (int i = 0; i < arrExpected.Length; i++)
-                    {
-                        eq = AssertEq(wrLog, arrExpected[i], arrResult[i], $"   array[{i}]");
-                        if (!eq)
-                            break;
-                    }
-                }
+                arrExpected = (string[])oExpected;
+                arrResult = (string[])oResult;
             }
             else if (oExpected is long[])
             {
-                var arrExpected = (long[])oExpected;
-                var arrResult = (long[])oResult;
-                eq = AssertEq(wrLog, arrExpected.Length, arrResult.Length,
+                arrExpected = (long[])oExpected;
+                arrResult = (long[])oResult;
+            }
+
+            if (null != arrExpected && null != arrResult)
+            {
+                tillIdxExp = -1 == tillIdxExp ? arrExpected.Length : tillIdxExp;
+                tillIdxRes = -1 == tillIdxRes ? arrResult.Length : tillIdxRes;
+
+                eq = AssertEq(wrLogOrNull, tillIdxExp - startIdxExp, 
+                        tillIdxRes - startIdxRes,
                         "   arrayLengths");
                 if (eq)
                 {
-                    for (int i = 0; i < arrExpected.Length; i++)
+                    StreamWriter wrLogArraymemsOrNull = logAllArrayMembers ?
+                                wrLogOrNull : null;
+                    for (int i = startIdxExp, j = startIdxRes; i < tillIdxExp; i++, j++)
                     {
-                        eq = AssertEq(wrLog, arrExpected[i], arrResult[i], $"   array[{i}]");
+                        if (oExpected is string[])
+                        {
+                            eq = AssertEq(wrLogArraymemsOrNull, ((string[])arrExpected)[i],
+                                    ((string[])arrResult)[j], $"   array[{i}],[{j}]");
+                        }
+                        else if (oExpected is long[])
+                        {
+                            eq = AssertEq(wrLogArraymemsOrNull, ((long[])arrExpected)[i],
+                                    ((long[])arrResult)[j], $"   array[{i}],[{j}]");
+                        }
+                        else
+                        {
+                            throw new Exception($"PROGRAMMERS: AssertEq: oExpected is {oExpected.GetType()}");
+                        }
                         if (!eq)
                             break;
                     }
                 }
             }
+            //JEEWEE
+            //else if (oExpected is long[])
+            //{
+            //    var arrExpected = (long[])oExpected;
+            //    var arrResult = (long[])oResult;
+            //    tillIdxExp = -1 == tillIdxExp ? arrExpected.Length : tillIdxExp;
+            //    tillIdxRes = -1 == tillIdxRes ? arrResult.Length : tillIdxRes;
+
+            //    eq = AssertEq(wrLogOrNull, tillIdxExp - startIdxExp,
+            //            tillIdxRes - startIdxRes,
+            //            "   arrayLengths");
+            //    if (eq)
+            //    {
+            //        for (int i = 0; i < arrExpected.Length; i++)
+            //        {
+            //            eq = AssertEq(wrLogOrNull, arrExpected[i], arrResult[i], $"   array[{i}]");
+            //            if (!eq)
+            //                break;
+            //        }
+            //    }
+            //}
             else
             {
                 string qu = (oExpected is string ? "'" : "");
                 eq = oExpected.Equals(oResult);
-                wrLog.WriteLine((eq ? "   EQ  " : "** DIF ") +
+                wrLogOrNull?.WriteLine((eq ? "   EQ  " : "** DIF ") +
                     $": {qu}{oExpected}{qu}, {qu}{oResult}{qu}; {descr}");
                 if (eq)
                     _numPassed++;

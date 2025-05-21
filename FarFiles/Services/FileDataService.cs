@@ -104,7 +104,8 @@ public class FileDataService
 
 
     /// <summary>
-    /// Returns: array errmsgs per file or dir that could not be deleted
+    /// Returns: array errmsgs per file or dir that could not be deleted 
+    /// WINDOWS !
     /// </summary>
     /// <param name="fullPathTopDir"></param>
     /// <returns></returns>
@@ -147,4 +148,61 @@ public class FileDataService
 
         return retList.ToArray();
     }
+
+
+
+    public string[] GetDirFolderNamesGeneric(string fullPathTopDir, object androidUriRoot,
+                string[] svrSubParts)
+    {
+#if ANDROID
+        return _androidFileAccessHelper.ListFilesInUriAndSubpath(
+                    (Android.Net.Uri)androidUriRoot, svrSubParts, true).ToArray();
+#else
+        return Directory.GetDirectories(PathFromRootAndSubParts(fullPathTopDir, svrSubParts))
+                .Select(d => Path.GetFileName(d)).ToArray();
+#endif
+    }
+
+    public string[] GetDirFileNamesGeneric(string fullPathTopDir, object androidUriRoot,
+                string[] svrSubParts)
+    {
+#if ANDROID
+        return _androidFileAccessHelper.ListFilesInUriAndSubpath(
+                    (Android.Net.Uri)androidUriRoot, svrSubParts, false).ToArray();
+#else
+        return Directory.GetFiles(PathFromRootAndSubParts(fullPathTopDir, svrSubParts),
+                "*", SearchOption.TopDirectoryOnly)
+                .Select(f => Path.GetFileName(f)).ToArray();
+#endif
+    }
+
+
+
+    public FileOrFolderData[] GetFilesAndFoldersDataGeneric(string fullPathTopDir, object androidUriRoot,
+                        string[] svrSubParts)
+    {
+#if ANDROID
+        return GetFilesAndFoldersDataAndroid((Android.Net.Uri)androidUriRoot, svrSubParts);
+#else
+        return GetFilesAndFoldersDataWindows(PathFromRootAndSubParts(fullPathTopDir, svrSubParts),
+                SearchOption.TopDirectoryOnly);
+#endif
+    }
+
+
+
+    public static string PathFromRootAndSubParts(string fullPathRoot, string[] subParts)
+    {
+#if ANDROID
+        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        return "JEEWEE";
+#else
+        string path = fullPathRoot;
+        foreach (string subPathPart in subParts)
+            path = Path.Combine(path, subPathPart);
+        return path;
+#endif
+    }
+
+
 }

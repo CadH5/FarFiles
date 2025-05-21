@@ -84,7 +84,10 @@ namespace FarFiles.Model
             _seqNr = 0;
 
             _navLevels.Clear();
-            _navLevels.Add(new NavLevel(pathOnSvr, relPathOnClient,
+            //JEEWEE
+            //_navLevels.Add(new NavLevel(pathOnSvr, relPathOnClient,
+            //        folderNamesToCopy, fileNamesToCopy));
+            _navLevels.Add(new NavLevel(_settings, svrSubParts,
                     folderNamesToCopy, fileNamesToCopy));
         }
 
@@ -402,10 +405,12 @@ namespace FarFiles.Model
 
         protected class NavLevel
         {
+            protected FileDataService _fileDataService;
+            protected Settings _settings;
             //JEEWEE
-            //public NavLevel[] Children { get; set; } = new NavLevel[0];
-            public string PathOnSvr { get; protected set; }
-            public string RelPathOnClient { get; protected set; }
+            //public string PathOnSvr { get; protected set; }
+            //public string RelPathOnClient { get; protected set; }
+            public string[] SvrSubParts { get; protected set; }
             public string[] FileNames { get; protected set; }
             public string[] FolderNames { get; protected set; }
             public int CurrIdxFiles { get; set; } = 0;
@@ -415,21 +420,34 @@ namespace FarFiles.Model
             /// <summary>
             /// Class to contain folders and files to copy, at one level only
             /// </summary>
-            /// <param name="pathOnSvr"></param>
-            /// <param name="relPathOnClient"></param>
             /// <param name="folderNamesSelection">if null, then all folders in path</param>
             /// <param name="fileNamesSelection">if null, then all files in path</param>
-            public NavLevel(string pathOnSvr, string relPathOnClient,
+            //JEEWEE
+            //public NavLevel(string pathOnSvr, string relPathOnClient,
+            //        string[] folderNamesSelection = null, string[] fileNamesSelection = null)
+            public NavLevel(FileDataService fileDataService, Settings settings, string[] svrSubParts,
                     string[] folderNamesSelection = null, string[] fileNamesSelection = null)
             {
-                PathOnSvr = pathOnSvr;
-                RelPathOnClient = relPathOnClient;
-                FolderNames = folderNamesSelection ??
-                    Directory.GetDirectories(PathOnSvr).Select(f => Path.GetFileName(f)).ToArray(); ;
-                FileNames = fileNamesSelection ??
-                    Directory.GetFiles(PathOnSvr).Select(f => Path.GetFileName(f)).ToArray();
-            }
+                _fileDataService = fileDataService;
+                _settings = settings;
+                SvrSubParts = svrSubParts;
+                //JEEWEE
+                //PathOnSvr = pathOnSvr;
+                //RelPathOnClient = relPathOnClient;
 
+                //JEEWEE
+                //FolderNames = folderNamesSelection ??
+                //    Directory.GetDirectories(PathOnSvr).Select(f => Path.GetFileName(f)).ToArray(); ;
+                //FileNames = fileNamesSelection ??
+                //    Directory.GetFiles(PathOnSvr).Select(f => Path.GetFileName(f)).ToArray();
+
+                FolderNames = folderNamesSelection ??
+                    _fileDataService.GetDirFolderNamesGeneric(settings.FullPathRoot,
+                            settings.AndroidUriRoot, svrSubParts);
+                FileNames = fileNamesSelection ??
+                    _fileDataService.GetDirFileNamesGeneric(settings.FullPathRoot,
+                            settings.AndroidUriRoot, svrSubParts);
+            }
         }
     }
 }

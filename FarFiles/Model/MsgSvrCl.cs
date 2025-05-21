@@ -262,6 +262,16 @@ namespace FarFiles.Model
             return fileNames;
         }
 
+
+
+        public static void CopyBytesToList(List<byte> lisBytes, int startIdxInLis, byte[] from)
+        {
+            int idx = startIdxInLis;
+            foreach (byte b in from)
+            {
+                lisBytes[idx++] = b;
+            }
+        }
     }
 
 
@@ -401,58 +411,61 @@ namespace FarFiles.Model
     /// </summary>
     public class MsgSvrClPathInfoAnswer : MsgSvrClBase
     {
-        public MsgSvrClPathInfoAnswer(PathInfoAnswerState pathInfoAnswerState)
+        public int SeqNr
+        {
+            get =>
+                BitConverter.ToInt32(Bytes, 4);
+        }
+
+        public MsgSvrClPathInfoAnswer(int seqNr, PathInfoAnswerState pathInfoAnswerState)
             : base(MsgSvrClType.PATHINFO_ANS)
         {
+            int numFolders = 0;
+            int numFiles = 0;
+
             var lisBytes = Bytes.ToList();
-            lisBytes.AddRange(BitConverter.GetBytes(pathInfoAnswerState.SeqNrAnswer++));
+            lisBytes.AddRange(BitConverter.GetBytes(seqNr));
 
-            for (int ff=0; ff < 2; ff++)
+            int idxNumFiles = -1;
+            int idxNumFolders = lisBytes.Count;
+            lisBytes.AddRange(BitConverter.GetBytes(0));    // temp number 0 will be replaced
+
+            bool prevIsDir = true;
+            while (pathInfoAnswerState.GetNextFileOrFolder(out bool isDir,
+                            out string name, out long fileSize))
             {
-                if (0 == ff && 1 == pathInfoAnswerState.Idx0isFolders1isFiles)
+                if (prevIsDir && ! isDir)
                 {
-                    AddNumAndStringsToLisBytes(lisBytes, new string[0]);    // 0 folders
-                    continue;
+                    // Start of files section
+                    idxNumFiles = lisBytes.Count;
+                    lisBytes.AddRange(BitConverter.GetBytes(0));    // temp number 0 will be replaced
                 }
 
-                string[] strs = 0 == ff ? pathInfoAnswerState.FolderNames :
-                    pathInfoAnswerState.FileNames;
-
-                int idxNumberOf = lisBytes.Count;
-                lisBytes.AddRange(BitConverter.GetBytes(0));    // temp number
-                int numberOf = 0;
-                while (true)
+                if (!isDir)
                 {
-                    if (pathInfoAnswerState.IdxInArray >= strs.Length)
-                        break;
-                    if (lisBytes.Count >= BUFSIZEMOREORLESS)
-                        break;
-                    if (1 == ff)
-                    {
-                        lisBytes.AddRange(BitConverter.GetBytes(
-                                pathInfoAnswerState.FileSizes[
-                                pathInfoAnswerState.IdxInArray]));
-                    }
-                    lisBytes.AddRange(StrPlusLenToBytes(
-                            strs[pathInfoAnswerState.IdxInArray++]));
-                    numberOf++;
+                    numFiles++;
+                    lisBytes.AddRange(BitConverter.GetBytes(fileSize));
                 }
-                // overwrite tempNumberOf, copy from Array to List:
-                foreach (byte b in BitConverter.GetBytes(numberOf))
+                else
                 {
-                    lisBytes[idxNumberOf++] = b;
+                    numFolders++;
                 }
+                lisBytes.AddRange(StrPlusLenToBytes(name));
 
-                if (pathInfoAnswerState.IdxInArray >= strs.Length &&
-                        0 == pathInfoAnswerState.Idx0isFolders1isFiles)
-                {
-                    pathInfoAnswerState.Idx0isFolders1isFiles = 1;
-                    pathInfoAnswerState.IdxInArray = 0;
-                }
-
+                prevIsDir = isDir;
                 if (lisBytes.Count >= BUFSIZEMOREORLESS)
                     break;
             }
+
+            if (-1 == idxNumFiles)      // only folders
+            {
+                idxNumFiles = lisBytes.Count;
+                lisBytes.AddRange(BitConverter.GetBytes(0));    // temp number 0 will be replaced
+            }
+
+            // overwrite temp numbers:
+            CopyBytesToList(lisBytes, idxNumFolders, BitConverter.GetBytes(numFolders));
+            CopyBytesToList(lisBytes, idxNumFiles, BitConverter.GetBytes(numFiles));
 
             // isLast:
             lisBytes.AddRange(BitConverter.GetBytes(pathInfoAnswerState.EndReached));
