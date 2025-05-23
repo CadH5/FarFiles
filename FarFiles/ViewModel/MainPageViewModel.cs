@@ -251,9 +251,9 @@ public partial class MainPageViewModel : BaseViewModel
             "file41 64567 56756756 56588568 4685588 54788",
         };
         MauiProgram.Info.CurrSvrFolders = folderNames.Order().Select(
-            f => new FileOrFolderData(f, true, false)).ToArray();
+            f => new FileOrFolderData(f, true, 0)).ToArray();
         MauiProgram.Info.CurrSvrFiles = fileNames.Order().Select(
-            f => new FileOrFolderData(f, false, false)).ToArray();
+            f => new FileOrFolderData(f, false, 0)).ToArray();
         await Shell.Current.GoToAsync(nameof(ClientPage), true);
     }
 
@@ -273,7 +273,7 @@ public partial class MainPageViewModel : BaseViewModel
 
         //JWdP 20250507 Introduced "unittests", to be executed from this button if incommented
         //====================================================================================
-        //await MauiProgram.Tests.DoTestsAsync(_fileDataService);
+        //await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
         //return;
         //====================================================================================
 
@@ -430,10 +430,10 @@ public partial class MainPageViewModel : BaseViewModel
         }
 
         MauiProgram.Info.CurrSvrFolders = lisFolders.Order().Select(
-            f => new FileOrFolderData(f, true, false)).ToArray();
+            f => new FileOrFolderData(f, true, 0)).ToArray();
         int i = 0;
         MauiProgram.Info.CurrSvrFiles = lisFiles.Select(
-            f => new FileOrFolderData(f, false, false, lisSizes[i++]))
+            f => new FileOrFolderData(f, false, lisSizes[i++]))
             .OrderBy(f => f.Name)
             .ToArray();
     }
@@ -617,7 +617,7 @@ public partial class MainPageViewModel : BaseViewModel
                             Settings.AndroidUriRoot,
                             ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
 #else
-                string path = Settings.PathFromRootAndSubParts(
+                string path = Settings.PathFromRootAndSubPartsWindows(
                             ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
                 FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataWindows(
                             path, SearchOption.TopDirectoryOnly);

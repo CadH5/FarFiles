@@ -18,10 +18,10 @@ namespace FarFiles.Model
         protected FileDataService _fileDataService;
 
 
-        public async Task DoTestsAsync(FileDataService fileDataService)
+        public async Task DoTestsWindowsAsync(FileDataService fileDataService)
         {
 #if ANDROID
-            throw new Exception("DoTestsAsync: not for Android!");
+            throw new Exception("DoTestsWindowsAsync: not for Android!");
 #endif
 
             _fileDataService = fileDataService;
@@ -276,9 +276,9 @@ namespace FarFiles.Model
                 if (!testPath.StartsWith(@"C:\temp\_FARFILES"))
                     throw new Exception("IS IT CORRECT TO DELETE ALL FROM " + testPath);
 
-                var errMsgs = _fileDataService.DeleteDirPlusSubdirsPlusFiles(testPath);
-                AssertEq(wrLog, 0, errMsgs.Length, "Num errMsgs DeleteDirPlusSubdirsPlusFiles");
-                LogErrMsgsIfAny(wrLog, "ErrMsgs DeleteDirPlusSubdirsPlusFiles:", errMsgs);
+                var errMsgs = _fileDataService.DeleteDirPlusSubdirsPlusFilesWindows(testPath);
+                AssertEq(wrLog, 0, errMsgs.Length, "Num errMsgs DeleteDirPlusSubdirsPlusFilesWindows");
+                LogErrMsgsIfAny(wrLog, "ErrMsgs DeleteDirPlusSubdirsPlusFilesWindows:", errMsgs);
 
                 string testPathSvr = Path.Combine(testPath, "Svr");
                 var settingsSvr = new Settings()
@@ -286,7 +286,7 @@ namespace FarFiles.Model
                     FullPathRoot = testPathSvr,
                 };
                 var clientSvrPathParts = new List<string> { "aa", "bb" };
-                string topDirOnSvr = settingsSvr.PathFromRootAndSubParts(
+                string topDirOnSvr = settingsSvr.PathFromRootAndSubPartsWindows(
                                     clientSvrPathParts.ToArray());
                 Directory.CreateDirectory(topDirOnSvr);
                 Directory.CreateDirectory(Path.Combine(topDirOnSvr, "sub1"));

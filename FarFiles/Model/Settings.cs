@@ -24,9 +24,9 @@ namespace FarFiles.Model
         public int TimeoutSecsClient { get; set; } = 20;
 
 
-        public string PathFromRootAndSubParts(string[] subParts)
+        public string PathFromRootAndSubPartsWindows(string[] subParts)
         {
-            return FileDataService.PathFromRootAndSubParts(FullPathRoot, subParts);
+            return FileDataService.PathFromRootAndSubPartsWindows(FullPathRoot, subParts);
 
 //JEEWEE
 //#if ANDROID

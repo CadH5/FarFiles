@@ -79,15 +79,16 @@ namespace FarFiles.Model
             CloseThings();
             copyRequest.GetSvrSubPartsAndFolderAndFileNames(out string[] svrSubParts,
                 out string[] folderNamesToCopy, out string[] fileNamesToCopy);
-            string pathOnSvr = _settings.PathFromRootAndSubParts(svrSubParts);
-            string relPathOnClient = "";
+            //JEEWEE
+            //string pathOnSvr = _settings.PathFromRootAndSubParts(svrSubParts);
+            //string relPathOnClient = "";
             _seqNr = 0;
 
             _navLevels.Clear();
             //JEEWEE
             //_navLevels.Add(new NavLevel(pathOnSvr, relPathOnClient,
             //        folderNamesToCopy, fileNamesToCopy));
-            _navLevels.Add(new NavLevel(_settings, svrSubParts,
+            _navLevels.Add(new NavLevel(_fileDataService, _settings, svrSubParts,
                     folderNamesToCopy, fileNamesToCopy));
         }
 
@@ -100,10 +101,6 @@ namespace FarFiles.Model
         {
             try
             {
-                //JEEWEE
-                //if (_bufSvrBytesCompressPos < _rdBytesCompress.Length)
-                //    CopyToMsgBufUntilFull(_rdBytesCompress, ref _bufSvrBytesCompressPos);
-
                 bool isLastPart = false;
                 NavLevel currNavLevel = _navLevels.Last();
                 _bufSvrMsg.Clear();
@@ -137,10 +134,16 @@ namespace FarFiles.Model
                         try
                         {
                             fileName = currNavLevel.FileNames[currNavLevel.CurrIdxFiles];
-                            string fullPath = Path.Combine(currNavLevel.PathOnSvr, fileName);
-                            var fData = new FileOrFolderData(fullPath, false, true);
-                            _reader = new BinaryReader(File.Open(fullPath,
-                                        FileMode.Open, FileAccess.Read));
+                            _reader = _fileDataService.OpenBinaryReaderGeneric(
+                                    _settings.FullPathRoot, _settings.AndroidUriRoot,
+                                    currNavLevel.SvrSubParts, fileName,
+                                    out FileOrFolderData fData);
+
+                            //JEEWEE
+                            //string fullPath = Path.Combine(currNavLevel.PathOnSvr, fileName);
+                            //var fData = new FileOrFolderData(fullPath, false, true);
+                            //_reader = new BinaryReader(File.Open(fullPath,
+                            //            FileMode.Open, FileAccess.Read));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.FILE));
                             _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(fileName));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.FileSize));
@@ -153,7 +156,7 @@ namespace FarFiles.Model
                         {
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
                             _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
-                                $"Error with copy '{currNavLevel.RelPathOnClient}', file '{fileName}': {exc.Message}"));
+                                $"Error with copy '{currNavLevel.JoinedSubParts}', file '{fileName}': {exc.Message}"));
                         }
                         currNavLevel.CurrIdxFiles++;
                     }
@@ -167,16 +170,24 @@ namespace FarFiles.Model
                         {
                             folderName = currNavLevel.FolderNames[currNavLevel.CurrIdxFolders];
                             currNavLevel.CurrIdxFolders++;
-                            string fullPathOnSvr = Path.Combine(currNavLevel.PathOnSvr, folderName);
-                            string relPathOnClient = Path.Combine(currNavLevel.RelPathOnClient, folderName);
-
-                            var fData = new FileOrFolderData(fullPathOnSvr, true, true);
+                            //JEEWEE
+                            //string fullPathOnSvr = Path.Combine(currNavLevel.PathOnSvr, folderName);
+                            //string relPathOnClient = Path.Combine(currNavLevel.RelPathOnClient, folderName);
+                            //var fData = new FileOrFolderData(fullPathOnSvr, true, true);
+                            
+                            var fData = _fileDataService.NewFileOrFolderDataGeneric(_settings.FullPathRoot,
+                                    _settings.AndroidUriRoot, currNavLevel.SvrSubParts, folderName, true);
+                            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! fData may contain only exception, what then?
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.FOLDER));
-                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(relPathOnClient));
+                            //JEEWEE
+                            //_bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(relPathOnClient));
+                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(currNavLevel.JoinedSubParts));
+
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.DtCreation.ToBinary()));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.DtLastWrite.ToBinary()));
 
-                            _navLevels.Add(new NavLevel(fullPathOnSvr, relPathOnClient));
+                            _navLevels.Add(new NavLevel(_fileDataService, _settings,
+                                    AddOneToArray(currNavLevel.SvrSubParts, folderName)));
                             navlvAdded = true;
 
                             // no exception, so:
@@ -186,7 +197,7 @@ namespace FarFiles.Model
                         {
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
                             _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
-                                $"Error with copy '{currNavLevel.RelPathOnClient}', folder '{folderName}': {exc.Message}"));
+                                $"Error with copy '{currNavLevel.JoinedSubParts}', folder '{folderName}': {exc.Message}"));
                             if (navlvAdded)
                                 _navLevels.RemoveAt(_navLevels.Count - 1);
                         }
@@ -229,6 +240,7 @@ namespace FarFiles.Model
         {
             msgSvrClAnswer.GetSeqnrAndIslastAndData(out int seqNr, out bool isLast,
                                 out byte[] data);
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NOT YET ANDROID
             //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! CHECK ON _seqNr
             //AND HASH, AND FILESIZE
 
@@ -403,6 +415,17 @@ namespace FarFiles.Model
 
 
 
+        public static T[] AddOneToArray<T>(IEnumerable<T> source, T add)
+        {
+            var retList = source.ToList();
+            retList.Add(add);
+            return retList.ToArray();
+        }
+
+
+        /// <summary>
+        /// Class for serverside
+        /// </summary>
         protected class NavLevel
         {
             protected FileDataService _fileDataService;
@@ -416,6 +439,11 @@ namespace FarFiles.Model
             public int CurrIdxFiles { get; set; } = 0;
             public int CurrIdxFolders { get; set; } = 0;
 
+
+            public string PathOnSvrWindows { get => _settings.PathFromRootAndSubPartsWindows(
+                        SvrSubParts);
+            }
+            public string JoinedSubParts { get => String.Join("/", SvrSubParts); }
 
             /// <summary>
             /// Class to contain folders and files to copy, at one level only

@@ -35,7 +35,7 @@ public partial class ClientViewModel : BaseViewModel
         FileOrFolderColl.Clear();
 
         if (MauiProgram.Info.SvrPathParts.Count > 0)
-            FileOrFolderColl.Add(new FileOrFolderData("..", true, false));
+            FileOrFolderColl.Add(new FileOrFolderData("..", true, 0));
 
         foreach (FileOrFolderData fo in MauiProgram.Info.CurrSvrFolders)
             FileOrFolderColl.Add(fo);
