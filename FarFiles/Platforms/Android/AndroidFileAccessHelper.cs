@@ -16,14 +16,14 @@ namespace FarFiles.Platforms.Android
     {
         protected DocumentFile? _uriDir = null;
 
-        public List<string> ListFilesInUriAndSubpath(global::Android.Net.Uri androidUri,
+        public List<DocumentFile> ListDocumentFilesInUriAndSubpath(global::Android.Net.Uri androidUri,
                     string[] dirNamesSubPath, bool forDirs)
         {
-            List<string> fileOrDirNames = new();
+            List<DocumentFile> fileOrDirDocusOrNull = new();
 
-            UriAndSubpathCore(androidUri, dirNamesSubPath, forDirs, fileOrDirNames, null);
+            UriAndSubpathCore(androidUri, dirNamesSubPath, forDirs, fileOrDirDocusOrNull, null);
 
-            return fileOrDirNames;
+            return fileOrDirDocusOrNull;
         }
 
 
@@ -50,14 +50,26 @@ namespace FarFiles.Platforms.Android
             catch (Exception exc)
             {
                 throw new InvalidOperationException("Exception trying to read " +
-                        FileDataService.DispRelPath(dirNamesSubPath, fileOrFolderName) +
+                        FileDataService.DispRelPath(dirNamesSubPath, fileName) +
                         ": " + exc.Message);
             }
         }
 
+
+        /// <summary>
+        /// Core for various methods. Returns Android DocumentFile,
+        /// or null if searchFileOrFolderNameOrNull is null or not found 
+        /// </summary>
+        /// <param name="androidUri"></param>
+        /// <param name="dirNamesSubPath"></param>
+        /// <param name="forDirs"></param>
+        /// <param name="fileOrDirDocusOrNull">if non-null, file or folder DoucumentFile's are added</param>
+        /// <param name="searchFileOrFolderNameOrNull">null if only fileOrDirNamesOrNull intended </param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         protected DocumentFile UriAndSubpathCore(global::Android.Net.Uri androidUri,
                 string[] dirNamesSubPath, bool forDirs,
-                List<string> fileOrDirNamesOrNull, string fileOrFolderNameOrNull)
+                List<DocumentFile> fileOrDirDocusOrNull, string searchFileOrFolderNameOrNull)
         {
             if (null == _uriDir)
             {
@@ -76,7 +88,7 @@ namespace FarFiles.Platforms.Android
                 DocumentFile subDir = fileOrFolders.Where(f => f.Name == dirName).FirstOrDefault();
                 if (subDir == null)
                     throw new Exception(
-                        $"ListFilesInUriAndSubpath: error finding sub path '{logErrPath}'");
+                        $"ListDocumentFilesInUriAndSubpath: error finding sub path '{logErrPath}'");
                 fileOrFolders = subDir.ListFiles();
             }
 
@@ -85,10 +97,10 @@ namespace FarFiles.Platforms.Android
                 if (forDirs && f.IsDirectory ||
                     !forDirs && f.IsFile)
                 {
-                    if (f.Name == fileOrFolderNameOrNull)
+                    if (f.Name == searchFileOrFolderNameOrNull)
                         return f;
-                    if (null != fileOrDirNamesOrNull)
-                        fileOrDirNamesOrNull.Add(f.Name);
+                    if (null != fileOrDirDocusOrNull)
+                        fileOrDirDocusOrNull.Add(f);
                 }
             }
 

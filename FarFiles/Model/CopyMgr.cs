@@ -39,6 +39,9 @@ namespace FarFiles.Model
         protected BinaryWriter _writer = null;
         protected BinaryReader _reader = null;
         protected const int REMAININGLIMIT = 100;
+
+        //protected const int _bufSizeMoreOrLessJEEWEE = 2000;    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
         protected int _bufSizeMoreOrLess = MsgSvrClBase.BUFSIZEMOREORLESS;
         protected int _remainingLimit = REMAININGLIMIT;
         protected List<byte> _bufSvrMsg = new List<byte>();
@@ -61,6 +64,7 @@ namespace FarFiles.Model
         public int NumFilesCreated { get; protected set; } = 0;
         public int NumFilesOverwritten { get; protected set; } = 0;
         public int NumFilesSkipped { get; protected set; } = 0;
+        public int NumDtProblems { get; protected set; } = 0;
         public int NumErrs { get; protected set; } = 0;
         public List<string> ErrMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
 
@@ -92,6 +96,9 @@ namespace FarFiles.Model
                     folderNamesToCopy, fileNamesToCopy));
         }
 
+        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        private int GetSafeBufSize() => _bufSizeMoreOrLess;
+
 
         /// <summary>
         /// Returns a MsgSvrClCopyAnswer or a MsgSvrClErrorAnswer
@@ -104,9 +111,35 @@ namespace FarFiles.Model
                 bool isLastPart = false;
                 NavLevel currNavLevel = _navLevels.Last();
                 _bufSvrMsg.Clear();
-                int numRemaining = _bufSizeMoreOrLess;
+                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PROBLEM
+                //int numRemaining = _bufSizeMoreOrLess;
+                //int numRemaining = new int();
+                int numRemaining = new int();
+
+                //JEEWEE
+                //System.Diagnostics.Debug.WriteLine(
+                //    $"DEBUG  : numRemaining (new int()): {numRemaining}");
+                Console.WriteLine(
+                    $"CONSOLE: numRemaining (new int()): {numRemaining}");
+
+                //JEEWEE
+                Console.WriteLine($"CONSOLE: GetSafeBufSize(): {GetSafeBufSize()}");
+                numRemaining = GetSafeBufSize();
+                int numRemainingJEEWEE = _bufSizeMoreOrLess;
+
+                //JEEWEE
+                //System.Diagnostics.Debug.WriteLine(
+                //    $"DEBUG  : _bufSizeMoreOrLess: {_bufSizeMoreOrLess}, numRemaining: {numRemaining}, numRemainingJEEWEE: {numRemainingJEEWEE}");
+                Console.WriteLine(
+                    $"CONSOLE: _bufSizeMoreOrLess: {_bufSizeMoreOrLess}, numRemaining: {numRemaining}, numRemainingJEEWEE: {numRemainingJEEWEE}");
+
+                bool JEEWEEthrowExc = numRemaining - _bufSizeMoreOrLess != 0;
                 while (numRemaining > 0)
                 {
+
+                    Console.WriteLine(
+                        $"CONSOLE: JEEWEE: In while loop, numRemaining: {numRemaining}");
+
                     if (null != _reader)
                     {
                         if (numRemaining < _remainingLimit)
@@ -124,6 +157,9 @@ namespace FarFiles.Model
                         {
                             _reader.Close();
                             _reader = null;
+
+                            Console.WriteLine(
+                                $"CONSOLE: JEEWEE: reader closed");
                         }
                     }
 
@@ -207,6 +243,9 @@ namespace FarFiles.Model
                         _navLevels.RemoveAt(_navLevels.Count - 1);
                         if (_navLevels.Count == 0)
                         {
+                            Console.WriteLine(
+                                $"CONSOLE: JEEWEE: isLastPart = true");
+
                             isLastPart = true;
                             this.Dispose();
                             break;
@@ -216,7 +255,21 @@ namespace FarFiles.Model
                     }
 
                     numRemaining = _bufSizeMoreOrLess - _bufSvrMsg.Count;
+
+                    Console.WriteLine(
+                        $"CONSOLE: JEEWEE: numRemaining now: {numRemaining}");
                 }
+
+                Console.WriteLine(
+                    $"CONSOLE: JEEWEE: JEEWEEthrowExc: {JEEWEEthrowExc}");
+
+                if (JEEWEEthrowExc)
+                {
+                    throw new Exception("JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! weird thing happened");
+                }
+
+                Console.WriteLine(
+                    $"CONSOLE: JEEWEE: MsgSvrClCopyAnswer sent: _bufSvrMsg.Count={_bufSvrMsg.Count}, _seqNr={_seqNr}, isLastPart={isLastPart}");
 
                 return new MsgSvrClCopyAnswer(_seqNr++, isLastPart, _bufSvrMsg.ToArray());
             }
@@ -249,6 +302,9 @@ namespace FarFiles.Model
                 _currPathOnClient = _settings.FullPathRoot;
             }
 
+            if (data.Length < sizeof(short))
+                return isLast;
+
             int idxData = 0;
             while (true)
             {
@@ -263,18 +319,24 @@ namespace FarFiles.Model
                         break;
 
                     case (short)StartCode.FOLDER:
-                        string relPathOnClient = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
+                        string joinedPartsRelPathOnClient = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
+                        string[] partsRelPathOnClient = joinedPartsRelPathOnClient.Split('/'); 
                         DateTime dtCreation = DateTime.FromBinary(BitConverter.ToInt64(data, idxData));
                         idxData += sizeof(long);
                         DateTime dtLastWrite = DateTime.FromBinary(BitConverter.ToInt64(data, idxData));
                         idxData += sizeof(long);
 
-                        _currPathOnClient = Path.Combine(_settings.FullPathRoot, relPathOnClient);
+#if ANDROID
+                        _currPathOnClient = "JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+#else
+                        _currPathOnClient = FileDataService.PathFromRootAndSubPartsWindows(
+                                _settings.FullPathRoot, partsRelPathOnClient);
+#endif
                         if (! Directory.Exists(_currPathOnClient))
                         {
                             Directory.CreateDirectory(_currPathOnClient);
-                            Directory.SetCreationTime(_currPathOnClient, dtCreation);
-                            Directory.SetLastWriteTime(_currPathOnClient, dtLastWrite);
+                            NumDtProblems += _fileDataService.SetDateTimesGeneric(_currPathOnClient,
+                                true, dtCreation, dtLastWrite);
                             NumFoldersCreated++;
                         }
                         break;
@@ -297,6 +359,9 @@ namespace FarFiles.Model
                             _writer.Close();
                         }
                         //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SUPPORT "KEEP"
+                        //NumFilesOverwritten, NumFilesSkipped
+                        NumFilesCreated++;
+                        
                         _writer = new BinaryWriter(File.Open(_currFileFullPathOnClient,
                                             FileMode.Create));
                         _fileSizeCounter = 0;
@@ -332,10 +397,8 @@ namespace FarFiles.Model
 
                             File.SetAttributes(_currFileFullPathOnClient,
                                             _currFileAttrsOnClient);
-                            File.SetCreationTime(_currFileFullPathOnClient,
-                                            _currFileDtCreationOnClient);
-                            File.SetLastWriteTime(_currFileFullPathOnClient,
-                                            _currFileDtLastWriteOnClient);
+                            NumDtProblems += _fileDataService.SetDateTimesGeneric(_currFileFullPathOnClient,
+                                false, _currFileDtCreationOnClient, _currFileDtLastWriteOnClient);
                         }
                         break;
 

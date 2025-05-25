@@ -1,6 +1,11 @@
-﻿using AndroidX.DocumentFile.Provider;
+﻿#if ANDROID
+using AndroidX.DocumentFile.Provider;
+#endif
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.Net.Http.Json;
+//JEEWEE
+//using static Java.Util.Jar.Attributes;
 
 namespace FarFiles.Services;
 
@@ -16,90 +21,91 @@ public class FileDataService
     }
 
 
-//JEEWEE
-//#if ANDROID
+#if ANDROID
 
-//    /// <summary>
-//    /// if Exception is thrown: returns array of one member with non-null ExcThrown 
-//    /// </summary>
-//    /// <param name="androidUriRoot"></param>
-//    /// <param name="dirNamesSubPath"></param>
-//    /// <returns></returns>
-//    public FileOrFolderData[] GetFilesAndFoldersDataAndroid(Android.Net.Uri androidUriRoot,
-//            string[] dirNamesSubPath)
-//    {
-//        List<Model.FileOrFolderData> dataList = new();
+    /// <summary>
+    /// if Exception is thrown: returns array of one member with non-null ExcThrown 
+    /// </summary>
+    /// <param name="androidUriRoot"></param>
+    /// <param name="dirNamesSubPath"></param>
+    /// <returns></returns>
+    public FileOrFolderData[] GetFilesAndFoldersDataAndroid(Android.Net.Uri androidUriRoot,
+            string[] dirNamesSubPath)
+    {
+        List<Model.FileOrFolderData> dataList = new();
 
-//        try
-//        {
-//            string[] namesSubdirs = _androidFileAccessHelper.ListFilesInUriAndSubpath(
-//                        androidUriRoot, dirNamesSubPath, true).ToArray();
-//            string[] namesFiles = _androidFileAccessHelper.ListFilesInUriAndSubpath(
-//                        androidUriRoot, dirNamesSubPath, false).ToArray();
+        try
+        {
+            DocumentFile[] docusSubdirs = _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
+                        androidUriRoot, dirNamesSubPath, true).ToArray();
+            DocumentFile[] docusFiles = _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
+                        androidUriRoot, dirNamesSubPath, false).ToArray();
 
-//            for (int i = 0; i < 2; i++)
-//            {
-//                string[] names = (i == 0 ? namesSubdirs : namesFiles);
-//                foreach (string name in names)
-//                {
-//                    dataList.Add(new FileOrFolderData(name, i == 0, true));
-//                }
-//            }
-//        }
-//        catch (Exception exc)
-//        {
-//            return new FileOrFolderData[] { new FileOrFolderData(exc) };
-//        }
+            for (int i = 0; i < 2; i++)
+            {
+                DocumentFile[] docus = (i == 0 ? docusSubdirs : docusFiles);
+                foreach (DocumentFile docu in docus)
+                {
+                    dataList.Add(NewFileOrFolderDataAndroid(docu));
+                }
+            }
+        }
+        catch (Exception exc)
+        {
+            return new FileOrFolderData[] { new FileOrFolderData(exc) };
+        }
 
-//        return dataList.ToArray();
-//    }
+        return dataList.ToArray();
+    }
 
-//#else
+#else
 
-//    /// <summary>
-//    /// if Exception is thrown: returns array of one member with non-null ExcThrown 
-//    /// </summary>
-//    public FileOrFolderData[] GetFilesAndFoldersDataWindows(string fullRootPath,
-//            SearchOption searchOption)
-//    {
-//        List<Model.FileOrFolderData> dataList = new();
+    /// <summary>
+    /// if Exception is thrown: returns array of one member with non-null ExcThrown 
+    /// </summary>
+    public FileOrFolderData[] GetFilesAndFoldersDataWindows(string fullRootPath,
+            SearchOption searchOption)
+    {
+        List<Model.FileOrFolderData> dataList = new();
 
-//        try
-//        {
-//            string[] fullPathSubdirs = Directory.GetDirectories(fullRootPath);
-//            string[] fullPathFiles = Directory.GetFiles(fullRootPath, "*", SearchOption.TopDirectoryOnly);
+        try
+        {
+            string[] fullPathSubdirs = Directory.GetDirectories(fullRootPath);
+            string[] fullPathFiles = Directory.GetFiles(fullRootPath, "*", SearchOption.TopDirectoryOnly);
+            string[] dummySubPathParts = new string[0];
 
+            for (int i = 0; i < 2; i++)
+            {
+                string[] fullPaths = (i == 0 ? fullPathSubdirs : fullPathFiles);
+                foreach (string fullPath in fullPaths)
+                {
+                    dataList.Add(NewFileOrFolderDataGeneric(Path.GetDirectoryName(fullPath),
+                            null, dummySubPathParts, Path.GetFileName(fullPath),
+                            i == 0));
+                }
+            }
 
-//            for (int i = 0; i < 2; i++)
-//            {
-//                string[] fullPaths = (i == 0 ? fullPathSubdirs : fullPathFiles);
-//                foreach (string fullPath in fullPaths)
-//                {
-//                    dataList.Add(new FileOrFolderData(fullPath, i == 0, true));
-//                }
-//            }
+            //JEEWEE
+            ////JEEWEE NOT SUPPORTED YET ON ANDROID,
+            ////how to get an uri for a subdir (but actually for this app we dont need AllDirectories)
+            //if (searchOption == SearchOption.AllDirectories)
+            //{
+            //    foreach (FileOrFolderData fileOrFolderData in dataList.Where(d => d.IsDir))
+            //    {
+            //        fileOrFolderData.Children_NullIfFile = GetFilesAndFoldersDataWindows(
+            //                Path.Combine(fullRootPath, fileOrFolderData.Name),
+            //                searchOption);
+            //    }
+            //}
+        }
+        catch (Exception exc)
+        {
+            return new FileOrFolderData[] { new FileOrFolderData(exc) };
+        }
 
-//            //JEEWEE
-//            ////JEEWEE NOT SUPPORTED YET ON ANDROID,
-//            ////how to get an uri for a subdir (but actually for this app we dont need AllDirectories)
-//            //if (searchOption == SearchOption.AllDirectories)
-//            //{
-//            //    foreach (FileOrFolderData fileOrFolderData in dataList.Where(d => d.IsDir))
-//            //    {
-//            //        fileOrFolderData.Children_NullIfFile = GetFilesAndFoldersDataWindows(
-//            //                Path.Combine(fullRootPath, fileOrFolderData.Name),
-//            //                searchOption);
-//            //    }
-//            //}
-//        }
-//        catch (Exception exc)
-//        {
-//            return new FileOrFolderData[] { new FileOrFolderData(exc) };
-//        }
-
-//        return dataList.ToArray();
-//    }
-//#endif
+        return dataList.ToArray();
+    }
+#endif
 
 
 
@@ -159,11 +165,14 @@ public class FileDataService
                 string[] svrSubParts)
     {
 #if ANDROID
-        return _androidFileAccessHelper.ListFilesInUriAndSubpath(
-                    (Android.Net.Uri)androidUriRoot, svrSubParts, true).ToArray();
+        return _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
+                    (Android.Net.Uri)androidUriRoot, svrSubParts, true)
+                        .Select(d => d.Name)
+                        .ToArray();
 #else
         return Directory.GetDirectories(PathFromRootAndSubPartsWindows(fullPathTopDir, svrSubParts))
-                .Select(d => Path.GetFileName(d)).ToArray();
+                        .Select(d => Path.GetFileName(d))
+                        .ToArray();
 #endif
     }
 
@@ -171,8 +180,10 @@ public class FileDataService
                 string[] svrSubParts)
     {
 #if ANDROID
-        return _androidFileAccessHelper.ListFilesInUriAndSubpath(
-                    (Android.Net.Uri)androidUriRoot, svrSubParts, false).ToArray();
+        return _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
+                    (Android.Net.Uri)androidUriRoot, svrSubParts, false)
+                        .Select(d => d.Name)
+                        .ToArray();
 #else
         return Directory.GetFiles(PathFromRootAndSubPartsWindows(
                         fullPathTopDir, svrSubParts),
@@ -208,7 +219,7 @@ public class FileDataService
 
 #if ANDROID
         return _androidFileAccessHelper.GetBinaryReaderFromUriAndSubpath(
-                (Android.Net.Uri)androidUriRoot, svrSubParts, false, fileName);
+                (Android.Net.Uri)androidUriRoot, svrSubParts, fileName);
 #else
         string fullPathFile = Path.Combine(PathFromRootAndSubPartsWindows(
                         fullPathTopDir, svrSubParts), fileName);
@@ -234,6 +245,15 @@ public class FileDataService
     }
 
 
+#if ANDROID
+    public FileOrFolderData NewFileOrFolderDataAndroid(DocumentFile documentFile)
+    {
+        DateTime dt = new DateTime(documentFile.LastModified());
+        return new FileOrFolderData(documentFile.Name, documentFile.IsDirectory,
+                documentFile.Length(), FileAttributes.None, dt, dt);
+    }
+#endif
+
     public FileOrFolderData NewFileOrFolderDataGeneric(string fullPathTopDir,
             object androidUriRoot, string[] svrSubParts, string name,
             bool isDir)
@@ -243,11 +263,10 @@ public class FileDataService
 #if ANDROID
             DocumentFile documentFile = _androidFileAccessHelper.GetDocumentFileFromUriAndSubpath(
                         (Android.Net.Uri)androidUriRoot, svrSubParts, isDir, name);
-            DateTime dt = new DateTime(documentFile.LastModified());
-            return new FileOrFolderData(name, isDir, documentFile.Length(),
-                        FileAttributes.None, dt, dt);
+            return NewFileOrFolderDataAndroid(documentFile);
 #else
-            string fullPath = PathFromRootAndSubPartsWindows(fullPathTopDir, svrSubParts);
+            string fullPath = Path.Combine(PathFromRootAndSubPartsWindows(
+                        fullPathTopDir, svrSubParts), name);
             return new FileOrFolderData(name, isDir,
                         isDir ? 0 : new FileInfo(fullPath).Length,
                         File.GetAttributes(fullPath),
@@ -258,6 +277,64 @@ public class FileDataService
         {
             return new FileOrFolderData(exc);
         }
+    }
+
+
+    public int SetDateTimesGeneric(string fullPathDirOrFile, bool isDir,
+                                DateTime dtCreation, DateTime dtLastWrite)
+    {
+        int numErrs = 0;
+        DateTime dtNow = DateTime.Now;
+
+#if ANDROID
+//JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#else
+
+        if (isDir)
+        {
+            try
+            {
+                Directory.SetCreationTime(fullPathDirOrFile, dtCreation);
+            }
+            catch
+            {
+                numErrs++;
+                Directory.SetCreationTime(fullPathDirOrFile, dtNow);
+            }
+            try
+            {
+                Directory.SetLastWriteTime(fullPathDirOrFile, dtCreation);
+            }
+            catch
+            {
+                numErrs++;
+                Directory.SetLastWriteTime(fullPathDirOrFile, dtNow);
+            }
+        }
+        else
+        {
+            try
+            {
+                File.SetCreationTime(fullPathDirOrFile, dtCreation);
+            }
+            catch
+            {
+                numErrs++;
+                File.SetCreationTime(fullPathDirOrFile, dtNow);
+            }
+            try
+            {
+                File.SetLastWriteTime(fullPathDirOrFile, dtCreation);
+            }
+            catch
+            {
+                numErrs++;
+                File.SetLastWriteTime(fullPathDirOrFile, dtNow);
+            }
+        }
+#endif
+
+        return numErrs;
     }
 
 
