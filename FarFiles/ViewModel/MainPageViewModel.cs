@@ -275,8 +275,8 @@ public partial class MainPageViewModel : BaseViewModel
         //====================================================================================
         //await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
         //return;
-        TestDebuggingBehavior();
-        return;
+        //TestDebuggingBehavior();
+        //return;
         //====================================================================================
 
         //OpenClientJEEWEE();
