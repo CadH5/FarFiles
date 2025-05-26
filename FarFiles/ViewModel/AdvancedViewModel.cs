@@ -61,6 +61,19 @@ public partial class AdvancedViewModel : BaseViewModel
         }
     }
 
+    public int BufSizeMoreOrLess
+    {
+        get => Settings.BufSizeMoreOrLess;
+        set
+        {
+            if (Settings.BufSizeMoreOrLess != value)
+            {
+                Settings.BufSizeMoreOrLess = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     [RelayCommand]
     void SetStunSipgate()
     {

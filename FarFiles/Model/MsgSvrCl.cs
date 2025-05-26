@@ -23,7 +23,7 @@ namespace FarFiles.Model
 
     public class MsgSvrClBase
     {
-        public const int BUFSIZEMOREORLESS = 2000;
+        public const int BUFSIZEMOREORLESS = 20000;
 
         public byte[] Bytes;
 

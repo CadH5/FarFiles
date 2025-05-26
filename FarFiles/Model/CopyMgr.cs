@@ -42,7 +42,8 @@ namespace FarFiles.Model
 
         //protected const int _bufSizeMoreOrLessJEEWEE = 2000;    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         
-        protected int _bufSizeMoreOrLess = MsgSvrClBase.BUFSIZEMOREORLESS;
+        //JEEWEE
+        //protected int _bufSizeMoreOrLess = MsgSvrClBase.BUFSIZEMOREORLESS;
         protected int _remainingLimit = REMAININGLIMIT;
         protected List<byte> _bufSvrMsg = new List<byte>();
         protected List<NavLevel> _navLevels = new List<NavLevel>();
@@ -69,12 +70,14 @@ namespace FarFiles.Model
         public List<string> ErrMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
 
         public CopyMgr(FileDataService fileDataService, Settings alternativeSettings = null,
-                int bufSizeMoreOrLess = MsgSvrClBase.BUFSIZEMOREORLESS,
+            //JEEWEE   
+            //int bufSizeMoreOrLess = MsgSvrClBase.BUFSIZEMOREORLESS,
                 int remainingLimit = REMAININGLIMIT)
         {
             _fileDataService = fileDataService;
             _settings = alternativeSettings ?? MauiProgram.Settings;
-            _bufSizeMoreOrLess = bufSizeMoreOrLess;
+            //JEEWEE
+            //_bufSizeMoreOrLess = bufSizeMoreOrLess;
             _remainingLimit = remainingLimit;
         }
 
@@ -95,10 +98,6 @@ namespace FarFiles.Model
             _navLevels.Add(new NavLevel(_fileDataService, _settings, svrSubParts,
                     folderNamesToCopy, fileNamesToCopy));
         }
-
-        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        private int GetSafeBufSize() => _bufSizeMoreOrLess;
-
 
         /// <summary>
         /// Returns a MsgSvrClCopyAnswer or a MsgSvrClErrorAnswer
@@ -122,18 +121,16 @@ namespace FarFiles.Model
                 Console.WriteLine(
                     $"CONSOLE: numRemaining (new int()): {numRemaining}");
 
-                //JEEWEE
-                Console.WriteLine($"CONSOLE: GetSafeBufSize(): {GetSafeBufSize()}");
-                numRemaining = GetSafeBufSize();
-                int numRemainingJEEWEE = _bufSizeMoreOrLess;
+                numRemaining = _settings.BufSizeMoreOrLess;
 
                 //JEEWEE
                 //System.Diagnostics.Debug.WriteLine(
                 //    $"DEBUG  : _bufSizeMoreOrLess: {_bufSizeMoreOrLess}, numRemaining: {numRemaining}, numRemainingJEEWEE: {numRemainingJEEWEE}");
-                Console.WriteLine(
-                    $"CONSOLE: _bufSizeMoreOrLess: {_bufSizeMoreOrLess}, numRemaining: {numRemaining}, numRemainingJEEWEE: {numRemainingJEEWEE}");
+                //Console.WriteLine(
+                //    $"CONSOLE: _bufSizeMoreOrLess: {_bufSizeMoreOrLess}, numRemaining: {numRemaining}, numRemainingJEEWEE: {numRemainingJEEWEE}");
 
-                bool JEEWEEthrowExc = numRemaining - _bufSizeMoreOrLess != 0;
+                //JEEWEE
+                //bool JEEWEEthrowExc = numRemaining - _bufSizeMoreOrLess != 0;
                 while (numRemaining > 0)
                 {
 
@@ -254,19 +251,20 @@ namespace FarFiles.Model
                         currNavLevel = _navLevels.Last();
                     }
 
-                    numRemaining = _bufSizeMoreOrLess - _bufSvrMsg.Count;
+                    numRemaining = _settings.BufSizeMoreOrLess - _bufSvrMsg.Count;
 
                     Console.WriteLine(
                         $"CONSOLE: JEEWEE: numRemaining now: {numRemaining}");
                 }
 
-                Console.WriteLine(
-                    $"CONSOLE: JEEWEE: JEEWEEthrowExc: {JEEWEEthrowExc}");
 
-                if (JEEWEEthrowExc)
-                {
-                    throw new Exception("JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! weird thing happened");
-                }
+                //JEEWEE
+                //Console.WriteLine(
+                //    $"CONSOLE: JEEWEE: JEEWEEthrowExc: {JEEWEEthrowExc}");
+                //if (JEEWEEthrowExc)
+                //{
+                //    throw new Exception("JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! weird thing happened");
+                //}
 
                 Console.WriteLine(
                     $"CONSOLE: JEEWEE: MsgSvrClCopyAnswer sent: _bufSvrMsg.Count={_bufSvrMsg.Count}, _seqNr={_seqNr}, isLastPart={isLastPart}");

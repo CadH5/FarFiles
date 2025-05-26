@@ -284,6 +284,7 @@ namespace FarFiles.Model
                 var settingsSvr = new Settings()
                 {
                     FullPathRoot = testPathSvr,
+                    BufSizeMoreOrLess = 200,
                 };
                 var clientSvrPathParts = new List<string> { "aa", "bb" };
                 string topDirOnSvr = settingsSvr.PathFromRootAndSubPartsWindows(
@@ -321,12 +322,11 @@ namespace FarFiles.Model
                 }
 
                 // Now the test:
-                int alterBufSizeMoreOrLess = 200;
                 int alterRemainingLimit = 40;
 
                 int prevSeqNr = -1;
                 var copyMgrSvr = new CopyMgr(_fileDataService, settingsSvr,
-                        alterBufSizeMoreOrLess, alterRemainingLimit);
+                        alterRemainingLimit);
                 var copyMgrClient = new CopyMgr(_fileDataService, settingsClient);
                 copyMgrSvr.StartCopyFromSvr(new MsgSvrClCopyRequest(clientSvrPathParts,
                         folderNamesToCopy, fileNamesToCopy));

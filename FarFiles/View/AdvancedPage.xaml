@@ -7,7 +7,7 @@
     Title="Advanced info and settings"
     x:DataType="viewmodel:AdvancedViewModel">
     <ScrollView BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
-        <Grid RowDefinitions="150,40,40,40,40"
+        <Grid RowDefinitions="150,40,40,40,40,40"
               ColumnDefinitions="200,*">
 
             <Editor Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" IsReadOnly="True"
@@ -41,6 +41,12 @@
                     Command="{Binding SetStunGoogleCommand}"
                     Style="{StaticResource ButtonOutline}"
                     Text="google" />
+            </StackLayout>
+            <Label Grid.Row="5" Grid.Column="0" IsVisible="{Binding SettingsSvrVis}"
+                Text="Buffer (default 20000 bytes):" VerticalTextAlignment="Center"></Label>
+            <StackLayout Orientation="Horizontal" Grid.Row="5" Grid.Column="1"
+                            IsVisible="{Binding SettingsSvrVis}">
+                <Entry Text="{Binding BufSizeMoreOrLess}"></Entry>
             </StackLayout>
 
             <!--Client settings:-->

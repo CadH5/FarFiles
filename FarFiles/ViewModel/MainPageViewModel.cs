@@ -275,8 +275,6 @@ public partial class MainPageViewModel : BaseViewModel
         //====================================================================================
         //await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
         //return;
-        //TestDebuggingBehavior();
-        //return;
         //====================================================================================
 
         //OpenClientJEEWEE();
@@ -832,41 +830,6 @@ public partial class MainPageViewModel : BaseViewModel
         //    Console.WriteLine($"Detected Public IP: {publicIp}, Port: {publicPort}");
         //}
     }
-
-
-
-
-
-
-
-
-
-    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // next provided by ChatGPT
-    protected int numRemaining;
-    private int _bufSizeMoreOrLess = 2000;
-
-    public void TestDebuggingBehavior()
-    {
-        numRemaining = new int(); // Reset to 0
-        numRemaining = _bufSizeMoreOrLess;
-
-        Console.WriteLine($"_bufSizeMoreOrLess: {_bufSizeMoreOrLess}, numRemaining: {numRemaining}");
-
-        while (numRemaining > 0)
-        {
-            Console.WriteLine($"Inside while, numRemaining: {numRemaining}");
-            numRemaining--;
-        }
-    }
-
-
-
-
-
-
-
-
 
 
 

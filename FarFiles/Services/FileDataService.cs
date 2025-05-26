@@ -248,7 +248,10 @@ public class FileDataService
 #if ANDROID
     public FileOrFolderData NewFileOrFolderDataAndroid(DocumentFile documentFile)
     {
-        DateTime dt = new DateTime(documentFile.LastModified());
+        long androidLastModifiedMillis = documentFile.LastModified();
+        DateTimeOffset dateTimeOffset = DateTimeOffset.FromUnixTimeMilliseconds(
+                        androidLastModifiedMillis);
+        DateTime dt = dateTimeOffset.LocalDateTime;
         return new FileOrFolderData(documentFile.Name, documentFile.IsDirectory,
                 documentFile.Length(), FileAttributes.None, dt, dt);
     }
