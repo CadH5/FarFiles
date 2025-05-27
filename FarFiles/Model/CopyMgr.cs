@@ -66,7 +66,7 @@ namespace FarFiles.Model
         public int NumFilesOverwritten { get; protected set; } = 0;
         public int NumFilesSkipped { get; protected set; } = 0;
         public int NumDtProblems { get; protected set; } = 0;
-        public int NumErrs { get; protected set; } = 0;
+
         public List<string> ErrMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
 
         public CopyMgr(FileDataService fileDataService, Settings alternativeSettings = null,
@@ -311,7 +311,6 @@ namespace FarFiles.Model
                 switch (code)
                 {
                     case (short)StartCode.ERROR:
-                        NumErrs++;
                         string errMsg = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
                         ErrMsgs.Add(errMsg);
                         break;
@@ -352,16 +351,34 @@ namespace FarFiles.Model
                         _currFileDtLastWriteOnClient = DateTime.FromBinary(BitConverter.ToInt64(data, idxData));
                         idxData += sizeof(long);
 
-                        if (_writer != null)        // should not be possible
+                        if (_writer != null)
                         {
                             _writer.Close();
+                            _writer = null;
                         }
-                        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SUPPORT "KEEP"
-                        //NumFilesOverwritten, NumFilesSkipped
-                        NumFilesCreated++;
-                        
-                        _writer = new BinaryWriter(File.Open(_currFileFullPathOnClient,
-                                            FileMode.Create));
+
+                        bool existedBefore = File.Exists(_currFileFullPathOnClient);
+                        if (existedBefore && 1 == _settings.Idx0isOverwr1isSkip)
+                        {
+                            NumFilesSkipped++;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                _writer = new BinaryWriter(File.Open(_currFileFullPathOnClient,
+                                                    FileMode.Create));
+                                NumFilesCreated++;
+                                if (existedBefore)
+                                    NumFilesOverwritten++;
+                            }
+                            catch (Exception exc)
+                            {
+                                ErrMsgs.Add(
+                                    $"Could not create '{_currFileFullPathOnClient}': {exc.Message}");
+                                _writer = null;
+                            }
+                        }
                         _fileSizeCounter = 0;
                         break;
 
@@ -372,8 +389,7 @@ namespace FarFiles.Model
                         idxData += numBytes;
                         if (_writer == null)
                         {
-                            ErrMsgs.Add(
-                                $"_writer is null! _fileSizeCounter={_fileSizeCounter}, _currFileSizeOnClient={_currFileSizeOnClient}");
+                            // file is skipped or could not be created
                         }
                         else
                         {
@@ -387,16 +403,16 @@ namespace FarFiles.Model
                                 ErrMsgs.Add(
                                     $"_fileSizeCounter not exactly ends right! _fileSizeCounter={_fileSizeCounter}, _currFileSizeOnClient={_currFileSizeOnClient}");
                             }
-                            if (_writer != null)
+                            if (_writer != null)    // else: file is skipped or could not be created
                             {
                                 _writer.Close();
                                 _writer = null;
-                            }
 
-                            File.SetAttributes(_currFileFullPathOnClient,
-                                            _currFileAttrsOnClient);
-                            NumDtProblems += _fileDataService.SetDateTimesGeneric(_currFileFullPathOnClient,
-                                false, _currFileDtCreationOnClient, _currFileDtLastWriteOnClient);
+                                File.SetAttributes(_currFileFullPathOnClient,
+                                                _currFileAttrsOnClient);
+                                NumDtProblems += _fileDataService.SetDateTimesGeneric(_currFileFullPathOnClient,
+                                    false, _currFileDtCreationOnClient, _currFileDtLastWriteOnClient);
+                            }
                         }
                         break;
 

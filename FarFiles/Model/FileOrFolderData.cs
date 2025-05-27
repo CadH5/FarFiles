@@ -102,9 +102,3 @@ public class FileOrFolderData
     }
 }
 
-
-//JEEWEE
-//[JsonSerializable(typeof(List<FileData>))]
-//internal sealed partial class MonkeyContext : JsonSerializerContext{
-
-//}

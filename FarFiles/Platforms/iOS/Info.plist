@@ -29,6 +29,6 @@
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Need to find monkeys!</string>
+	<string>Need to find files and folders!</string>
 </dict>
 </plist>

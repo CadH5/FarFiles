@@ -46,6 +46,7 @@ public partial class ClientPage : ContentPage
     private void ClientPage_Loaded(object sender, EventArgs e)
     {
         _clientViewModel = (ClientViewModel)BindingContext;
+        UpdatePage();
 
         //JEEWEE
         //var dummy = Task.Run(async () =>

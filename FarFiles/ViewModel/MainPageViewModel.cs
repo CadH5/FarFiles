@@ -1,10 +1,11 @@
 ﻿using CommunityToolkit.Maui.Alerts;
 using CommunityToolkit.Maui.Storage;
-
+using FarFiles.Services;
+//JEEWEE
+//using Java.Time.Chrono;
 using STUN.Client;
 using STUN.Enums;
-
-using FarFiles.Services;
+using System;
 //JEEWEE
 //using Java.Util;
 using System.Net;
@@ -12,7 +13,6 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System;
 using System.Threading.Channels;
 
 //JEEWEE
@@ -49,7 +49,7 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
     // xaml cannot bind to MauiProgram.Settings directly.
-    // And for FullPathRoot an extra measure is necessary
+    // And for FullPathRoot and Idx0isSvr1isCl an extra measure is necessary:
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
     public string _clientMsg = "";
@@ -277,7 +277,7 @@ public partial class MainPageViewModel : BaseViewModel
         //return;
         //====================================================================================
 
-        //OpenClientJEEWEE();
+        OpenClientJEEWEE();
 
         if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
         {
@@ -477,8 +477,28 @@ public partial class MainPageViewModel : BaseViewModel
                 $"Files overwritten: {copyMgr.NumFilesOverwritten}{nl}" +
                 $"Files skipped: {copyMgr.NumFilesSkipped}{nl}" +
                 (copyMgr.NumDtProblems > 0 ? $"Err dates replaced by Now: {copyMgr.NumDtProblems}{nl}" : ""),
-                (copyMgr.NumErrs > 0 ? $"ERRORS: {copyMgr.NumErrs}{nl}" : ""),
+                (copyMgr.ErrMsgs.Count > 0 ? $"ERRORS: {copyMgr.ErrMsgs.Count}{nl}" : ""),
                 "OK");
+
+            if (copyMgr.ErrMsgs.Count > 0)
+            {
+                MauiProgram.Log.LogLine("", false);
+                MauiProgram.Log.LogLine("CopyMgr ErrMsgs:", false);
+                foreach (string errMsg in copyMgr.ErrMsgs)
+                {
+                    MauiProgram.Log.LogLine(errMsg, false);
+                }
+
+                int maxDispMsgs = 5;
+                int numMsgs = Math.Min(maxDispMsgs, copyMgr.ErrMsgs.Count);
+                string totalMsg = "";
+                for (int iErr = 0; iErr < numMsgs; iErr++)
+                    totalMsg += copyMgr.ErrMsgs[iErr] + nl;
+
+                if (copyMgr.ErrMsgs.Count > maxDispMsgs)
+                    totalMsg += $"....... (not all {copyMgr.ErrMsgs.Count} errors listed)";
+                await Shell.Current.DisplayAlert("ERRORS", totalMsg, "OK");
+            }
         }
     }
 

@@ -14,6 +14,11 @@ public partial class ClientViewModel : BaseViewModel
     public ClientPage ContentPageRef;
     public ObservableCollection<Model.FileOrFolderData> FileOrFolderColl { get; } = new();
     FileDataService fileDataService;
+
+    // xaml cannot bind to MauiProgram.Settings directly.
+    // And for Idx0isOverwr1isSkip an extra measure is necessary:
+    public Settings Settings { get; protected set; } = MauiProgram.Settings;
+
     //JEEWEE
     //IConnectivity connectivity;
     //IGeolocation geolocation;
@@ -128,6 +133,15 @@ public partial class ClientViewModel : BaseViewModel
         {
             IsBusy = true;
             FileOrFolderData[] selecteds = ContentPageRef.GetSelecteds();
+
+            bool accepted = await Shell.Current.DisplayAlert("Start copy?",
+                $"Start copying selected {selecteds.Length} file(s) and/or folder(s) with content(s), " +
+                (0 == MauiProgram.Settings.Idx0isOverwr1isSkip ? "overwriting" : "skipping") +
+                " existing files?",
+                "OK", "Cancel");
+            if (!accepted)
+                return;
+
             await MauiProgram.Info.MainPageVwModel.CopyFromSvr_msgbxs_Async(selecteds);
         }
         catch (Exception ex)

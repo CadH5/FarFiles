@@ -14,7 +14,7 @@
 		<ApplicationTitle>FarFiles</ApplicationTitle>
 
 		<!-- App Identifier -->
-		<ApplicationId>com.companyname.monkeyfinder</ApplicationId>
+		<ApplicationId>com.CadH5.FarFiles</ApplicationId>
 		
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>

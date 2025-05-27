@@ -20,7 +20,7 @@
     <Grid
         ColumnDefinitions="*"
         ColumnSpacing="5"
-        RowDefinitions="30,30,30,30,10,*"
+        RowDefinitions="30,30,30,30,60,10,*"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
         <!--JEEWEE-->
         <!--RowSpacing="5"-->
@@ -44,11 +44,25 @@
                         Style="{StaticResource ButtonOutline}"
                         x:Name="BtnCopy"></Button>
             </StackLayout>
+            <StackLayout Orientation="Horizontal" Grid.Row="4">
+                <Label x:Name="LblOverwrSkip" VerticalTextAlignment="Center" Text="existing files:" />
+                <Picker 
+                    Style="{StaticResource PickerStyle}"
+                    Margin="5,0,0,0" HeightRequest="40" WidthRequest="200"
+                                SelectedIndex="{Binding Settings.Idx0isOverwr1isSkip}">
+                    <Picker.ItemsSource>
+                        <x:Array Type="{x:Type x:String}">
+                            <x:String>overwrite</x:String>
+                            <x:String>skip</x:String>
+                        </x:Array>
+                    </Picker.ItemsSource>
+                </Picker>
+            </StackLayout>
 
             <!--here an empty gridrow-->
         
             <CollectionView x:Name="FfCollView"
-                        Grid.Row="5"
+                        Grid.Row="6"
                         ItemsSource="{Binding FileOrFolderColl}"
                         SelectionMode="Multiple"
                         SelectionChanged="FfCollView_SelectionChanged"

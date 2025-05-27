@@ -31,7 +31,9 @@
         <Label Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding FullPathRoot, Mode=TwoWay}"></Label>
 
         <Label Grid.Row="4" Grid.Column="0" Text="Connect Mode:"></Label>
-        <Picker Grid.Row="4" Grid.Column="1" SelectedIndex="{Binding Settings.Idx0isSvr1isCl}">
+        <Picker Grid.Row="4" Grid.Column="1"
+                Style="{StaticResource PickerStyle}"
+                SelectedIndex="{Binding Settings.Idx0isSvr1isCl}">
             <Picker.ItemsSource>
                 <x:Array Type="{x:Type x:String}">
                     <x:String>Server</x:String>

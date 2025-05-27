@@ -76,8 +76,6 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<FileDataService>();
 		builder.Services.AddSingleton<ClientViewModel>();
-        //JEEWEE
-        //builder.Services.AddSingleton<SettingsService>();
 
         builder.Services.AddSingleton<MainPageViewModel>();
 
@@ -180,6 +178,7 @@ public static class MauiProgram
         Settings.FullPathRoot = Preferences.Get("FullPathRoot", Settings.FullPathRoot);
 #endif
         Settings.Idx0isSvr1isCl = Preferences.Get("Idx0isSvr1isCl", Settings.Idx0isSvr1isCl);
+        Settings.Idx0isOverwr1isSkip = Preferences.Get("Idx0isOverwr1isSkip", Settings.Idx0isOverwr1isSkip);
         Settings.ConnectKey = Preferences.Get("ConnectKey", Settings.ConnectKey);
         Settings.StunServer = Preferences.Get("StunServer", Settings.StunServer);
         Settings.StunPort = Preferences.Get("StunPort", Settings.StunPort);
@@ -197,6 +196,7 @@ public static class MauiProgram
         Preferences.Set("FullPathRoot", Settings.FullPathRoot);
 #endif
         Preferences.Set("Idx0isSvr1isCl", Settings.Idx0isSvr1isCl);
+        Preferences.Set("Idx0isOverwr1isSkip", Settings.Idx0isOverwr1isSkip);
         Preferences.Set("ConnectKey", Settings.ConnectKey);
         Preferences.Set("StunServer", Settings.StunServer);
         Preferences.Set("StunPort", Settings.StunPort);

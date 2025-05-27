@@ -17,6 +17,7 @@ namespace FarFiles.Model
         public string FullPathRoot { get; set; } = "";
 #endif
         public int Idx0isSvr1isCl { get; set; } = 0;
+        public int Idx0isOverwr1isSkip { get; set; } = 0;
         public string ConnectKey { get; set; } = "";
 
         public string StunServer { get; set; } = "stun.sipgate.net";

@@ -91,6 +91,10 @@
                 </Setter>
             </Style>
 
+            <Style x:Key="PickerStyle" TargetType="Picker">
+                <Setter Property="Background" Value="#00DDDD" />
+            </Style>
+
             <Style x:Key="CardView" TargetType="Border">
                 <Setter Property="Stroke" Value="#DDDDDD" />
                 <Setter Property="StrokeThickness" Value="1" />
