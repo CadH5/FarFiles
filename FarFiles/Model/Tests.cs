@@ -310,6 +310,7 @@ namespace FarFiles.Model
                 var settingsClient = new Settings()
                 {
                     FullPathRoot = testPathClient,
+                    Idx0isOverwr1isSkip = 0,
                 };
 
                 foreach (var relPathFile in createFilesSvr)
@@ -321,37 +322,62 @@ namespace FarFiles.Model
                     }
                 }
 
-                // Now the test:
-                int alterRemainingLimit = 40;
+                // Test CalcTotalNumFilesOfFolderWithSubfolders
+                AssertEq(wrLog, 4, _fileDataService.CalcTotalNumFilesOfFolderWithSubfolders(
+                        topDirOnSvr, null, new string[] { "" }, "sub1"),
+                        "CalcTotalNumFilesOfFolderWithSubfolders");
 
-                int prevSeqNr = -1;
-                var copyMgrSvr = new CopyMgr(_fileDataService, settingsSvr,
-                        alterRemainingLimit);
-                var copyMgrClient = new CopyMgr(_fileDataService, settingsClient);
-                copyMgrSvr.StartCopyFromSvr(new MsgSvrClCopyRequest(clientSvrPathParts,
-                        folderNamesToCopy, fileNamesToCopy));
-                while (true)
+                // Now 3 tests: 1. create, 2. overwrite, 3. skip
+
+                var cploopDescr = new string[] { "create", "overwrite", "skip" };
+                for (int iCploop = 0; iCploop < 3; iCploop++)
                 {
-                    MsgSvrClBase msgSvrCl = copyMgrSvr.GetNextPartCopyansFromSvr();
-                    AssertEq(wrLog, MsgSvrClType.COPY_ANS, msgSvrCl.Type,
-                            "answer from svr");
-                    int seqNr = ((MsgSvrClCopyAnswer)msgSvrCl).SeqNr;
-                    AssertEq(wrLog, prevSeqNr + 1, seqNr,
-                            "seqNr from svr");
-                    prevSeqNr++;
-                    if (copyMgrClient.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrCl))
-                        break;
-                }
+                    wrLog.WriteLine();
+                    wrLog.WriteLine($"Copyloop {iCploop+1}: {cploopDescr[iCploop]}");
 
-                LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrScr:", copyMgrSvr.ErrMsgs);
-                LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrClient:", copyMgrClient.ErrMsgs);
+                    settingsClient.Idx0isOverwr1isSkip = iCploop == 2 ? 1 : 0;
+                    int alterRemainingLimit = 40;
 
-                foreach (string expectedRelPathFile in expectedFilesClient)
-                {
-                    string fullPathClient = Path.Combine(testPathClient, expectedRelPathFile);
-                    string fullPathSvr = Path.Combine(topDirOnSvr, expectedRelPathFile);
+                    int prevSeqNr = -1;
+                    var copyMgrSvr = new CopyMgr(_fileDataService, settingsSvr,
+                            alterRemainingLimit);
+                    var copyMgrClient = new CopyMgr(_fileDataService, settingsClient);
+                    copyMgrSvr.StartCopyFromSvr(new MsgSvrClCopyRequest(clientSvrPathParts,
+                            folderNamesToCopy, fileNamesToCopy));
+                    while (true)
+                    {
+                        MsgSvrClBase msgSvrCl = copyMgrSvr.GetNextPartCopyansFromSvr();
+                        AssertEq(wrLog, MsgSvrClType.COPY_ANS, msgSvrCl.Type,
+                                "answer from svr");
+                        int seqNr = ((MsgSvrClCopyAnswer)msgSvrCl).SeqNr;
+                        AssertEq(wrLog, prevSeqNr + 1, seqNr,
+                                "seqNr from svr");
+                        prevSeqNr++;
+                        if (copyMgrClient.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrCl))
+                            break;
+                    }
 
-                    AssertEqFile(wrLog, fullPathClient, fullPathSvr);
+                    LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrScr:", copyMgrSvr.ErrMsgs);
+                    LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrClient:", copyMgrClient.ErrMsgs);
+
+                    foreach (string expectedRelPathFile in expectedFilesClient)
+                    {
+                        string fullPathSvr = Path.Combine(topDirOnSvr, expectedRelPathFile);
+                        string fullPathClient = Path.Combine(testPathClient, expectedRelPathFile);
+
+                        AssertEqFile(wrLog, fullPathSvr, fullPathClient);
+                    }
+
+                    AssertEq(wrLog, 5,
+                                copyMgrClient.ClientInfoTotalNumFilesToCopy, "ClientInfoTotalNumFilesToCopy from server");
+                    AssertEq(wrLog, 0 == iCploop ? 3 : 0,
+                                copyMgrClient.NumFoldersCreated, "NumFoldersCreated");
+                    AssertEq(wrLog, 2 == iCploop ? 0 : 5,
+                                copyMgrClient.NumFilesCreated, "NumFilesCreated");
+                    AssertEq(wrLog, 1 == iCploop ? 5 : 0,
+                                copyMgrClient.NumFilesOverwritten, "NumFilesOverwritten");
+                    AssertEq(wrLog, 2 == iCploop ? 5 : 0,
+                                copyMgrClient.NumFilesSkipped, "NumFilesSkipped");
                 }
             }
             catch (Exception exc)
@@ -427,31 +453,18 @@ namespace FarFiles.Model
                     }
                 }
             }
-            //JEEWEE
-            //else if (oExpected is long[])
-            //{
-            //    var arrExpected = (long[])oExpected;
-            //    var arrResult = (long[])oResult;
-            //    tillIdxExp = -1 == tillIdxExp ? arrExpected.Length : tillIdxExp;
-            //    tillIdxRes = -1 == tillIdxRes ? arrResult.Length : tillIdxRes;
-
-            //    eq = AssertEq(wrLogOrNull, tillIdxExp - startIdxExp,
-            //            tillIdxRes - startIdxRes,
-            //            "   arrayLengths");
-            //    if (eq)
-            //    {
-            //        for (int i = 0; i < arrExpected.Length; i++)
-            //        {
-            //            eq = AssertEq(wrLogOrNull, arrExpected[i], arrResult[i], $"   array[{i}]");
-            //            if (!eq)
-            //                break;
-            //        }
-            //    }
-            //}
             else
             {
                 string qu = (oExpected is string ? "'" : "");
-                eq = oExpected.Equals(oResult);
+                if (oExpected is DateTime)
+                {
+                    eq = Math.Abs(((DateTime)oExpected - (DateTime)oResult)
+                                .TotalSeconds) < 1;
+                }
+                else
+                {
+                    eq = oExpected.Equals(oResult);
+                }
                 wrLogOrNull?.WriteLine((eq ? "   EQ  " : "** DIF ") +
                     $": {qu}{oExpected}{qu}, {qu}{oResult}{qu}; {descr}");
                 if (eq)
@@ -510,6 +523,11 @@ namespace FarFiles.Model
                         File.GetLastWriteTime(fullPathClientFile),
                         $"lastwritetime for {fullPathClientFile}");
             }
+
+            if (eq)
+                _numPassed++;
+            else
+                _numFailed++;
 
             return eq;
         }

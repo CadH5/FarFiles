@@ -21,6 +21,7 @@ namespace FarFiles.Model
         FOLDER,         // followed by string (relativepath incl name), DateTime (Creation), DataTime (LastWrite)
         FILE,           // followed by string (name), long (size), int (FileAttr), DateTime (Creation), DataTime (LastWrite), compressedparts
         COMPRESSEDPART, // followed by int (numberof bytes), bytes
+        INFOTOTALFILES, // followed by int (total numberof files, not folders)
     }
 
     public class CopyMgr : IDisposable
@@ -48,6 +49,8 @@ namespace FarFiles.Model
         protected List<byte> _bufSvrMsg = new List<byte>();
         protected List<NavLevel> _navLevels = new List<NavLevel>();
         protected int _seqNr = 0;
+        protected int _totalNumFilesToCopy = 0;
+        protected bool _infoTotalNumFilesAdded = false;
         protected string _currPathOnClient = "";
         protected string _currFileNameOnClient = "";
         protected string _currFileFullPathOnClient = "";
@@ -58,9 +61,8 @@ namespace FarFiles.Model
         protected DateTime _currFileDtLastWriteOnClient;
         protected Settings _settings;
 
-        //JEEWEE
-        //protected byte[] _rdBytesCompress;
-        //protected int _bufSvrBytesCompressPos = 0;
+        public int ClientInfoTotalNumFilesToCopy { get; protected set; } = 0;
+        public bool ClientAborted { get; protected set; } = false;
         public int NumFoldersCreated { get; protected set; } = 0;
         public int NumFilesCreated { get; protected set; } = 0;
         public int NumFilesOverwritten { get; protected set; } = 0;
@@ -90,6 +92,9 @@ namespace FarFiles.Model
             //string pathOnSvr = _settings.PathFromRootAndSubParts(svrSubParts);
             //string relPathOnClient = "";
             _seqNr = 0;
+            _totalNumFilesToCopy = CalcTotalNumFilesToCopy(svrSubParts,
+                                folderNamesToCopy, fileNamesToCopy);
+            _infoTotalNumFilesAdded = false;
 
             _navLevels.Clear();
             //JEEWEE
@@ -110,18 +115,13 @@ namespace FarFiles.Model
                 bool isLastPart = false;
                 NavLevel currNavLevel = _navLevels.Last();
                 _bufSvrMsg.Clear();
-                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PROBLEM
-                //int numRemaining = _bufSizeMoreOrLess;
-                //int numRemaining = new int();
-                int numRemaining = new int();
+                int numRemaining = _settings.BufSizeMoreOrLess;
 
                 //JEEWEE
                 //System.Diagnostics.Debug.WriteLine(
                 //    $"DEBUG  : numRemaining (new int()): {numRemaining}");
-                Console.WriteLine(
-                    $"CONSOLE: numRemaining (new int()): {numRemaining}");
-
-                numRemaining = _settings.BufSizeMoreOrLess;
+                //Console.WriteLine(
+                //    $"CONSOLE: numRemaining (new int()): {numRemaining}");
 
                 //JEEWEE
                 //System.Diagnostics.Debug.WriteLine(
@@ -133,9 +133,15 @@ namespace FarFiles.Model
                 //bool JEEWEEthrowExc = numRemaining - _bufSizeMoreOrLess != 0;
                 while (numRemaining > 0)
                 {
+                    //Console.WriteLine(
+                    //    $"CONSOLE: JEEWEE: In while loop, numRemaining: {numRemaining}");
 
-                    Console.WriteLine(
-                        $"CONSOLE: JEEWEE: In while loop, numRemaining: {numRemaining}");
+                    if (!_infoTotalNumFilesAdded)
+                    {
+                        _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.INFOTOTALFILES));
+                        _bufSvrMsg.AddRange(BitConverter.GetBytes(_totalNumFilesToCopy));
+                        _infoTotalNumFilesAdded = true;
+                    }
 
                     if (null != _reader)
                     {
@@ -155,8 +161,8 @@ namespace FarFiles.Model
                             _reader.Close();
                             _reader = null;
 
-                            Console.WriteLine(
-                                $"CONSOLE: JEEWEE: reader closed");
+                            //Console.WriteLine(
+                            //    $"CONSOLE: JEEWEE: reader closed");
                         }
                     }
 
@@ -189,7 +195,7 @@ namespace FarFiles.Model
                         {
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
                             _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
-                                $"Error with copy '{currNavLevel.JoinedSubParts}', file '{fileName}': {exc.Message}"));
+                                $"Error with copy, relpath: '{currNavLevel.JoinedSubPartsOnClient}', file '{fileName}': {exc.Message}"));
                         }
                         currNavLevel.CurrIdxFiles++;
                     }
@@ -214,23 +220,24 @@ namespace FarFiles.Model
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.FOLDER));
                             //JEEWEE
                             //_bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(relPathOnClient));
-                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(currNavLevel.JoinedSubParts));
 
+                            var newNavLevel = new NavLevel(currNavLevel, folderName);
+                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
+                                        newNavLevel.JoinedSubPartsOnClient));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.DtCreation.ToBinary()));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.DtLastWrite.ToBinary()));
 
-                            _navLevels.Add(new NavLevel(_fileDataService, _settings,
-                                    AddOneToArray(currNavLevel.SvrSubParts, folderName)));
+                            _navLevels.Add(newNavLevel);
                             navlvAdded = true;
 
                             // no exception, so:
-                            currNavLevel = _navLevels.Last();
+                            currNavLevel = newNavLevel;
                         }
                         catch (Exception exc)
                         {
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
                             _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
-                                $"Error with copy '{currNavLevel.JoinedSubParts}', folder '{folderName}': {exc.Message}"));
+                                $"Error with copy, relpath: '{currNavLevel.JoinedSubPartsOnClient}', folder '{folderName}': {exc.Message}"));
                             if (navlvAdded)
                                 _navLevels.RemoveAt(_navLevels.Count - 1);
                         }
@@ -240,8 +247,8 @@ namespace FarFiles.Model
                         _navLevels.RemoveAt(_navLevels.Count - 1);
                         if (_navLevels.Count == 0)
                         {
-                            Console.WriteLine(
-                                $"CONSOLE: JEEWEE: isLastPart = true");
+                            //Console.WriteLine(
+                            //    $"CONSOLE: JEEWEE: isLastPart = true");
 
                             isLastPart = true;
                             this.Dispose();
@@ -253,8 +260,8 @@ namespace FarFiles.Model
 
                     numRemaining = _settings.BufSizeMoreOrLess - _bufSvrMsg.Count;
 
-                    Console.WriteLine(
-                        $"CONSOLE: JEEWEE: numRemaining now: {numRemaining}");
+                    //Console.WriteLine(
+                    //    $"CONSOLE: JEEWEE: numRemaining now: {numRemaining}");
                 }
 
 
@@ -266,8 +273,8 @@ namespace FarFiles.Model
                 //    throw new Exception("JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! weird thing happened");
                 //}
 
-                Console.WriteLine(
-                    $"CONSOLE: JEEWEE: MsgSvrClCopyAnswer sent: _bufSvrMsg.Count={_bufSvrMsg.Count}, _seqNr={_seqNr}, isLastPart={isLastPart}");
+                //Console.WriteLine(
+                //    $"CONSOLE: JEEWEE: MsgSvrClCopyAnswer sent: _bufSvrMsg.Count={_bufSvrMsg.Count}, _seqNr={_seqNr}, isLastPart={isLastPart}");
 
                 return new MsgSvrClCopyAnswer(_seqNr++, isLastPart, _bufSvrMsg.ToArray());
             }
@@ -283,11 +290,13 @@ namespace FarFiles.Model
 
         /// <summary>
         /// Creates files and folders on Client, copying from server
-        /// Returns true if this was the last pat of data
+        /// Returns true if this was the last part of data
         /// </summary>
         /// <param name="msgSvrClAnswer"></param>
+        /// <param name="funcCopyGetAbortSetLbls">returns true if client user aborted</param>
         /// <returns></returns>
-        public bool CreateOnClientFromNextPart(MsgSvrClCopyAnswer msgSvrClAnswer)
+        public bool CreateOnClientFromNextPart(MsgSvrClCopyAnswer msgSvrClAnswer,
+                    Func<int,int,long,long,bool> funcCopyGetAbortSetLbls = null)
         {
             msgSvrClAnswer.GetSeqnrAndIslastAndData(out int seqNr, out bool isLast,
                                 out byte[] data);
@@ -371,6 +380,13 @@ namespace FarFiles.Model
                                 NumFilesCreated++;
                                 if (existedBefore)
                                     NumFilesOverwritten++;
+
+                                //JEEWEE
+                                //if (null != actDispLbl)
+                                //{
+                                //    actDispLbl(2, $"files: {NumFilesCreated} created" +
+                                //        (0 == NumFilesSkipped ? "" : $", {NumFilesSkipped} skipped"));
+                                //}
                             }
                             catch (Exception exc)
                             {
@@ -380,6 +396,16 @@ namespace FarFiles.Model
                             }
                         }
                         _fileSizeCounter = 0;
+
+                        if (null != funcCopyGetAbortSetLbls)
+                        {
+                            if (funcCopyGetAbortSetLbls(NumFilesSkipped + NumFilesCreated,
+                                    ClientInfoTotalNumFilesToCopy,
+                                    0, _currFileSizeOnClient))
+                            {
+                                ClientAbort();
+                            }
+                        }
                         break;
 
                     case (short)StartCode.COMPRESSEDPART:
@@ -396,6 +422,18 @@ namespace FarFiles.Model
                             _writer.Write(decompressed);
                         }
                         _fileSizeCounter += decompressed.Length;
+
+                        if (null != funcCopyGetAbortSetLbls)
+                        {
+                            if (funcCopyGetAbortSetLbls(NumFilesSkipped + NumFilesCreated,
+                                    ClientInfoTotalNumFilesToCopy,
+                                    _fileSizeCounter, _currFileSizeOnClient))
+                            {
+                                ClientAbort();
+                                break;
+                            }
+                        }
+
                         if (_fileSizeCounter >= _currFileSizeOnClient)
                         {
                             if (_fileSizeCounter > _currFileSizeOnClient)
@@ -416,6 +454,11 @@ namespace FarFiles.Model
                         }
                         break;
 
+                    case (short)StartCode.INFOTOTALFILES:
+                        ClientInfoTotalNumFilesToCopy = BitConverter.ToInt32(data, idxData);
+                        idxData += sizeof(int);
+                        break;
+
                     default:
                         ErrMsgs.Add(
                             $"Unknown StartCode ({code}) encountered in data from server!");
@@ -430,10 +473,20 @@ namespace FarFiles.Model
                         return isLast;
                 }
             }
-
-
         }
 
+
+
+        protected void ClientAbort()
+        {
+            ClientAborted = true;
+            if (null != _writer)
+            {
+                _writer.Close();
+                _writer = null;
+                File.Delete(_currFileFullPathOnClient);
+            }
+        }
 
 
 
@@ -500,8 +553,25 @@ namespace FarFiles.Model
         }
 
 
+        protected int CalcTotalNumFilesToCopy(string[] svrSubParts,
+                            string[] folderNamesToCopy, string[] fileNamesToCopy)
+        {
+            int totalNum = fileNamesToCopy.Length;
+            foreach (string folderName in folderNamesToCopy)
+            {
+                totalNum += _fileDataService.CalcTotalNumFilesOfFolderWithSubfolders(
+                        _settings.FullPathRoot, _settings.AndroidUriRoot,
+                        svrSubParts, folderName);
+            }
+
+            return totalNum;
+        }
+
+
+
+
         /// <summary>
-        /// Class for serverside
+        /// Class for serverside, to contain folders and files to copy, at one level only
         /// </summary>
         protected class NavLevel
         {
@@ -511,6 +581,7 @@ namespace FarFiles.Model
             //public string PathOnSvr { get; protected set; }
             //public string RelPathOnClient { get; protected set; }
             public string[] SvrSubParts { get; protected set; }
+            public int IdxStartClientpathInSvrSubParts { get; protected set; }
             public string[] FileNames { get; protected set; }
             public string[] FolderNames { get; protected set; }
             public int CurrIdxFiles { get; set; } = 0;
@@ -520,38 +591,56 @@ namespace FarFiles.Model
             public string PathOnSvrWindows { get => _settings.PathFromRootAndSubPartsWindows(
                         SvrSubParts);
             }
-            public string JoinedSubParts { get => String.Join("/", SvrSubParts); }
 
-            /// <summary>
-            /// Class to contain folders and files to copy, at one level only
-            /// </summary>
-            /// <param name="folderNamesSelection">if null, then all folders in path</param>
-            /// <param name="fileNamesSelection">if null, then all files in path</param>
+            public string JoinedSubPartsOnClient { get => String.Join("/", SvrSubParts,
+                    IdxStartClientpathInSvrSubParts,
+                    SvrSubParts.Length - IdxStartClientpathInSvrSubParts); }
+
             //JEEWEE
             //public NavLevel(string pathOnSvr, string relPathOnClient,
             //        string[] folderNamesSelection = null, string[] fileNamesSelection = null)
-            public NavLevel(FileDataService fileDataService, Settings settings, string[] svrSubParts,
-                    string[] folderNamesSelection = null, string[] fileNamesSelection = null)
+
+
+            /// <summary>
+            /// Ctor for first NavLevel to be created, at level that was selected by client
+            /// </summary>
+            /// <param name="fileDataService"></param>
+            /// <param name="settings"></param>
+            /// <param name="svrSubParts">on client selected server path; client top path starts here</param>
+            /// <param name="folderNamesSelection">on client selected folders to copy</param>
+            /// <param name="fileNamesSelection">on client selected files to copy</param>
+            public NavLevel(FileDataService fileDataService, Settings settings,
+                    string[] svrSubParts,
+                    string[] folderNamesSelection, string[] fileNamesSelection)
             {
                 _fileDataService = fileDataService;
                 _settings = settings;
                 SvrSubParts = svrSubParts;
-                //JEEWEE
-                //PathOnSvr = pathOnSvr;
-                //RelPathOnClient = relPathOnClient;
+                IdxStartClientpathInSvrSubParts = svrSubParts.Length;
 
-                //JEEWEE
-                //FolderNames = folderNamesSelection ??
-                //    Directory.GetDirectories(PathOnSvr).Select(f => Path.GetFileName(f)).ToArray(); ;
-                //FileNames = fileNamesSelection ??
-                //    Directory.GetFiles(PathOnSvr).Select(f => Path.GetFileName(f)).ToArray();
+                FolderNames = folderNamesSelection;
+                FileNames = fileNamesSelection;
+            }
 
-                FolderNames = folderNamesSelection ??
-                    _fileDataService.GetDirFolderNamesGeneric(settings.FullPathRoot,
-                            settings.AndroidUriRoot, svrSubParts);
-                FileNames = fileNamesSelection ??
-                    _fileDataService.GetDirFileNamesGeneric(settings.FullPathRoot,
-                            settings.AndroidUriRoot, svrSubParts);
+
+            /// <summary>
+            /// Ctor to create the NavLevel for a folder on a below level
+            /// </summary>
+            /// <param name="navLevelParent"></param>
+            /// <param name="folderName"></param>
+            public NavLevel(NavLevel navLevelParent, string folderName)
+            {
+                _fileDataService = navLevelParent._fileDataService;
+                _settings = navLevelParent._settings;
+                SvrSubParts = AddOneToArray(navLevelParent.SvrSubParts, folderName);
+                IdxStartClientpathInSvrSubParts = navLevelParent.IdxStartClientpathInSvrSubParts;
+
+                FolderNames = _fileDataService.GetDirFolderNamesGeneric(
+                            _settings.FullPathRoot,
+                            _settings.AndroidUriRoot, SvrSubParts);
+                FileNames = _fileDataService.GetDirFileNamesGeneric(
+                            _settings.FullPathRoot,
+                            _settings.AndroidUriRoot, SvrSubParts);
             }
         }
     }

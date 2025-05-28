@@ -1,6 +1,7 @@
 ﻿#if ANDROID
 using AndroidX.DocumentFile.Provider;
 #endif
+using Microsoft.Maui.Controls.PlatformConfiguration;
 using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Net.Http.Json;
@@ -63,15 +64,14 @@ public class FileDataService
     /// <summary>
     /// if Exception is thrown: returns array of one member with non-null ExcThrown 
     /// </summary>
-    public FileOrFolderData[] GetFilesAndFoldersDataWindows(string fullRootPath,
-            SearchOption searchOption)
+    public FileOrFolderData[] GetFilesAndFoldersDataWindows(string fullRootPathDir)
     {
         List<Model.FileOrFolderData> dataList = new();
 
         try
         {
-            string[] fullPathSubdirs = Directory.GetDirectories(fullRootPath);
-            string[] fullPathFiles = Directory.GetFiles(fullRootPath, "*", SearchOption.TopDirectoryOnly);
+            string[] fullPathSubdirs = Directory.GetDirectories(fullRootPathDir);
+            string[] fullPathFiles = Directory.GetFiles(fullRootPathDir, "*", SearchOption.TopDirectoryOnly);
             string[] dummySubPathParts = new string[0];
 
             for (int i = 0; i < 2; i++)
@@ -107,8 +107,18 @@ public class FileDataService
     }
 #endif
 
-
-
+    public FileOrFolderData[] GetFilesAndFoldersDataGeneric(string fullRootPathDir,
+            object androidUriRoot, string[] dirNamesSubPath)
+    {
+#if ANDROID
+        return GetFilesAndFoldersDataAndroid((Android.Net.Uri)androidUriRoot,
+                dirNamesSubPath);
+#else
+        string fullPathDir = PathFromRootAndSubPartsWindows(fullRootPathDir,
+                    dirNamesSubPath);
+        return GetFilesAndFoldersDataWindows(fullPathDir);
+#endif
+    }
 
 
 
@@ -281,6 +291,30 @@ public class FileDataService
             return new FileOrFolderData(exc);
         }
     }
+
+
+
+
+    public int CalcTotalNumFilesOfFolderWithSubfolders(string fullPathTopDir,
+            object androidUriRoot, string[] svrSubParts, string folderName)
+    {
+        int totalNumFiles = 0;
+        string[] svrSubPartsInclFolder = CopyMgr.AddOneToArray(
+                    svrSubParts, folderName);
+        FileOrFolderData[] data = GetFilesAndFoldersDataGeneric(
+                    fullPathTopDir, androidUriRoot, svrSubPartsInclFolder);
+        totalNumFiles += data.Count(f => !f.IsDir);
+        foreach (FileOrFolderData fdata in data.Where(f => f.IsDir))
+        {
+            totalNumFiles += CalcTotalNumFilesOfFolderWithSubfolders(fullPathTopDir,
+                    androidUriRoot, svrSubPartsInclFolder, fdata.Name);
+        }
+
+        return totalNumFiles;
+    }
+
+
+
 
 
     public int SetDateTimesGeneric(string fullPathDirOrFile, bool isDir,

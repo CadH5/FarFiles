@@ -1,6 +1,10 @@
-﻿using CommunityToolkit.Maui.Alerts;
+﻿//JEEWEE
+//using Android.Media;
+using CommunityToolkit.Maui.Alerts;
 using CommunityToolkit.Maui.Storage;
 using FarFiles.Services;
+using Microsoft.Maui.Controls;
+
 //JEEWEE
 //using Java.Time.Chrono;
 using STUN.Client;
@@ -29,7 +33,8 @@ public partial class MainPageViewModel : BaseViewModel
     //protected SettingsService _settingsService;
     //public MainPageViewModel(SettingsService settingsService)
 
-    protected int _numSent = 0;
+    protected int _numSendMsg = 0;
+    protected int _numReceivedAns = 0;
     protected UdpClient _udpClient = null;
     protected FileDataService _fileDataService;
     protected CopyMgr _copyMgr = null;
@@ -277,7 +282,7 @@ public partial class MainPageViewModel : BaseViewModel
         //return;
         //====================================================================================
 
-        OpenClientJEEWEE();
+        //OpenClientJEEWEE();
 
         if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
         {
@@ -408,10 +413,13 @@ public partial class MainPageViewModel : BaseViewModel
 
         while (true)
         {
+            LblInfo1 = "sending path info request to server ...";
             byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
                                 msgSvrCl.Bytes);
+            LblInfo1 = "";
             if (byRecieved.Length == 0)
                 return;
+            LblInfo2 = "receiving path info from server ...";
 
             MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
             msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
@@ -424,7 +432,10 @@ public partial class MainPageViewModel : BaseViewModel
             lisSizes.AddRange(fileSizes);
 
             if (isLast)
+            {
+                LblInfo2 = "received: path info from server";
                 break;
+            }
 
             msgSvrCl = new MsgSvrClPathInfoNextpartRequest();
         }
@@ -439,7 +450,8 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    public async Task CopyFromSvr_msgbxs_Async(FileOrFolderData[] selecteds)
+    public async Task CopyFromSvr_msgbxs_Async(FileOrFolderData[] selecteds,
+            Func<int,int,long,long,bool> funcCopyGetAbortSetLbls = null)
     {
         MsgSvrClBase msgSvrCl = new MsgSvrClCopyRequest(MauiProgram.Info.SvrPathParts,
                 selecteds.Where(f => f.IsDir).Select(f => f.Name),
@@ -458,16 +470,14 @@ public partial class MainPageViewModel : BaseViewModel
                 msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClCopyAnswer));
                 Log($"client: received bytes: {byRecieved.Length}, MsgSvrClCopyAnswer");
 
-                if (copyMgr.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrClAnswer))
+                if (copyMgr.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrClAnswer,
+                                                funcCopyGetAbortSetLbls))
                     break;          // ready
 
-                msgSvrCl = new MsgSvrClCopyNextpartRequest();
-
-                //JEEWEE
-                //if (!(msgSvrClAnswer is MsgSvrClCopyAnswer))
-                //    throw new Exception(
-                //        $"Expected from server: MsgSvrClCopyAnswer, got: {msgSvrClAnswer.GetType()}");
-
+                if (copyMgr.ClientAborted)
+                    msgSvrCl = new MsgSvrClCopyAbortedInfo();
+                else
+                    msgSvrCl = new MsgSvrClCopyNextpartRequest();
             }
 
             string nl = Environment.NewLine;
@@ -575,13 +585,14 @@ public partial class MainPageViewModel : BaseViewModel
     {
         try
         {
-            LblInfo2 = "";
-            LblInfo1 = $"sending to server ...";
+            //JEEWEE
+            //LblInfo2 = "";
+            //LblInfo1 = $"sending to server: msg {++_numSendMsg}, {sendBytes.Length} bytes ...";
             int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
 
-            LblInfo1 = $"intended for server: {sendBytes.Length} bytes";
-            LblInfo2 = $"bytes really sent: {iResult}; waiting for server ...";
-            Log("client: " + LblInfo2);
+            //JEEWEE
+            //LblInfo2 = $"sent to server: msg {_numSendMsg}, {iResult} bytes, waiting for server ...";
+            Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
 
             UdpReceiveResult response = await _udpClient.ReceiveAsync(
                                 new CancellationTokenSource(
@@ -589,7 +600,8 @@ public partial class MainPageViewModel : BaseViewModel
 
             //JEEWEE
             //LblInfo2 = $"Received from server: {Encoding.UTF8.GetString(response.Buffer)}'";
-            LblInfo2 = $"Received from server: {response.Buffer.Length} bytes";
+            //LblInfo2 = $"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes";
+            Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
 
             return response.Buffer;
         }
@@ -633,16 +645,23 @@ public partial class MainPageViewModel : BaseViewModel
                 receivedTxt = msgSvrCl.Type.ToString();
                 _seqNrPathInfoAns = 0;
 
-#if ANDROID
-                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataAndroid(
+                //JEEWEE
+                //#if ANDROID
+                //                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataAndroid(
+                //                            Settings.AndroidUriRoot,
+                //                            ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
+                //#else
+                //                string path = Settings.PathFromRootAndSubPartsWindows(
+                //                            ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
+                //                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataWindows(
+                //                            path);
+                //#endif
+
+                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataGeneric(
+                            Settings.FullPathRoot,
                             Settings.AndroidUriRoot,
                             ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
-#else
-                string path = Settings.PathFromRootAndSubPartsWindows(
-                            ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
-                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataWindows(
-                            path, SearchOption.TopDirectoryOnly);
-#endif
+
 
                 var dataWithExc = data.Where(d => null != d.ExcThrown).FirstOrDefault();
                 if (dataWithExc != null)

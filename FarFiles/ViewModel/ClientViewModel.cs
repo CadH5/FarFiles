@@ -19,17 +19,41 @@ public partial class ClientViewModel : BaseViewModel
     // And for Idx0isOverwr1isSkip an extra measure is necessary:
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
-    //JEEWEE
-    //IConnectivity connectivity;
-    //IGeolocation geolocation;
-    //public FilesViewModel(FileDataService fileDataService, IConnectivity connectivity, IGeolocation geolocation)
+    protected bool _abortCopy = false;
+    protected bool _isCopying = false;
+    public bool IsCopying
+    {
+        get => _isCopying;
+        set
+        {
+            _isCopying = value; OnPropertyChanged();
+        }
+    }
+
+    protected string _lblFileNofN = "";
+    public string LblFileNofN
+    {
+        get => _lblFileNofN;
+        set
+        {
+            _lblFileNofN = value; OnPropertyChanged();
+        }
+    }
+
+    protected string _lblByteNofN = "";
+    public string LblByteNofN
+    {
+        get => _lblByteNofN;
+        set
+        {
+            _lblByteNofN = value; OnPropertyChanged();
+        }
+    }
+
     public ClientViewModel(FileDataService fileDataService, IConnectivity connectivity)
     {
         Title = "Far Away Files Access";
         this.fileDataService = fileDataService;
-        //JEEWEE
-        //this.connectivity = connectivity;
-        //this.geolocation = geolocation;
 
         UpdateCollView();
     }
@@ -67,12 +91,6 @@ public partial class ClientViewModel : BaseViewModel
     {
         ContentPageRef.ClrAll();
     }
-
-    //JEEWEE
-    //[ObservableProperty]
-    //bool isRefreshing;
-
-    
 
     [RelayCommand]
     async Task GotoDirAsync()
@@ -116,8 +134,6 @@ public partial class ClientViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
-            //JEEWEE
-            //IsRefreshing = false;
         }
     }
 
@@ -132,7 +148,11 @@ public partial class ClientViewModel : BaseViewModel
         try
         {
             IsBusy = true;
+            IsCopying = true;
+            _abortCopy = false;
             FileOrFolderData[] selecteds = ContentPageRef.GetSelecteds();
+            LblFileNofN = "";
+            LblByteNofN = "";
 
             bool accepted = await Shell.Current.DisplayAlert("Start copy?",
                 $"Start copying selected {selecteds.Length} file(s) and/or folder(s) with content(s), " +
@@ -142,7 +162,8 @@ public partial class ClientViewModel : BaseViewModel
             if (!accepted)
                 return;
 
-            await MauiProgram.Info.MainPageVwModel.CopyFromSvr_msgbxs_Async(selecteds);
+            await MauiProgram.Info.MainPageVwModel.CopyFromSvr_msgbxs_Async(selecteds,
+                        FuncCopyGetAbortSetLbls);
         }
         catch (Exception ex)
         {
@@ -152,26 +173,51 @@ public partial class ClientViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
-            //JEEWEE
-            //IsRefreshing = false;
+            IsCopying = false;
+            LblFileNofN = "";
+            LblByteNofN = "";
         }
-
     }
 
-    //JEEWEE: AWAY
-    //[RelayCommand]
-    //async Task GetClosestMonkey()
-    //{
-    //    if (IsBusy || FileOrFolderColl.Count == 0)
-    //        return;
 
-    //    try
-    //    {
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        Debug.WriteLine($"Unable to query location: {ex.Message}");
-    //        await Shell.Current.DisplayAlert("Error!", ex.Message, "OK");
-    //    }
-    //}
+    [RelayCommand]
+    async Task AbortCopy()
+    {
+        // IsBusy will be true for this button
+
+        bool accepted = await Shell.Current.DisplayAlert("Abort copy?",
+            $"Abort copy operation?",
+            "OK", "Cancel");
+        if (!accepted)
+            return;
+
+        _abortCopy = true;
+    }
+
+
+    protected bool FuncCopyGetAbortSetLbls(int fileN, int filesTotal,
+                long byteN, long bytesTotal)
+    {
+        if (_abortCopy)
+        {
+            LblFileNofN = $"Aborted by user";
+            return true;
+        }
+
+        LblFileNofN = $"file {fileN} of {filesTotal} ...";
+        LblByteNofN = bytesTotal < 100000 ? "" :
+                $"byte {BytesStr(byteN)} of {BytesStr(bytesTotal)} ...";
+        return false;
+    }
+
+    protected string BytesStr(long numBytes)
+    {
+        string retStr = numBytes.ToString();
+        for (int i=retStr.Length - 3; i > 0; i -= 3)
+        {
+            retStr = retStr.Substring(0, i) + "." + retStr.Substring(i);
+        }
+
+        return retStr;
+    }
 }

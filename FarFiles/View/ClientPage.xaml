@@ -20,7 +20,7 @@
     <Grid
         ColumnDefinitions="*"
         ColumnSpacing="5"
-        RowDefinitions="30,30,30,30,60,10,*"
+        RowDefinitions="30,30,30,30,60,10,Auto,*"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
         <!--JEEWEE-->
         <!--RowSpacing="5"-->
@@ -60,32 +60,26 @@
             </StackLayout>
 
             <!--here an empty gridrow-->
+
+        <StackLayout Orientation="Vertical" Grid.Row="6" IsVisible="{Binding IsCopying}">
+            <Label x:Name="CpFileNofN" Margin="3" Text="{Binding LblFileNofN}"
+                   FontSize="Medium"/>
+            <Label x:Name="CpByteNofN" Margin="3" Text="{Binding LblByteNofN}"
+                   FontSize="Medium"/>
+            <Button Margin="5" WidthRequest="150" Text="abort" Command="{Binding 
+                        AbortCopyCommand}"
+                        Style="{StaticResource ButtonOutline}"
+                        x:Name="BtnAbort"></Button>
+        </StackLayout>
         
-            <CollectionView x:Name="FfCollView"
-                        Grid.Row="6"
+        <CollectionView x:Name="FfCollView"
+                        Grid.Row="7"
                         ItemsSource="{Binding FileOrFolderColl}"
                         SelectionMode="Multiple"
                         SelectionChanged="FfCollView_SelectionChanged"
                         ItemsLayout="VerticalList"
+                        IsEnabled="{Binding IsNotBusy}"
                         VerticalScrollBarVisibility="Always">
-
-                <!--JEEWEE-->
-                <!--<CollectionView.EmptyView>
-                    <StackLayout Padding="100">
-                        <Image
-                                    HorizontalOptions="Center"
-                                    HeightRequest="160"
-                                    WidthRequest="160"
-                                    Source="nodata.png"
-                                    VerticalOptions="Center" />
-                    </StackLayout>
-                </CollectionView.EmptyView>-->
-                
-                <!--JEEWEE-->
-                <!--<CollectionView.ItemsLayout>
-                            <GridItemsLayout  Orientation="Horizontal"/>
-                </CollectionView.ItemsLayout>-->
-
 
                     <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="model:FileOrFolderData">
@@ -131,60 +125,12 @@
                             </VisualStateManager.VisualStateGroups>
 
                         </Grid>
-
-                        <!--JEEWEE-->
-                        <!--<Grid Padding="5" HorizontalOptions="Fill">
-                            <Border HeightRequest="125" Style="{StaticResource CardView}">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer 
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodel:ClientViewModel}}, x:DataType=viewmodel:FilesViewModel, Path=GoToDetailsCommand}"
-                                                CommandParameter="{Binding .}"/>
-                                </Border.GestureRecognizers>
-                                <Grid Padding="0" ColumnDefinitions="125,*">
-                                    <Image
-                                                Aspect="AspectFill"
-                                                HeightRequest="125"
-                                                Source="{Binding Image}"
-                                                WidthRequest="125" />
-                                    <CheckBox></CheckBox>
-                                    <VerticalStackLayout
-                                                VerticalOptions="Center"
-                                                Grid.Column="1"
-                                                Padding="10">
-                                        <Label Style="{StaticResource LargeLabel}" Text="{Binding Name}" />
-                                        <Label Style="{StaticResource MicroLabel}" Text="{Binding FullPath}" />
-                                    </VerticalStackLayout>
-                                </Grid>
-                            </Border>
-                        </Grid>-->
-                        
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
         
         <!--</RefreshView>-->
-
-        <!--JEEWEE-->
-        <!--<Button
-            Grid.Row="1"
-            Grid.Column="0"
-            Margin="8"
-            Command="{Binding GetMonkeysCommand}"
-            IsEnabled="{Binding IsNotBusy}"
-            Style="{StaticResource ButtonOutline}"
-            Text="Get Monkeys" />
-
-        --><!--  Add this  --><!--
-        <Button
-            Grid.Row="1"
-            Grid.Column="1"
-            Margin="8"
-            Command="{Binding GetClosestMonkeyCommand}"
-            IsEnabled="{Binding IsNotBusy}"
-            Style="{StaticResource ButtonOutline}"
-            Text="Find Closest" />-->
-
 
         <ActivityIndicator
             Grid.RowSpan="2"
