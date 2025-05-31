@@ -16,14 +16,19 @@ namespace FarFiles.Model
         PATHINFO_REQ,
         PATHINFONEXT_REQ,
         PATHINFO_ANS,
+        PATHINFO_ANDROIDBUSY,
+        PATHINFO_ISANDRBUSYINQ,
         COPY_REQ,
         COPYNEXT_REQ,
         COPY_ANS,
+        ABORTED_INFO,
+        ABORTED_CONFIRM,
     }
 
     public class MsgSvrClBase
     {
-        public const int BUFSIZEMOREORLESS = 20000;
+        //JEEWEE
+        //public const int BUFSIZEMOREORLESS = 20000;
 
         public byte[] Bytes;
 
@@ -96,6 +101,12 @@ namespace FarFiles.Model
                 case MsgSvrClType.PATHINFO_ANS:
                     return new MsgSvrClPathInfoAnswer(bytes);
 
+                case MsgSvrClType.PATHINFO_ANDROIDBUSY:
+                    return new MsgSvrClPathInfoAndroidBusy(bytes);
+
+                case MsgSvrClType.PATHINFO_ISANDRBUSYINQ:
+                    return new MsgSvrClPathInfoAndroidStillBusyInq(bytes);
+
                 case MsgSvrClType.COPY_REQ:
                     return new MsgSvrClCopyRequest(bytes);
 
@@ -104,6 +115,12 @@ namespace FarFiles.Model
 
                 case MsgSvrClType.COPY_ANS:
                     return new MsgSvrClCopyAnswer(bytes);
+
+                case MsgSvrClType.ABORTED_INFO:
+                    return new MsgSvrClAbortedInfo(bytes);
+
+                case MsgSvrClType.ABORTED_CONFIRM:
+                    return new MsgSvrClAbortedConfirmation(bytes);
 
                 default:
                     throw new Exception(
@@ -417,7 +434,8 @@ namespace FarFiles.Model
                 BitConverter.ToInt32(Bytes, 4);
         }
 
-        public MsgSvrClPathInfoAnswer(int seqNr, PathInfoAnswerState pathInfoAnswerState)
+        public MsgSvrClPathInfoAnswer(int seqNr, PathInfoAnswerState pathInfoAnswerState,
+                    int bufSizeMoreOrLess)
             : base(MsgSvrClType.PATHINFO_ANS)
         {
             int numFolders = 0;
@@ -434,7 +452,7 @@ namespace FarFiles.Model
             while (pathInfoAnswerState.GetNextFileOrFolder(out bool isDir,
                             out string name, out long fileSize))
             {
-                if (prevIsDir && ! isDir)
+                if (prevIsDir && !isDir)
                 {
                     // Start of files section
                     idxNumFiles = lisBytes.Count;
@@ -453,7 +471,7 @@ namespace FarFiles.Model
                 lisBytes.AddRange(StrPlusLenToBytes(name));
 
                 prevIsDir = isDir;
-                if (lisBytes.Count >= BUFSIZEMOREORLESS)
+                if (lisBytes.Count >= bufSizeMoreOrLess)
                     break;
             }
 
@@ -466,6 +484,9 @@ namespace FarFiles.Model
             // overwrite temp numbers:
             CopyBytesToList(lisBytes, idxNumFolders, BitConverter.GetBytes(numFolders));
             CopyBytesToList(lisBytes, idxNumFiles, BitConverter.GetBytes(numFiles));
+
+            Console.WriteLine($"JEEWEE: part: numFolders={numFolders}, numFiles={numFiles}," +
+                    $" EndReached={pathInfoAnswerState.EndReached}");
 
             // isLast:
             lisBytes.AddRange(BitConverter.GetBytes(pathInfoAnswerState.EndReached));
@@ -499,6 +520,61 @@ namespace FarFiles.Model
                 throw new Exception(
                     $"Error interpreting folder- and filenames and filesizes from message: {exc.Message}");
             }
+        }
+    }
+
+
+
+    /// <summary>
+    /// Indication from server to client that Android is busy collecting filedata
+    /// and that client best goes sleeping a while
+    /// </summary>
+    public class MsgSvrClPathInfoAndroidBusy : MsgSvrClBase
+    {
+        public MsgSvrClPathInfoAndroidBusy(int seqNr)
+            : base(MsgSvrClType.PATHINFO_ANDROIDBUSY)
+        {
+            var lisBytes = Bytes.ToList();
+            lisBytes.AddRange(BitConverter.GetBytes(seqNr));
+            Bytes = lisBytes.ToArray();
+        }
+
+        public MsgSvrClPathInfoAndroidBusy(byte[] bytes)
+            : base(bytes, MsgSvrClType.PATHINFO_ANDROIDBUSY)
+        {
+        }
+
+        public void GetSeqnr(out int seqNr)
+        {
+            try
+            {
+                int idx = 4;
+                seqNr = BitConverter.ToInt32(Bytes, idx);
+            }
+            catch (Exception exc)
+            {
+                throw new Exception(
+                    $"Error getting data from message: {exc.Message}");
+            }
+        }
+    }
+
+
+
+
+    /// <summary>
+    /// Query from client to server whether Android is still busy
+    /// </summary>
+    public class MsgSvrClPathInfoAndroidStillBusyInq : MsgSvrClBase
+    {
+        public MsgSvrClPathInfoAndroidStillBusyInq()
+            : base(MsgSvrClType.PATHINFO_ISANDRBUSYINQ)
+        {
+        }
+
+        public MsgSvrClPathInfoAndroidStillBusyInq(byte[] bytes)
+            : base(bytes, MsgSvrClType.PATHINFO_ISANDRBUSYINQ)
+        {
         }
     }
 
@@ -569,7 +645,8 @@ namespace FarFiles.Model
 
 
     /// <summary>
-    /// Answer with copydata, probably a part
+    /// Answer with copydata, probably a part.
+    /// (bufSizeMoreOrLess here is managed by CopyMgr)
     /// </summary>
     public class MsgSvrClCopyAnswer : MsgSvrClBase
     {
@@ -590,11 +667,17 @@ namespace FarFiles.Model
         }
 
 
-        public int SeqNr { get =>
-                BitConverter.ToInt32(Bytes, 4); }
-        public bool IsLastPart { get =>
-                BitConverter.ToBoolean(Bytes, 4 + sizeof(int)); }
-        
+        public int SeqNr
+        {
+            get =>
+                BitConverter.ToInt32(Bytes, 4);
+        }
+        public bool IsLastPart
+        {
+            get =>
+                BitConverter.ToBoolean(Bytes, 4 + sizeof(int));
+        }
+
         public void GetSeqnrAndIslastAndData(out int seqNr, out bool isLast, out byte[] data)
         {
             try
@@ -611,8 +694,49 @@ namespace FarFiles.Model
             catch (Exception exc)
             {
                 throw new Exception(
-                    $"Error interpreting strings from message: {exc.Message}");
+                    $"Error Error getting data from messagefrom message: {exc.Message}");
             }
+        }
+    }
+
+
+
+
+
+    /// <summary>
+    /// Info from client that user aborted operation
+    /// </summary>
+    public class MsgSvrClAbortedInfo : MsgSvrClBase
+    {
+        public MsgSvrClAbortedInfo()
+            : base(MsgSvrClType.ABORTED_INFO)
+        {
+        }
+
+
+        public MsgSvrClAbortedInfo(byte[] bytes)
+            : base(bytes, MsgSvrClType.ABORTED_INFO)
+        {
+        }
+    }
+
+
+
+
+    /// <summary>
+    /// Info from client that user aborted operation
+    /// </summary>
+    public class MsgSvrClAbortedConfirmation : MsgSvrClBase
+    {
+        public MsgSvrClAbortedConfirmation()
+            : base(MsgSvrClType.ABORTED_CONFIRM)
+        {
+        }
+
+
+        public MsgSvrClAbortedConfirmation(byte[] bytes)
+            : base(bytes, MsgSvrClType.ABORTED_CONFIRM)
+        {
         }
     }
 }

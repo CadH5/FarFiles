@@ -61,7 +61,7 @@
 
             <!--here an empty gridrow-->
 
-        <StackLayout Orientation="Vertical" Grid.Row="6" IsVisible="{Binding IsCopying}">
+        <StackLayout Orientation="Vertical" Grid.Row="6" IsVisible="{Binding IsProgressing}">
             <Label x:Name="CpFileNofN" Margin="3" Text="{Binding LblFileNofN}"
                    FontSize="Medium"/>
             <Label x:Name="CpByteNofN" Margin="3" Text="{Binding LblByteNofN}"

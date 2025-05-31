@@ -40,6 +40,9 @@ public partial class MainPageViewModel : BaseViewModel
     protected CopyMgr _copyMgr = null;
     protected PathInfoAnswerState _currPathInfoAnswerState = null;
     protected int _seqNrPathInfoAns = 0;
+    protected Thread _threadAndroidPathInfo = null;
+    protected FileOrFolderData[] _fileOrFolderDataArrayOnSvr = null;
+
 
     public MainPageViewModel(FileDataService fileDataService)
     {
@@ -364,7 +367,7 @@ public partial class MainPageViewModel : BaseViewModel
                 }
 
                 // client: send request info rootpath and recieve answer
-                await SndFromClientRecievePathInfo_msgbxs_Async();
+                await SndFromClientRecievePathInfo_msgbxs_Async(null);
 
                 await Shell.Current.GoToAsync(nameof(ClientPage), true);
                 IsBtnConnectVisible = false;
@@ -390,18 +393,23 @@ public partial class MainPageViewModel : BaseViewModel
         {
             await Shell.Current.DisplayAlert("Error",
                 MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
+            LblInfo1 = "Error occurred";
+            LblInfo2 = "";
             IsBusy = false;
+
         }
     }
 
 
-	/// <summary>
-	/// Send MauiProgram.Info.SvrPathParts to server, receive folders and files,
-	/// set those in MauiProgram.Info.CurrSvrFolders, MauiProgram.Info.CurrSvrFiles
-	/// </summary>
-	/// <returns></returns>
-	/// <exception cref="Exception"></exception>
-	public async Task SndFromClientRecievePathInfo_msgbxs_Async()
+    /// <summary>
+    /// Send MauiProgram.Info.SvrPathParts to server, receive folders and files,
+    /// set those in MauiProgram.Info.CurrSvrFolders, MauiProgram.Info.CurrSvrFiles
+    /// </summary>
+    /// <returns></returns>
+    /// <param name="funcPathInfoGetAbortSetLbls">returns true if user aborted</param>
+    /// <exception cref="Exception"></exception>
+    public async Task SndFromClientRecievePathInfo_msgbxs_Async(
+                Func<int,bool> funcPathInfoGetAbortSetLbls = null)
     {
         MsgSvrClBase msgSvrCl;
         
@@ -411,9 +419,13 @@ public partial class MainPageViewModel : BaseViewModel
         var lisFiles = new List<string>();
         var lisSizes = new List<long>();
 
+        bool abort = false;
+        int sleepMilliSecs = 1000;
+
+        LblInfo1 = "sending path info request to server ...";
         while (true)
         {
-            LblInfo1 = "sending path info request to server ...";
+            int seqNr;
             byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
                                 msgSvrCl.Bytes);
             LblInfo1 = "";
@@ -422,31 +434,63 @@ public partial class MainPageViewModel : BaseViewModel
             LblInfo2 = "receiving path info from server ...";
 
             MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
-            msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
-            Log($"client: received bytes: {byRecieved.Length}, MsgSvrClPathInfoAnswer");
-
-            ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
-                    out int seqNr, out bool isLast, out string[] folderNames, out string[] fileNames, out long[] fileSizes);
-            lisFolders.AddRange(folderNames);
-            lisFiles.AddRange(fileNames);
-            lisSizes.AddRange(fileSizes);
-
-            if (isLast)
-            {
-                LblInfo2 = "received: path info from server";
+            if (msgSvrClAnswer is MsgSvrClAbortedConfirmation)
                 break;
+
+            if (msgSvrClAnswer is MsgSvrClPathInfoAndroidBusy)
+            {
+                ((MsgSvrClPathInfoAndroidBusy)msgSvrClAnswer).GetSeqnr(out seqNr);
+                Thread.Sleep(sleepMilliSecs);
+                sleepMilliSecs = Math.Min(3000, sleepMilliSecs + 1000);
+                LblInfo1 = "sending still busy inquiry to server ...";
+                msgSvrCl = new MsgSvrClPathInfoAndroidStillBusyInq();
+            }
+            else
+            {
+                msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
+                Log($"client: received bytes: {byRecieved.Length}, MsgSvrClPathInfoAnswer");
+
+                ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
+                        out seqNr, out bool isLast, out string[] folderNames, out string[] fileNames, out long[] fileSizes);
+                lisFolders.AddRange(folderNames);
+                lisFiles.AddRange(fileNames);
+                lisSizes.AddRange(fileSizes);
+
+                if (isLast)
+                {
+                    LblInfo2 = "received: path info from server";
+                    break;
+                }
             }
 
-            msgSvrCl = new MsgSvrClPathInfoNextpartRequest();
+            if (null != funcPathInfoGetAbortSetLbls)
+            {
+                if (funcPathInfoGetAbortSetLbls(seqNr))
+                {
+                    LblInfo1 = "sending aborted info to server ...";
+                    msgSvrCl = new MsgSvrClAbortedInfo();
+                    abort = true;
+                    // we must still send aborted info to the server, and receive confirmation
+                }
+            }
+
+            if (!abort)
+            {
+                LblInfo1 = "sending path info request to server ...";
+                msgSvrCl = new MsgSvrClPathInfoNextpartRequest();
+            }
         }
 
-        MauiProgram.Info.CurrSvrFolders = lisFolders.Order().Select(
-            f => new FileOrFolderData(f, true, 0)).ToArray();
-        int i = 0;
-        MauiProgram.Info.CurrSvrFiles = lisFiles.Select(
-            f => new FileOrFolderData(f, false, lisSizes[i++]))
-            .OrderBy(f => f.Name)
-            .ToArray();
+        if (! abort)
+        {
+            MauiProgram.Info.CurrSvrFolders = lisFolders.Order().Select(
+                f => new FileOrFolderData(f, true, 0)).ToArray();
+            int i = 0;
+            MauiProgram.Info.CurrSvrFiles = lisFiles.Select(
+                f => new FileOrFolderData(f, false, lisSizes[i++]))
+                .OrderBy(f => f.Name)
+                .ToArray();
+        }
     }
 
 
@@ -467,6 +511,9 @@ public partial class MainPageViewModel : BaseViewModel
                     return;
 
                 MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
+                if (msgSvrClAnswer is MsgSvrClAbortedConfirmation)
+                    break;
+
                 msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClCopyAnswer));
                 Log($"client: received bytes: {byRecieved.Length}, MsgSvrClCopyAnswer");
 
@@ -475,7 +522,7 @@ public partial class MainPageViewModel : BaseViewModel
                     break;          // ready
 
                 if (copyMgr.ClientAborted)
-                    msgSvrCl = new MsgSvrClCopyAbortedInfo();
+                    msgSvrCl = new MsgSvrClAbortedInfo();
                 else
                     msgSvrCl = new MsgSvrClCopyNextpartRequest();
             }
@@ -486,8 +533,9 @@ public partial class MainPageViewModel : BaseViewModel
                 $"Files created: {copyMgr.NumFilesCreated}{nl}" +
                 $"Files overwritten: {copyMgr.NumFilesOverwritten}{nl}" +
                 $"Files skipped: {copyMgr.NumFilesSkipped}{nl}" +
-                (copyMgr.NumDtProblems > 0 ? $"Err dates replaced by Now: {copyMgr.NumDtProblems}{nl}" : ""),
-                (copyMgr.ErrMsgs.Count > 0 ? $"ERRORS: {copyMgr.ErrMsgs.Count}{nl}" : ""),
+                (copyMgr.NumDtProblems > 0 ? $"Err dates replaced by Now: {copyMgr.NumDtProblems}{nl}" : "") +
+                (copyMgr.ErrMsgs.Count > 0 ? $"ERRORS: {copyMgr.ErrMsgs.Count}{nl}" : "") +
+                (copyMgr.ClientAborted ? $"ABORTED BY USER{nl}" : ""),
                 "OK");
 
             if (copyMgr.ErrMsgs.Count > 0)
@@ -633,84 +681,125 @@ public partial class MainPageViewModel : BaseViewModel
 
             MsgSvrClBase msgSvrClAns = null;
 
-            string receivedTxt = "";
-            string errToSendTxt = "";
+            //JEEWEE
+            //string receivedTxt = "";
+            //string errToSendTxt = "";
+
+            // we should close _reader if for any reason another message comes in than as expected
+            if (null != _copyMgr && !(msgSvrCl is MsgSvrClCopyNextpartRequest))
+            {
+                _copyMgr.Dispose();
+                _copyMgr = null;
+            }
+
+            string sendWhatStr = "";
+
+            // React on different types of messages:
             if (msgSvrCl is MsgSvrClStringSend)
             {
-                receivedTxt = ((MsgSvrClStringSend)msgSvrCl).GetString();
+                string receivedTxt = ((MsgSvrClStringSend)msgSvrCl).GetString();
+                LblInfo1 = $"received: string: '{receivedTxt}'";
                 msgSvrClAns = new MsgSvrClStringAnswer();
+                sendWhatStr = "answer";
             }
             else if (msgSvrCl is MsgSvrClPathInfoRequest)
             {
-                receivedTxt = msgSvrCl.Type.ToString();
+                //JEEWEE
+                //receivedTxt = msgSvrCl.Type.ToString();
                 _seqNrPathInfoAns = 0;
 
-                //JEEWEE
-                //#if ANDROID
-                //                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataAndroid(
-                //                            Settings.AndroidUriRoot,
-                //                            ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
-                //#else
-                //                string path = Settings.PathFromRootAndSubPartsWindows(
-                //                            ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
-                //                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataWindows(
-                //                            path);
-                //#endif
+                string[] svrSubParts = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
 
-                FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataGeneric(
-                            Settings.FullPathRoot,
-                            Settings.AndroidUriRoot,
-                            ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts());
-
-
-                var dataWithExc = data.Where(d => null != d.ExcThrown).FirstOrDefault();
-                if (dataWithExc != null)
+                LblInfo1 = "received: path info request, relpath='" +
+                        String.Join("/", svrSubParts) + "'";
+#if ANDROID
+                if (null != _threadAndroidPathInfo &&
+                        _threadAndroidPathInfo.ThreadState == System.Threading.ThreadState.Running)
                 {
-                    _currPathInfoAnswerState = null;
-                    msgSvrClAns = new MsgSvrClErrorAnswer(dataWithExc.ExcThrown.Message);
+                    msgSvrClAns = new MsgSvrClErrorAnswer(
+                        $"Server: path info request: not yet possible because of aborted previous request");
+                    sendWhatStr = "ERRORMSG (previous aborted thread still active)";
                 }
                 else
                 {
-                    string[] folderNames = data.Where(d => d.IsDir).Select(d => d.Name).ToArray();
-                    string[] fileNames = data.Where(d => !d.IsDir).Select(d => d.Name).ToArray();
-                    long[] fileSizes = data.Where(d => !d.IsDir).Select(d => d.FileSize).ToArray();
-                    _currPathInfoAnswerState = new PathInfoAnswerState(folderNames,
-                                fileNames, fileSizes);
-                    msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
-                                        _currPathInfoAnswerState);
+                    _threadAndroidPathInfo = new Thread(() => GetFileOrFolderDataArray(
+                                svrSubParts));
+                    _threadAndroidPathInfo.Start();
+                    msgSvrClAns = new MsgSvrClPathInfoAndroidBusy(_seqNrPathInfoAns++);
+                }
+
+#else
+                //JEEWEE
+                //FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataGeneric(
+                //            Settings.FullPathRoot,
+                //            Settings.AndroidUriRoot,
+                //            svrSubParts);
+
+                // on Windows there is no performance trouble
+                GetFileOrFolderDataArray(svrSubParts);
+                msgSvrClAns = HandleFileOrFolderDataArrayOnSvr(out sendWhatStr);
+#endif
+
+            }
+            else if (msgSvrCl is MsgSvrClPathInfoAndroidStillBusyInq)
+            {
+                LblInfo1 = "received: query is Android still busy";
+                if (_threadAndroidPathInfo.ThreadState ==
+                            System.Threading.ThreadState.Running)
+                {
+                    msgSvrClAns = new MsgSvrClPathInfoAndroidBusy(_seqNrPathInfoAns++);
+                    sendWhatStr = $"still busy ({_seqNrPathInfoAns})";
+                }
+                else
+                {
+                    msgSvrClAns = HandleFileOrFolderDataArrayOnSvr(out sendWhatStr);
                 }
             }
             else if (msgSvrCl is MsgSvrClPathInfoNextpartRequest)
             {
+                LblInfo1 = "received: request next part path info";
                 if (null == _currPathInfoAnswerState)
                 {
-                    errToSendTxt =
-                        $"Server: wrong request last {msgSvrCl.GetType()}, no active path info answer state";
-                    msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+                    //JEEWEE
+                    //errToSendTxt =
+                    //    $"Server: wrong request last {msgSvrCl.GetType()}, no active path info answer state";
+                    //msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+
+                    msgSvrClAns = new MsgSvrClErrorAnswer(
+                        $"Server: wrong request last {msgSvrCl.GetType()}, no active path info answer state");
+                    sendWhatStr = "ERRORMSG (wrong request next part path info)";
                 }
                 else
                 {
                     msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
-                                    _currPathInfoAnswerState);
+                            _currPathInfoAnswerState,
+                            MauiProgram.Settings.BufSizeMoreOrLess);
+                    sendWhatStr = "path info part " + _seqNrPathInfoAns;
                 }
             }
             else if (msgSvrCl is MsgSvrClCopyRequest)
             {
-                _copyMgr?.Dispose();
+                LblInfo1 = "received: copy request";
                 _copyMgr = new CopyMgr(_fileDataService);
                 _copyMgr.StartCopyFromSvr((MsgSvrClCopyRequest)msgSvrCl);
                 msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
+                sendWhatStr = SendWhatStrFromCopyMsgtosend(msgSvrClAns);
             }
             else if (msgSvrCl is MsgSvrClCopyNextpartRequest)
             {
                 if (null == _copyMgr)
                 {
-                    errToSendTxt =
-                        $"Server: wrong request last {msgSvrCl.GetType()}, no active copy process";
-                    msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+                    //JEEWEE
+                    //errToSendTxt =
+                    //    $"Server: wrong request last {msgSvrCl.GetType()}, no active copy process";
+                    //msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+                    msgSvrClAns = new MsgSvrClErrorAnswer(
+                        $"Server: wrong request last {msgSvrCl.GetType()}, no active copy process");
+                    sendWhatStr = $"ERRORMSG (wrong request {msgSvrCl.GetType()})";
                 }
                 else
                 {
+                    LblInfo1 = "received: next part copy request";
                     msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
                     if (msgSvrClAns is MsgSvrClCopyAnswer &&
                         ((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart)
@@ -718,27 +807,49 @@ public partial class MainPageViewModel : BaseViewModel
                         _copyMgr.Dispose();
                         _copyMgr = null;
                     }
+                    sendWhatStr = SendWhatStrFromCopyMsgtosend(msgSvrClAns);
                 }
+            }
+            else if (msgSvrCl is MsgSvrClAbortedInfo)
+            {
+                LblInfo1 = "received: info that client aborted";
+                msgSvrClAns = new MsgSvrClAbortedConfirmation();
+                // JWdP 20250530 _threadAndroidPathInfo.Abort() is obsolete and
+                // raises PlatformNotSupported exception, it says, so I just let it terminating
+                sendWhatStr = "confirmation";
             }
             else
             {
-                errToSendTxt =
-                    $"Server: received unexpected message type {msgSvrCl.GetType()}";
-                msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+                //JEEWEE
+                //errToSendTxt =
+                //    $"Server: received unexpected message type {msgSvrCl.GetType()}";
+                //msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
+
+                msgSvrClAns = new MsgSvrClErrorAnswer(
+                    $"Server: received unexpected message type {msgSvrCl.GetType()}");
+                sendWhatStr = $"ERRORMSG (wrong request {msgSvrCl.GetType()})";
             }
 
-            LblInfo1 = $"Received from client: '{receivedTxt}'";
+            //JEEWEE
+            //LblInfo1 = $"Received from client: '{receivedTxt}'";
 
             //5️ Respond to client(hole punching)
-            int numAnswer = MauiProgram.Info.NumAnswersSent + 1;
-            LblInfo2 = $"sending answer {numAnswer} ...";
+            //JEEWEE
+            //int numAnswer = MauiProgram.Info.NumAnswersSent + 1;
+            
+            LblInfo2 = $"sending {sendWhatStr} ...";
             Log($"server: going to send bytes: {msgSvrClAns.Bytes.Length}, {msgSvrClAns.GetType()}");
             await udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
                         received.RemoteEndPoint);
-            LblInfo2 = $"answer {numAnswer} sent: " +
-                (!String.IsNullOrEmpty(errToSendTxt) ? errToSendTxt :
-                $"{msgSvrClAns.Bytes.Length} bytes");
-            MauiProgram.Info.NumAnswersSent = numAnswer;
+            //JEEWEE
+            //LblInfo2 = $"answer {numAnswer} sent: " +
+            //    (!String.IsNullOrEmpty(errToSendTxt) ? errToSendTxt :
+            //    $"{msgSvrClAns.Bytes.Length} bytes");
+            LblInfo2 = $"sent: {sendWhatStr}";
+
+            //JEEWEE
+            //MauiProgram.Info.NumAnswersSent = numAnswer;
+            MauiProgram.Info.NumAnswersSent++;
         }
         catch (Exception exc)
         {
@@ -749,6 +860,61 @@ public partial class MainPageViewModel : BaseViewModel
         }
     }
 
+
+    protected void GetFileOrFolderDataArray(string[] svrSubParts)
+    {
+        _fileOrFolderDataArrayOnSvr = _fileDataService.GetFilesAndFoldersDataGeneric(
+                    Settings.FullPathRoot,
+                    Settings.AndroidUriRoot,
+                    svrSubParts);
+    }
+
+    protected MsgSvrClBase HandleFileOrFolderDataArrayOnSvr(out string sendWhatStr)
+    {
+        MsgSvrClBase msgSvrClAns;
+        var dataWithExc = _fileOrFolderDataArrayOnSvr.Where(d => null != d.ExcThrown)
+                    .FirstOrDefault();
+        if (dataWithExc != null)
+        {
+            _currPathInfoAnswerState = null;
+            msgSvrClAns = new MsgSvrClErrorAnswer(dataWithExc.ExcThrown.Message);
+            sendWhatStr = $"ERRORMSG ({dataWithExc.ExcThrown.Message})";
+        }
+        else
+        {
+            string[] folderNames = _fileOrFolderDataArrayOnSvr.Where(
+                        d => d.IsDir).Select(d => d.Name).ToArray();
+            string[] fileNames = _fileOrFolderDataArrayOnSvr.Where(
+                        d => !d.IsDir).Select(d => d.Name).ToArray();
+            long[] fileSizes = _fileOrFolderDataArrayOnSvr.Where(
+                        d => !d.IsDir).Select(d => d.FileSize).ToArray();
+            _currPathInfoAnswerState = new PathInfoAnswerState(folderNames,
+                        fileNames, fileSizes);
+            msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
+                    _currPathInfoAnswerState,
+                    MauiProgram.Settings.BufSizeMoreOrLess);
+            sendWhatStr = "path info " +
+                    (_currPathInfoAnswerState.EndReached ?
+                    "last part" : $"part {_seqNrPathInfoAns}");
+        }
+
+        return msgSvrClAns;
+    }
+
+
+    protected string SendWhatStrFromCopyMsgtosend(MsgSvrClBase msgSvrClAns)
+    {
+        if (msgSvrClAns is MsgSvrClErrorAnswer)
+            return $"ERRORMSG ({((MsgSvrClErrorAnswer)msgSvrClAns).GetErrMsg()})";
+
+        if (msgSvrClAns is MsgSvrClCopyAnswer)
+            return "copy info: " +
+                (((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart ? "last part" :
+                $"copy info; file {_copyMgr?.NumFilesOpenedOnSvr} of {_copyMgr?.TotalNumFilesToCopyOnSvr}");
+
+        // should not happen:
+        return msgSvrClAns.GetType().ToString();
+    }
 
 
     /// <summary>

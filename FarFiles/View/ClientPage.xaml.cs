@@ -20,6 +20,16 @@ public partial class ClientPage : ContentPage
 		FfCollView.SelectedItems.Clear();
 	}
 
+    public void ClrDotDotAt0()
+    {
+        var fDataFirst = GetSelecteds().FirstOrDefault();
+        if (fDataFirst != null && fDataFirst.Name == "..")
+        {
+            FfCollView.SelectedItems.RemoveAt(0);
+            UpdatePage();
+        }
+    }
+
     public FileOrFolderData[] GetSelecteds()
     {
         return FfCollView.SelectedItems.Cast<FileOrFolderData>().ToArray();

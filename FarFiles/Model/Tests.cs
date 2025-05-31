@@ -104,7 +104,8 @@ namespace FarFiles.Model
                 long[] filesSizes = new long[] {
                         0, 4000, 5000000, 0, 5 };
                 var pathInfoAnswerState = new PathInfoAnswerState(folderNames, fileNames, filesSizes);
-                msgSvrCl = new MsgSvrClPathInfoAnswer(seqNrIn, pathInfoAnswerState);
+                msgSvrCl = new MsgSvrClPathInfoAnswer(seqNrIn, pathInfoAnswerState,
+                            20000);
                 AssertEq(wrLog, MsgSvrClType.PATHINFO_ANS, msgSvrCl.Type,
                         "MsgSvrClPathInfoAnswer.Type");
                 ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
@@ -125,7 +126,8 @@ namespace FarFiles.Model
                 fileNames = new string[0];
                 filesSizes = new long[0];
                 pathInfoAnswerState = new PathInfoAnswerState(folderNames, fileNames, filesSizes);
-                msgSvrCl = new MsgSvrClPathInfoAnswer(seqNrIn, pathInfoAnswerState);
+                msgSvrCl = new MsgSvrClPathInfoAnswer(seqNrIn, pathInfoAnswerState,
+                                    20000);
                 ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
                         out seqNrOut, out isLastOut,
                         out foldersOut, out filesOut, out filesSizesOut);
@@ -145,6 +147,8 @@ namespace FarFiles.Model
                     testNames[i] = $"f{i}";
                     testSizes[i] = i;
                 }
+
+                int smallBufSizeMoreOrLess = 2000;
                 // do two tests: first only folders, then only files
                 for (int i = 0; i < 2; i++)
                 {
@@ -158,7 +162,8 @@ namespace FarFiles.Model
                     int prevCounterNum = 0;
                     do
                     {
-                        msgSvrCl = new MsgSvrClPathInfoAnswer(seqNr, pathInfoAnswerState);
+                        msgSvrCl = new MsgSvrClPathInfoAnswer(seqNr,
+                                    pathInfoAnswerState, smallBufSizeMoreOrLess);
                         ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
                                 out seqNrOut, out isLastOut,
                                 out foldersOut, out filesOut, out filesSizesOut);
@@ -197,7 +202,7 @@ namespace FarFiles.Model
                                 AssertEq(wrLog, filesSizes, filesSizesOut, "",
                                 false, prevCounterNum, till),
                                 "MsgSvrClPathInfoAnswer fileSizes" +
-                                        $" [{prevCounterNum} to {till}");
+                                        $" [{prevCounterNum} to {till}]");
                             AssertEq(wrLog, filesOut.Length, filesSizesOut.Length,
                                 "MsgSvrClPathInfoAnswer num files, sizes");
 
@@ -210,6 +215,20 @@ namespace FarFiles.Model
                     AssertEq(wrLog, 1000, prevCounterNum,
                                 "MsgSvrClPathInfoAnswer big endtotal");
                 }
+
+                // MsgSvrClPathInfoAndroidBusy
+                seqNrIn = 777;
+                msgSvrCl = new MsgSvrClPathInfoAndroidBusy(seqNrIn);
+                AssertEq(wrLog, MsgSvrClType.PATHINFO_ANDROIDBUSY, msgSvrCl.Type,
+                        "MsgSvrClPathInfoAndroidBusy.Type");
+                ((MsgSvrClPathInfoAndroidBusy)msgSvrCl).GetSeqnr(out seqNrOut);
+                AssertEq(wrLog, seqNrIn, seqNrOut,
+                        "MsgSvrClPathInfoAndroidBusy seqNr");
+
+                // MsgSvrClPathInfoAndroidStillBusyInq
+                msgSvrCl = new MsgSvrClPathInfoAndroidStillBusyInq();
+                AssertEq(wrLog, MsgSvrClType.PATHINFO_ISANDRBUSYINQ, msgSvrCl.Type,
+                        "MsgSvrClPathInfoAndroidStillBusyInq.Type");
 
 
                 // MsgSvrClCopyRequest
@@ -253,6 +272,16 @@ namespace FarFiles.Model
                 AssertEq(wrLog, dataIn.Select(b => (long)b).ToArray(),
                         dataOut.Select(b => (long)b).ToArray(),
                         "MsgSvrClCopyAnswer data");
+
+                // MsgSvrClAbortedInfo
+                msgSvrCl = new MsgSvrClAbortedInfo();
+                AssertEq(wrLog, MsgSvrClType.ABORTED_INFO, msgSvrCl.Type,
+                        "MsgSvrClAbortedInfo.Type");
+
+                // MsgSvrClAbortedConfirmation
+                msgSvrCl = new MsgSvrClAbortedConfirmation();
+                AssertEq(wrLog, MsgSvrClType.ABORTED_CONFIRM, msgSvrCl.Type,
+                        "MsgSvrClAbortedConfirmation.Type");
             }
             catch (Exception exc)
             {

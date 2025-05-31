@@ -49,11 +49,11 @@ namespace FarFiles.Model
         protected List<byte> _bufSvrMsg = new List<byte>();
         protected List<NavLevel> _navLevels = new List<NavLevel>();
         protected int _seqNr = 0;
-        protected int _totalNumFilesToCopy = 0;
-        protected bool _infoTotalNumFilesAdded = false;
+        protected bool _infoTotalNumFilesAddedOnSvr = false;
         protected string _currPathOnClient = "";
         protected string _currFileNameOnClient = "";
         protected string _currFileFullPathOnClient = "";
+        protected bool _currFileExistedBefore = false;
         protected long _currFileSizeOnClient;
         protected long _fileSizeCounter;
         protected FileAttributes _currFileAttrsOnClient;
@@ -61,6 +61,8 @@ namespace FarFiles.Model
         protected DateTime _currFileDtLastWriteOnClient;
         protected Settings _settings;
 
+        public int TotalNumFilesToCopyOnSvr { get; protected set; } = 0;
+        public int NumFilesOpenedOnSvr { get; protected set; } = 0;
         public int ClientInfoTotalNumFilesToCopy { get; protected set; } = 0;
         public bool ClientAborted { get; protected set; } = false;
         public int NumFoldersCreated { get; protected set; } = 0;
@@ -92,9 +94,10 @@ namespace FarFiles.Model
             //string pathOnSvr = _settings.PathFromRootAndSubParts(svrSubParts);
             //string relPathOnClient = "";
             _seqNr = 0;
-            _totalNumFilesToCopy = CalcTotalNumFilesToCopy(svrSubParts,
+            TotalNumFilesToCopyOnSvr = CalcTotalNumFilesToCopy(svrSubParts,
                                 folderNamesToCopy, fileNamesToCopy);
-            _infoTotalNumFilesAdded = false;
+            NumFilesOpenedOnSvr = 0;
+            _infoTotalNumFilesAddedOnSvr = false;
 
             _navLevels.Clear();
             //JEEWEE
@@ -117,30 +120,13 @@ namespace FarFiles.Model
                 _bufSvrMsg.Clear();
                 int numRemaining = _settings.BufSizeMoreOrLess;
 
-                //JEEWEE
-                //System.Diagnostics.Debug.WriteLine(
-                //    $"DEBUG  : numRemaining (new int()): {numRemaining}");
-                //Console.WriteLine(
-                //    $"CONSOLE: numRemaining (new int()): {numRemaining}");
-
-                //JEEWEE
-                //System.Diagnostics.Debug.WriteLine(
-                //    $"DEBUG  : _bufSizeMoreOrLess: {_bufSizeMoreOrLess}, numRemaining: {numRemaining}, numRemainingJEEWEE: {numRemainingJEEWEE}");
-                //Console.WriteLine(
-                //    $"CONSOLE: _bufSizeMoreOrLess: {_bufSizeMoreOrLess}, numRemaining: {numRemaining}, numRemainingJEEWEE: {numRemainingJEEWEE}");
-
-                //JEEWEE
-                //bool JEEWEEthrowExc = numRemaining - _bufSizeMoreOrLess != 0;
                 while (numRemaining > 0)
                 {
-                    //Console.WriteLine(
-                    //    $"CONSOLE: JEEWEE: In while loop, numRemaining: {numRemaining}");
-
-                    if (!_infoTotalNumFilesAdded)
+                    if (!_infoTotalNumFilesAddedOnSvr)
                     {
                         _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.INFOTOTALFILES));
-                        _bufSvrMsg.AddRange(BitConverter.GetBytes(_totalNumFilesToCopy));
-                        _infoTotalNumFilesAdded = true;
+                        _bufSvrMsg.AddRange(BitConverter.GetBytes(TotalNumFilesToCopyOnSvr));
+                        _infoTotalNumFilesAddedOnSvr = true;
                     }
 
                     if (null != _reader)
@@ -160,9 +146,6 @@ namespace FarFiles.Model
                         {
                             _reader.Close();
                             _reader = null;
-
-                            //Console.WriteLine(
-                            //    $"CONSOLE: JEEWEE: reader closed");
                         }
                     }
 
@@ -177,6 +160,7 @@ namespace FarFiles.Model
                                     _settings.FullPathRoot, _settings.AndroidUriRoot,
                                     currNavLevel.SvrSubParts, fileName,
                                     out FileOrFolderData fData);
+                            NumFilesOpenedOnSvr++;
 
                             //JEEWEE
                             //string fullPath = Path.Combine(currNavLevel.PathOnSvr, fileName);
@@ -247,9 +231,6 @@ namespace FarFiles.Model
                         _navLevels.RemoveAt(_navLevels.Count - 1);
                         if (_navLevels.Count == 0)
                         {
-                            //Console.WriteLine(
-                            //    $"CONSOLE: JEEWEE: isLastPart = true");
-
                             isLastPart = true;
                             this.Dispose();
                             break;
@@ -259,22 +240,7 @@ namespace FarFiles.Model
                     }
 
                     numRemaining = _settings.BufSizeMoreOrLess - _bufSvrMsg.Count;
-
-                    //Console.WriteLine(
-                    //    $"CONSOLE: JEEWEE: numRemaining now: {numRemaining}");
                 }
-
-
-                //JEEWEE
-                //Console.WriteLine(
-                //    $"CONSOLE: JEEWEE: JEEWEEthrowExc: {JEEWEEthrowExc}");
-                //if (JEEWEEthrowExc)
-                //{
-                //    throw new Exception("JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! weird thing happened");
-                //}
-
-                //Console.WriteLine(
-                //    $"CONSOLE: JEEWEE: MsgSvrClCopyAnswer sent: _bufSvrMsg.Count={_bufSvrMsg.Count}, _seqNr={_seqNr}, isLastPart={isLastPart}");
 
                 return new MsgSvrClCopyAnswer(_seqNr++, isLastPart, _bufSvrMsg.ToArray());
             }
@@ -366,10 +332,11 @@ namespace FarFiles.Model
                             _writer = null;
                         }
 
-                        bool existedBefore = File.Exists(_currFileFullPathOnClient);
-                        if (existedBefore && 1 == _settings.Idx0isOverwr1isSkip)
+                        _currFileExistedBefore = File.Exists(_currFileFullPathOnClient);
+                        if (_currFileExistedBefore && 1 == _settings.Idx0isOverwr1isSkip)
                         {
                             NumFilesSkipped++;
+                            // and _writer stays null
                         }
                         else
                         {
@@ -378,7 +345,7 @@ namespace FarFiles.Model
                                 _writer = new BinaryWriter(File.Open(_currFileFullPathOnClient,
                                                     FileMode.Create));
                                 NumFilesCreated++;
-                                if (existedBefore)
+                                if (_currFileExistedBefore)
                                     NumFilesOverwritten++;
 
                                 //JEEWEE
@@ -480,11 +447,14 @@ namespace FarFiles.Model
         protected void ClientAbort()
         {
             ClientAborted = true;
-            if (null != _writer)
+            if (null != _writer)        // so: file was created, not skipped, and is now being written
             {
                 _writer.Close();
                 _writer = null;
-                File.Delete(_currFileFullPathOnClient);
+                File.Delete(_currFileFullPathOnClient);     // let no partially created files remain
+                NumFilesCreated--;
+                if (_currFileExistedBefore)
+                    NumFilesOverwritten--;
             }
         }
 

@@ -33,6 +33,9 @@ namespace FarFiles.Model
             _fileSizes = fileSizes;
             _idx0isFolders1isFiles = 0;
             _idxInArray = 0;
+
+            Console.WriteLine(
+                $"JEEWEE PathInfoAnswerState: fileNames: {fileNames.Length}, folderNames: {_folderNames.Length}");
         }
 
 

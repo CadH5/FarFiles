@@ -19,14 +19,14 @@ public partial class ClientViewModel : BaseViewModel
     // And for Idx0isOverwr1isSkip an extra measure is necessary:
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
-    protected bool _abortCopy = false;
-    protected bool _isCopying = false;
-    public bool IsCopying
+    protected bool _abortProgress = false;
+    protected bool _isProgressing = false;
+    public bool IsProgressing
     {
-        get => _isCopying;
+        get => _isProgressing;
         set
         {
-            _isCopying = value; OnPropertyChanged();
+            _isProgressing = value; OnPropertyChanged();
         }
     }
 
@@ -101,6 +101,11 @@ public partial class ClientViewModel : BaseViewModel
         try
         {
             IsBusy = true;
+            IsProgressing = true;
+            _abortProgress = false;
+
+            var savSvrPathParts = new List<string>();
+            savSvrPathParts.AddRange(MauiProgram.Info.SvrPathParts);
 
             FileOrFolderData[] selecteds = ContentPageRef.GetSelecteds();
             if (selecteds.Length != 1 || ! selecteds.First().IsDir)      // button should be disabled
@@ -123,7 +128,15 @@ public partial class ClientViewModel : BaseViewModel
             }
             OnPropertyChanged("TxtSvrPath");
 
-            await MauiProgram.Info.MainPageVwModel.SndFromClientRecievePathInfo_msgbxs_Async();
+            await MauiProgram.Info.MainPageVwModel.SndFromClientRecievePathInfo_msgbxs_Async(
+                        FuncPathInfoGetAbortSetLbls);
+
+            if (_abortProgress)
+            {
+                MauiProgram.Info.SvrPathParts.Clear();
+                MauiProgram.Info.SvrPathParts.AddRange(savSvrPathParts);
+            }
+
             UpdateCollView();
         }
         catch (Exception ex)
@@ -134,6 +147,7 @@ public partial class ClientViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+            IsProgressing = false;
         }
     }
 
@@ -148,10 +162,15 @@ public partial class ClientViewModel : BaseViewModel
         try
         {
             IsBusy = true;
-            IsCopying = true;
-            _abortCopy = false;
+            IsProgressing = true;
+            _abortProgress = false;
+
+            ContentPageRef.ClrDotDotAt0();
             FileOrFolderData[] selecteds = ContentPageRef.GetSelecteds();
-            LblFileNofN = "";
+            if (selecteds.Length == 0)      // possible if they only had selected ".."
+                return;
+
+            LblFileNofN = "waiting for server ...";
             LblByteNofN = "";
 
             bool accepted = await Shell.Current.DisplayAlert("Start copy?",
@@ -173,7 +192,7 @@ public partial class ClientViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
-            IsCopying = false;
+            IsProgressing = false;
             LblFileNofN = "";
             LblByteNofN = "";
         }
@@ -191,16 +210,17 @@ public partial class ClientViewModel : BaseViewModel
         if (!accepted)
             return;
 
-        _abortCopy = true;
+        _abortProgress = true;
     }
 
 
     protected bool FuncCopyGetAbortSetLbls(int fileN, int filesTotal,
                 long byteN, long bytesTotal)
     {
-        if (_abortCopy)
+        if (_abortProgress)
         {
             LblFileNofN = $"Aborted by user";
+            LblByteNofN = "";
             return true;
         }
 
@@ -220,4 +240,19 @@ public partial class ClientViewModel : BaseViewModel
 
         return retStr;
     }
+
+    protected bool FuncPathInfoGetAbortSetLbls(int seqNr)
+    {
+        if (_abortProgress)
+        {
+            LblFileNofN = "";
+            LblByteNofN = "";
+            return true;
+        }
+
+        LblFileNofN = $"android on server busy ({seqNr}) ...";
+        LblByteNofN = "";
+        return false;
+    }
+
 }
