@@ -115,7 +115,6 @@ public partial class ClientViewModel : BaseViewModel
 
             FileOrFolderData gotoDir = selecteds.First();
 
-            int numSvrPartsGoto = MauiProgram.Info.SvrPathParts.Count;
             if (gotoDir.Name == "..")
             {
                 if (MauiProgram.Info.SvrPathParts.Count > 0)    // should be
@@ -126,28 +125,38 @@ public partial class ClientViewModel : BaseViewModel
             {
                 MauiProgram.Info.SvrPathParts.Add(gotoDir.Name);
             }
-            OnPropertyChanged("TxtSvrPath");
 
-            await MauiProgram.Info.MainPageVwModel.SndFromClientRecievePathInfo_msgbxs_Async(
-                        FuncPathInfoGetAbortSetLbls);
+            Exception excSendRcv = null;
+            try
+            {
+                await MauiProgram.Info.MainPageVwModel.SndFromClientRecievePathInfo_msgbxs_Async(
+                            FuncPathInfoGetAbortSetLbls);
+            }
+            catch (Exception exc)
+            {
+                excSendRcv = exc;
+            }
 
-            if (_abortProgress)
+            if (_abortProgress || null != excSendRcv)
             {
                 MauiProgram.Info.SvrPathParts.Clear();
                 MauiProgram.Info.SvrPathParts.AddRange(savSvrPathParts);
             }
+            OnPropertyChanged("TxtSvrPath");
 
-            UpdateCollView();
+            if (null != excSendRcv)
+                throw excSendRcv;
         }
-        catch (Exception ex)
+        catch (Exception exc)
         {
-            Debug.WriteLine($"Unable to goto dir: {ex.Message}");
-            await Shell.Current.DisplayAlert("Error!", ex.Message, "OK");
+            Debug.WriteLine($"Unable to goto dir: {exc.Message}");
+            await Shell.Current.DisplayAlert("Error!", exc.Message, "OK");
         }
         finally
         {
             IsBusy = false;
             IsProgressing = false;
+            UpdateCollView();
         }
     }
 
@@ -200,12 +209,12 @@ public partial class ClientViewModel : BaseViewModel
 
 
     [RelayCommand]
-    async Task AbortCopy()
+    async Task AbortProgress()
     {
         // IsBusy will be true for this button
 
-        bool accepted = await Shell.Current.DisplayAlert("Abort copy?",
-            $"Abort copy operation?",
+        bool accepted = await Shell.Current.DisplayAlert("Abort?",
+            $"Abort operation?",
             "OK", "Cancel");
         if (!accepted)
             return;

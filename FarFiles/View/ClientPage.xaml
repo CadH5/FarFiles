@@ -67,7 +67,7 @@
             <Label x:Name="CpByteNofN" Margin="3" Text="{Binding LblByteNofN}"
                    FontSize="Medium"/>
             <Button Margin="5" WidthRequest="150" Text="abort" Command="{Binding 
-                        AbortCopyCommand}"
+                        AbortProgressCommand}"
                         Style="{StaticResource ButtonOutline}"
                         x:Name="BtnAbort"></Button>
         </StackLayout>

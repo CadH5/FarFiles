@@ -293,6 +293,12 @@ public partial class MainPageViewModel : BaseViewModel
                 "Connect: Please browse for root first", "OK");
             return;
         }
+        if (String.IsNullOrEmpty(MauiProgram.Settings.ConnectKey))
+        {
+            await Shell.Current.DisplayAlert("Info",
+                "Connect: Please enter connect key first", "OK");
+            return;
+        }
 
         try
         {
@@ -411,9 +417,9 @@ public partial class MainPageViewModel : BaseViewModel
     public async Task SndFromClientRecievePathInfo_msgbxs_Async(
                 Func<int,bool> funcPathInfoGetAbortSetLbls = null)
     {
-        MsgSvrClBase msgSvrCl;
+        MsgSvrClBase msgSvrClToSend;
         
-        msgSvrCl = new MsgSvrClPathInfoRequest(MauiProgram.Info.SvrPathParts);
+        msgSvrClToSend = new MsgSvrClPathInfoRequest(MauiProgram.Info.SvrPathParts);
 
         var lisFolders = new List<string>();
         var lisFiles = new List<string>();
@@ -426,14 +432,16 @@ public partial class MainPageViewModel : BaseViewModel
         while (true)
         {
             int seqNr;
+            Log($"client: sending to server: {msgSvrClToSend.GetType()}");
             byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
-                                msgSvrCl.Bytes);
+                                msgSvrClToSend.Bytes);
             LblInfo1 = "";
             if (byRecieved.Length == 0)
                 return;
             LblInfo2 = "receiving path info from server ...";
 
             MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
+            Log($"client: received from server: {msgSvrClAnswer.GetType()}");
             if (msgSvrClAnswer is MsgSvrClAbortedConfirmation)
                 break;
 
@@ -443,7 +451,7 @@ public partial class MainPageViewModel : BaseViewModel
                 Thread.Sleep(sleepMilliSecs);
                 sleepMilliSecs = Math.Min(3000, sleepMilliSecs + 1000);
                 LblInfo1 = "sending still busy inquiry to server ...";
-                msgSvrCl = new MsgSvrClPathInfoAndroidStillBusyInq();
+                msgSvrClToSend = new MsgSvrClPathInfoAndroidStillBusyInq();
             }
             else
             {
@@ -468,7 +476,7 @@ public partial class MainPageViewModel : BaseViewModel
                 if (funcPathInfoGetAbortSetLbls(seqNr))
                 {
                     LblInfo1 = "sending aborted info to server ...";
-                    msgSvrCl = new MsgSvrClAbortedInfo();
+                    msgSvrClToSend = new MsgSvrClAbortedInfo();
                     abort = true;
                     // we must still send aborted info to the server, and receive confirmation
                 }
@@ -476,10 +484,10 @@ public partial class MainPageViewModel : BaseViewModel
 
             if (!abort)
             {
-                LblInfo1 = "sending path info request to server ...";
-                msgSvrCl = new MsgSvrClPathInfoNextpartRequest();
+                LblInfo1 = "sending request to server ...";
             }
         }
+        // PathInfo is complete, or progress was aborted
 
         if (! abort)
         {
@@ -677,7 +685,8 @@ public partial class MainPageViewModel : BaseViewModel
         {
             UdpReceiveResult received = await udpServer.ReceiveAsync();
             MsgSvrClBase msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
-            Log($"server: received bytes: {received.Buffer.Length}, type: {msgSvrCl.Type}");
+            
+            Console.WriteLine($"JEEWEE: server: received type: {msgSvrCl.GetType()}");
 
             MsgSvrClBase msgSvrClAns = null;
 
@@ -743,7 +752,7 @@ public partial class MainPageViewModel : BaseViewModel
             }
             else if (msgSvrCl is MsgSvrClPathInfoAndroidStillBusyInq)
             {
-                LblInfo1 = "received: query is Android still busy";
+                LblInfo1 = "received: inquiry 'is Android still busy'";
                 if (_threadAndroidPathInfo.ThreadState ==
                             System.Threading.ThreadState.Running)
                 {
@@ -836,7 +845,9 @@ public partial class MainPageViewModel : BaseViewModel
             //5️ Respond to client(hole punching)
             //JEEWEE
             //int numAnswer = MauiProgram.Info.NumAnswersSent + 1;
-            
+
+            Console.WriteLine($"JEEWEE: server: sending: {msgSvrClAns.GetType()}");
+
             LblInfo2 = $"sending {sendWhatStr} ...";
             Log($"server: going to send bytes: {msgSvrClAns.Bytes.Length}, {msgSvrClAns.GetType()}");
             await udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
@@ -890,6 +901,9 @@ public partial class MainPageViewModel : BaseViewModel
                         d => !d.IsDir).Select(d => d.FileSize).ToArray();
             _currPathInfoAnswerState = new PathInfoAnswerState(folderNames,
                         fileNames, fileSizes);
+
+            Console.WriteLine($"JEEWEE: server: created _currPathInfoAnswerState: {_currPathInfoAnswerState}");
+
             msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
                     _currPathInfoAnswerState,
                     MauiProgram.Settings.BufSizeMoreOrLess);
@@ -897,6 +911,8 @@ public partial class MainPageViewModel : BaseViewModel
                     (_currPathInfoAnswerState.EndReached ?
                     "last part" : $"part {_seqNrPathInfoAns}");
         }
+
+        Console.WriteLine($"JEEWEE: server: HandleFileOrFolderDataArrayOnSvr: {msgSvrClAns.GetType()}");
 
         return msgSvrClAns;
     }
@@ -935,6 +951,10 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+    /// <summary>
+    /// Returns "" if success and errMsg if error
+    /// </summary>
+    /// <returns></returns>
     protected string ConnectServerFromClient()
     {
         for (int i = 0; i < 2; i++)
@@ -944,7 +964,7 @@ public partial class MainPageViewModel : BaseViewModel
                 string ipAddress = 0 == i ?
                         MauiProgram.Info.LocalIpSvrRegistered :
                         MauiProgram.Info.PublicIpSvrRegistered;
-                _udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0)); // Let the OS pick the local address
+                _udpClient = UdpClient(new IPEndPoint(IPAddress.Any, 0)); // Let the OS pick the local address
                 _udpClient.Connect(new IPEndPoint(
                         new IPAddress(ipAddress.Split('.')
                             .Select(p => Convert.ToByte(p))
