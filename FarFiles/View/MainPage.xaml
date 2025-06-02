@@ -33,10 +33,11 @@
         <Label Grid.Row="4" Grid.Column="0" Text="Connect Mode:"></Label>
         <Picker Grid.Row="4" Grid.Column="1"
                 Style="{StaticResource PickerStyle}"
-                SelectedIndex="{Binding Idx0isSvr1isCl}">
+                SelectedIndex="{Binding SvrClModeAsInt}">
             <Picker.ItemsSource>
                 <x:Array Type="{x:Type x:String}">
                     <x:String>Server</x:String>
+                    <x:String>Server, writable</x:String>
                     <x:String>Client</x:String>
                 </x:Array>
             </Picker.ItemsSource>

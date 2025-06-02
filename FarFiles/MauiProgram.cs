@@ -93,7 +93,7 @@ public static class MauiProgram
 
         try
         {
-            if (Settings.Idx0isSvr1isCl == 0)           // server
+            if (Settings.ModeIsServer)           // server
             {
                 var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
                     "UNREGISTER", MauiProgram.Info.UdpSvrPort, StrLocalIP, true));
@@ -177,7 +177,7 @@ public static class MauiProgram
 #else
         Settings.FullPathRoot = Preferences.Get("FullPathRoot", Settings.FullPathRoot);
 #endif
-        Settings.Idx0isSvr1isCl = Preferences.Get("Idx0isSvr1isCl", Settings.Idx0isSvr1isCl);
+        Settings.SvrClModeAsInt = Preferences.Get("SvrClModeAsInt", Settings.SvrClModeAsInt);
         Settings.Idx0isOverwr1isSkip = Preferences.Get("Idx0isOverwr1isSkip", Settings.Idx0isOverwr1isSkip);
         Settings.ConnectKey = Preferences.Get("ConnectKey", Settings.ConnectKey);
         Settings.StunServer = Preferences.Get("StunServer", Settings.StunServer);
@@ -196,7 +196,7 @@ public static class MauiProgram
 #else
         Preferences.Set("FullPathRoot", Settings.FullPathRoot);
 #endif
-        Preferences.Set("Idx0isSvr1isCl", Settings.Idx0isSvr1isCl);
+        Preferences.Set("SvrClModeAsInt", Settings.SvrClModeAsInt);
         Preferences.Set("Idx0isOverwr1isSkip", Settings.Idx0isOverwr1isSkip);
         Preferences.Set("ConnectKey", Settings.ConnectKey);
         Preferences.Set("StunServer", Settings.StunServer);

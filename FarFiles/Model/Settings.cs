@@ -7,6 +7,13 @@ using System.Threading.Tasks;
 
 namespace FarFiles.Model
 {
+    public enum SvrClMode
+    {
+        SERVER,
+        SERVERWRITABLE,
+        CLIENT,
+    }
+
     public class Settings
     {
 #if ANDROID
@@ -16,7 +23,9 @@ namespace FarFiles.Model
         public object AndroidUriRoot { get => null; }
         public string FullPathRoot { get; set; } = "";
 #endif
-        public int Idx0isSvr1isCl { get; set; } = 0;
+        public int SvrClModeAsInt { get; set; } = (int)SvrClMode.SERVER;
+        public bool ModeIsServer { get => SvrClModeAsInt == (int)SvrClMode.SERVER ||
+                        SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE; }
         public int Idx0isOverwr1isSkip { get; set; } = 0;
         public string ConnectKey { get; set; } = "";
 
@@ -24,8 +33,6 @@ namespace FarFiles.Model
         public int StunPort { get; set; } = 3478;
         public int TimeoutSecsClient { get; set; } = 20;
 
-        //JEEWEE
-        //public int BufSizeMoreOrLess { get; set; } = MsgSvrClBase.BUFSIZEMOREORLESS;
         public int BufSizeMoreOrLess { get; set; } = 20000;
         public bool UseSvrLocalIPClient { get; set; } = false;
 

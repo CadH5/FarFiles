@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-//JEEWEE
-//using Windows.UI.StartScreen;
 
 namespace FarFiles.Model
 {
@@ -27,9 +25,6 @@ namespace FarFiles.Model
 
     public class MsgSvrClBase
     {
-        //JEEWEE
-        //public const int BUFSIZEMOREORLESS = 20000;
-
         public byte[] Bytes;
 
         public MsgSvrClType Type
@@ -49,7 +44,7 @@ namespace FarFiles.Model
 
 
         /// <summary>
-        /// JEEWEE
+        /// Base ctor that only sets MsgSvrClType in new Bytes array
         /// </summary>
         /// <param name="type"></param>
         protected MsgSvrClBase(MsgSvrClType type)
@@ -59,7 +54,7 @@ namespace FarFiles.Model
 
 
         /// <summary>
-        /// JEEWEE
+        /// Base ctor that copies bytes to member array Bytes, and checks expectedType
         /// </summary>
         /// <param name="bytes"></param>
         /// <param name="expectedType"></param>
@@ -434,7 +429,7 @@ namespace FarFiles.Model
                 BitConverter.ToInt32(Bytes, 4);
         }
 
-        public MsgSvrClPathInfoAnswer(int seqNr, PathInfoAnswerState pathInfoAnswerState,
+        public MsgSvrClPathInfoAnswer(int seqNr, bool svrIsWritable, PathInfoAnswerState pathInfoAnswerState,
                     int bufSizeMoreOrLess)
             : base(MsgSvrClType.PATHINFO_ANS)
         {
@@ -443,6 +438,7 @@ namespace FarFiles.Model
 
             var lisBytes = Bytes.ToList();
             lisBytes.AddRange(BitConverter.GetBytes(seqNr));
+            lisBytes.AddRange(BitConverter.GetBytes(svrIsWritable));
 
             int idxNumFiles = -1;
             int idxNumFolders = lisBytes.Count;
@@ -501,7 +497,8 @@ namespace FarFiles.Model
         }
 
 
-        public void GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(out int seqNr, out bool isLast,
+        public void GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizes(
+                    out int seqNr, out bool isSvrWritable, out bool isLast,
                     out string[] folderNames, out string[] fileNames, out long[] fileSizes)
         {
             try
@@ -510,6 +507,8 @@ namespace FarFiles.Model
 
                 seqNr = BitConverter.ToInt32(Bytes, idx);
                 idx += sizeof(int);
+                isSvrWritable = BitConverter.ToBoolean(Bytes, idx);
+                idx += sizeof(bool);
                 folderNames = GetStringsAtIndex(ref idx);
                 fileNames = GetFileNamesAndSizesAtIndex(ref idx, out fileSizes);
                 isLast = BitConverter.ToBoolean(Bytes, idx);

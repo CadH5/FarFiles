@@ -83,7 +83,12 @@ public partial class ClientViewModel : BaseViewModel
 
     public string TxtSvrPath
     {
-        get => $"Sub path on server: '{String.Join('/', MauiProgram.Info.SvrPathParts)}'";
+        get
+        {
+            string writable = MauiProgram.Info.IsSvrWritableReportedToClient ?
+                " (writable)" : "";
+            return $"Sub path on server{writable}: '{String.Join('/', MauiProgram.Info.SvrPathParts)}'";
+        }
     }
 
     [RelayCommand]

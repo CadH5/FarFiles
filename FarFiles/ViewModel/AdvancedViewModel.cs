@@ -19,8 +19,8 @@ public partial class AdvancedViewModel : BaseViewModel
 
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
-    public bool SettingsSvrVis { get => MauiProgram.Settings.Idx0isSvr1isCl == 0; }
-    public bool SettingsClientVis { get => MauiProgram.Settings.Idx0isSvr1isCl == 1; }
+    public bool SettingsSvrVis { get => MauiProgram.Settings.ModeIsServer; }
+    public bool SettingsClientVis { get => !MauiProgram.Settings.ModeIsServer; }
 
     public string StunServer
     {

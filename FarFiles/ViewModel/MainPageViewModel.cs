@@ -53,19 +53,19 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
     // xaml cannot bind to MauiProgram.Settings directly.
-    // And for FullPathRoot and Idx0isSvr1isCl an extra measure is necessary:
+    // And for FullPathRoot and SvrClModeAsInt an extra measure is necessary:
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
-    // ... and now Idx0isSvr1isCl needs even an extra in-between to manage
+    // ... and now SvrClModeAsInt needs even an extra in-between to manage
     // selection change:
-    public int Idx0isSvr1isCl
+    public int SvrClModeAsInt
     {
-        get => MauiProgram.Settings.Idx0isSvr1isCl;
+        get => MauiProgram.Settings.SvrClModeAsInt;
         set
         {
-            if (MauiProgram.Settings.Idx0isSvr1isCl != value)
+            if (MauiProgram.Settings.SvrClModeAsInt != value)
             {
-                MauiProgram.Settings.Idx0isSvr1isCl = value;
+                MauiProgram.Settings.SvrClModeAsInt = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsChkLocalIPVisible));
             }
@@ -97,7 +97,7 @@ public partial class MainPageViewModel : BaseViewModel
 
     public bool IsChkLocalIPVisible
     {
-        get => IsBtnConnectVisible && 1 == MauiProgram.Settings.Idx0isSvr1isCl;
+        get => IsBtnConnectVisible && ! MauiProgram.Settings.ModeIsServer;
     }
 
 
@@ -312,7 +312,7 @@ public partial class MainPageViewModel : BaseViewModel
             string msg = "";
 
             int udpSvrPort = 0;
-            if (0 == MauiProgram.Settings.Idx0isSvr1isCl)
+            if (MauiProgram.Settings.ModeIsServer)
             {
                 // server: get udp port from Stun server
                 var udpIEndPoint = await GetUdpSvrIEndPointFromStun(Settings);
@@ -323,21 +323,6 @@ public partial class MainPageViewModel : BaseViewModel
                     throw new Exception("Wrong data from Stun Server");
             }
 
-            //JEEWEE
-            //using (var client = new HttpClient())
-            //{
-            //    var url = "https://www.cadh5.com/farfiles/farfiles.php";
-
-            //    //JEEWEE
-            //    //var requestData = new { ConnectKey = ConnectKey, SvrCl = Idx0isSvr1isCl, LocalIP = GetLocalIP() };
-            //    var requestData = new { ConnectKey = MauiProgram.Settings.ConnectKey, UdpSvrPort = udpSvrPort, LocalIP = GetLocalIP() };
-            //    var json = JsonSerializer.Serialize(requestData);
-            //    var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            //    var response = await client.PostAsync(url, content);
-            //    response.EnsureSuccessStatusCode();
-            //    msg = await response.Content.ReadAsStringAsync();
-            //}
             MauiProgram.Info.UdpSvrPort = udpSvrPort;
             MauiProgram.StrLocalIP = GetLocalIP();
             msg = await MauiProgram.PostToCentralServerAsync("REGISTER",
@@ -356,7 +341,7 @@ public partial class MainPageViewModel : BaseViewModel
             MauiProgram.Info.Connected = true;
             IsBusy = true;
 
-            if (MauiProgram.Settings.Idx0isSvr1isCl == 0)
+            if (MauiProgram.Settings.ModeIsServer)
             {
                 // server: do conversation: in loop: listen for client msgs and response
                 LblInfo1 = $"Connected; listening for client contact ...";
@@ -368,7 +353,7 @@ public partial class MainPageViewModel : BaseViewModel
                     }
                 }
             }
-            else if (MauiProgram.Settings.Idx0isSvr1isCl == 1)
+            else
             {
                 // client: connect to server
                 errMsg = ConnectServerFromClient();
@@ -479,8 +464,8 @@ public partial class MainPageViewModel : BaseViewModel
                 msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
                 Log($"client: received bytes: {byRecieved.Length}, MsgSvrClPathInfoAnswer");
 
-                ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetSeqnrAndIslastAndFolderAndFileNamesAndSizes(
-                        out seqNr, out bool isLast, out string[] folderNames, out string[] fileNames, out long[] fileSizes);
+                ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizes(
+                        out seqNr, out bool isSvrWritable, out bool isLast, out string[] folderNames, out string[] fileNames, out long[] fileSizes);
                 lisFolders.AddRange(folderNames);
                 lisFiles.AddRange(fileNames);
                 lisSizes.AddRange(fileSizes);
@@ -490,6 +475,8 @@ public partial class MainPageViewModel : BaseViewModel
                     LblInfo2 = "received: path info from server";
                     break;
                 }
+
+                MauiProgram.Info.IsSvrWritableReportedToClient = isSvrWritable;
             }
 
             if (null != funcPathInfoGetAbortSetLbls)
@@ -769,6 +756,7 @@ public partial class MainPageViewModel : BaseViewModel
                 else
                 {
                     msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
+                            Settings.SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE,
                             _currPathInfoAnswerState,
                             MauiProgram.Settings.BufSizeMoreOrLess);
                     sendWhatStr = "path info part " + _seqNrPathInfoAns;
@@ -893,7 +881,8 @@ public partial class MainPageViewModel : BaseViewModel
             Console.WriteLine($"JEEWEE: server: created _currPathInfoAnswerState: {_currPathInfoAnswerState}");
 
             msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
-                    _currPathInfoAnswerState,
+					Settings.SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE,
+					_currPathInfoAnswerState,
                     MauiProgram.Settings.BufSizeMoreOrLess);
             sendWhatStr = "path info " +
                     (_currPathInfoAnswerState.EndReached ?
