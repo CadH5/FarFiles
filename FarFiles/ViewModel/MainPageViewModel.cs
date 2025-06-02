@@ -29,10 +29,6 @@ namespace FarFiles.ViewModel;
 
 public partial class MainPageViewModel : BaseViewModel
 {
-    //JEEWEE
-    //protected SettingsService _settingsService;
-    //public MainPageViewModel(SettingsService settingsService)
-
     protected int _numSendMsg = 0;
     protected int _numReceivedAns = 0;
     protected UdpClient _udpClient = null;
@@ -60,21 +56,24 @@ public partial class MainPageViewModel : BaseViewModel
     // And for FullPathRoot and Idx0isSvr1isCl an extra measure is necessary:
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
-    public string _clientMsg = "";
-    public string ClientMsg
+    // ... and now Idx0isSvr1isCl needs even an extra in-between to manage
+    // selection change:
+    public int Idx0isSvr1isCl
     {
-        get => _clientMsg;
+        get => MauiProgram.Settings.Idx0isSvr1isCl;
         set
         {
-            if (_clientMsg != value)
+            if (MauiProgram.Settings.Idx0isSvr1isCl != value)
             {
-                _clientMsg = value;
+                MauiProgram.Settings.Idx0isSvr1isCl = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(IsChkLocalIPVisible));
             }
         }
     }
 
-    
+
+
     public bool _isBtnConnectVisible = true;
     public bool IsBtnConnectVisible
     {
@@ -86,6 +85,7 @@ public partial class MainPageViewModel : BaseViewModel
                 _isBtnConnectVisible = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsBtnBackToFilesVisible));
+                OnPropertyChanged(nameof(IsChkLocalIPVisible));
             }
         }
     }
@@ -94,6 +94,32 @@ public partial class MainPageViewModel : BaseViewModel
     {
         get => ! IsBtnConnectVisible;
     }
+
+    public bool IsChkLocalIPVisible
+    {
+        get => IsBtnConnectVisible && 1 == MauiProgram.Settings.Idx0isSvr1isCl;
+    }
+
+
+    public bool UseSvrLocalIPClient
+    {
+        get => Settings.UseSvrLocalIPClient;
+        set
+        {
+            if (Settings.UseSvrLocalIPClient != value)
+            {
+                Settings.UseSvrLocalIPClient = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+
+    //JEEWEE
+    //public void OnChangedIdx0isSvr1isCl(object sender, EventArgs e)
+    //{
+    //    OnPropertyChanged(nameof(IsChkLocalIPVisible));
+    //}
 
     public string FullPathRoot
     {
@@ -115,27 +141,6 @@ public partial class MainPageViewModel : BaseViewModel
 #endif
     }
 
-    //JEEWEE
-    //public object AndroidUri { get; set; } = null;      // Android.Net.Uri
-
-    public bool _visClientMsg = false;
-    public bool VisClientMsg
-    {
-        get => _visClientMsg;
-        set
-        {
-            if (_visClientMsg != value)
-            {
-                _visClientMsg = value;
-                OnPropertyChanged();
-            }
-        }
-    }
-
-    //JEEWEE
-    //public string FullPathRoot { get; set; } = "";
-    //public int Idx0isSvr1isCl { get; set; } = 0;
-    //public string ConnectKey { get; set; } = "";
 
     protected string _lblInfo1 = "";
     public string LblInfo1
@@ -372,11 +377,22 @@ public partial class MainPageViewModel : BaseViewModel
                     throw new Exception(errMsg);
                 }
 
-                // client: send request info rootpath and recieve answer
-                await SndFromClientRecievePathInfo_msgbxs_Async(null);
+                LblInfo2 += "; trying to retrieve server path info";
 
-                await Shell.Current.GoToAsync(nameof(ClientPage), true);
-                IsBtnConnectVisible = false;
+                // client: send request info rootpath and recieve answer
+                // if connection fails (for firewall for example) there is a timeout
+                // and receivedPathInfo is false
+                bool receivedPathInfo = await SndFromClientRecievePathInfo_msgbxs_Async(null);
+                if (receivedPathInfo)
+                {
+                    await Shell.Current.GoToAsync(nameof(ClientPage), true);
+                    IsBtnConnectVisible = false;
+                }
+                else
+                {
+                    DisconnectAndResetOnClient();
+                    LblInfo2 = "retrieving server path info failed";
+                }
             }
 
             //JEEWEE: INTERESTING CODE
@@ -401,8 +417,10 @@ public partial class MainPageViewModel : BaseViewModel
                 MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
             LblInfo1 = "Error occurred";
             LblInfo2 = "";
+        }
+        finally
+        {
             IsBusy = false;
-
         }
     }
 
@@ -411,10 +429,10 @@ public partial class MainPageViewModel : BaseViewModel
     /// Send MauiProgram.Info.SvrPathParts to server, receive folders and files,
     /// set those in MauiProgram.Info.CurrSvrFolders, MauiProgram.Info.CurrSvrFiles
     /// </summary>
-    /// <returns></returns>
+    /// <returns>true for received path info or aborted, false for problem</returns>
     /// <param name="funcPathInfoGetAbortSetLbls">returns true if user aborted</param>
     /// <exception cref="Exception"></exception>
-    public async Task SndFromClientRecievePathInfo_msgbxs_Async(
+    public async Task<bool> SndFromClientRecievePathInfo_msgbxs_Async(
                 Func<int,bool> funcPathInfoGetAbortSetLbls = null)
     {
         MsgSvrClBase msgSvrClToSend;
@@ -437,7 +455,10 @@ public partial class MainPageViewModel : BaseViewModel
                                 msgSvrClToSend.Bytes);
             LblInfo1 = "";
             if (byRecieved.Length == 0)
-                return;
+            {
+                DisconnectAndResetOnClient();
+                return false;
+            }
             LblInfo2 = "receiving path info from server ...";
 
             MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
@@ -499,6 +520,16 @@ public partial class MainPageViewModel : BaseViewModel
                 .OrderBy(f => f.Name)
                 .ToArray();
         }
+
+        return true;    // also if aborted
+    }
+
+
+    protected void DisconnectAndResetOnClient()
+    {
+        MauiProgram.Info.DisconnectOnClient();
+        IsBtnConnectVisible = true;
+        OnPropertyChanged();
     }
 
 
@@ -516,6 +547,7 @@ public partial class MainPageViewModel : BaseViewModel
                 byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
                                     msgSvrCl.Bytes);
                 if (byRecieved.Length == 0)
+                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! make CopyMgr abort
                     return;
 
                 MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
@@ -587,50 +619,6 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-
-
-    [RelayCommand]
-    async Task SendClientMsg()
-    {
-        //JEEWEE: MAYBE IS SENDCLIENTMSGBUSY ?
-        //if (IsBusy)
-        //    return;
-
-        //JEEWEE
-        //OnPropertyChanged(nameof(ClientMsg));
-
-        //JEEWEE
-        //IsBusy = true;
-
-        if (1 == MauiProgram.Settings.Idx0isSvr1isCl)        // client
-        {
-            //JEEWEE
-            //LblInfo2 = "";
-            //byte[] sendMsg = Encoding.UTF8.GetBytes(ClientMsg);
-            ////JEEWEE seems 20 is minimum?
-            ////await udpClient.SendAsync(new byte[20], 20);
-            //LblInfo1 = $"sending to server ...";
-            //int iResult = await _udpClient.SendAsync(sendMsg, sendMsg.Length);
-
-            //LblInfo1 = $"sent to server: '{ClientMsg}'";
-            //LblInfo2 = $"sent bytes: {iResult}; waiting for server ...";
-            //var response = await _udpClient.ReceiveAsync(
-            //                        new CancellationTokenSource(5000).Token);
-
-            //LblInfo2 = $"Received from server: '{Encoding.UTF8.GetString(response.Buffer)}'";
-
-            byte[] recBytes = await SndFromClientRecieve_msgbxs_Async(
-                            Encoding.UTF8.GetBytes(ClientMsg));
-            Log($"client: received bytes: {recBytes.Length}");
-            LblInfo2 = $"Received from server: '{Encoding.UTF8.GetString(recBytes)}'";
-        }
-    }
-
-    //JEEWEE
-    //protected void LoadSettings()
-    //{
-    //    Settings = _settingsService.LoadFromFile();
-    //}
 
     /// <summary>
     /// Sends bytes to server and receives bytes. If exception, displays alert and returns [0] bytes
@@ -957,36 +945,27 @@ public partial class MainPageViewModel : BaseViewModel
     /// <returns></returns>
     protected string ConnectServerFromClient()
     {
-        for (int i = 0; i < 2; i++)
+        try
         {
-            try
-            {
-                string ipAddress = 0 == i ?
-                        MauiProgram.Info.LocalIpSvrRegistered :
-                        MauiProgram.Info.PublicIpSvrRegistered;
-                _udpClient = UdpClient(new IPEndPoint(IPAddress.Any, 0)); // Let the OS pick the local address
-                _udpClient.Connect(new IPEndPoint(
-                        new IPAddress(ipAddress.Split('.')
-                            .Select(p => Convert.ToByte(p))
-                            .ToArray()),
-                        Convert.ToInt32(
-                            MauiProgram.Info.PublicUdpPortSvrRegistered)));
-                LblInfo2 = "Connected to server.";
-                MauiProgram.Info.IpSvrThatClientConnectedTo = ipAddress;
-                VisClientMsg = true;
-                return "";
-            }
-            catch (Exception exc)
-            {
-                _udpClient = null;
-                if (1 == i)
-                {
-                    return MauiProgram.ExcMsgWithInnerMsgs(exc);
-                }
-            }
+            string ipAddress = UseSvrLocalIPClient ?
+                    MauiProgram.Info.LocalIpSvrRegistered :
+                    MauiProgram.Info.PublicIpSvrRegistered;
+            _udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0)); // Let the OS pick the local address
+            _udpClient.Connect(new IPEndPoint(
+                    new IPAddress(ipAddress.Split('.')
+                        .Select(p => Convert.ToByte(p))
+                        .ToArray()),
+                    Convert.ToInt32(
+                        MauiProgram.Info.PublicUdpPortSvrRegistered)));
+            LblInfo2 = "Trying to connect to server" + (UseSvrLocalIPClient ? " (localIP)" : "");
+            MauiProgram.Info.IpSvrThatClientConnectedTo = ipAddress;
+            return "";
         }
-
-        return "PROGRAMMERS: ConnectServerFromClient: impossible";
+        catch (Exception exc)
+        {
+            _udpClient = null;
+            return MauiProgram.ExcMsgWithInnerMsgs(exc);
+        }
     }
 
 

@@ -184,6 +184,7 @@ public static class MauiProgram
         Settings.StunPort = Preferences.Get("StunPort", Settings.StunPort);
         Settings.TimeoutSecsClient = Preferences.Get("TimeoutSecsClient", Settings.TimeoutSecsClient);
         Settings.BufSizeMoreOrLess = Preferences.Get("BufSizeMoreOrLess", Settings.BufSizeMoreOrLess);
+        Settings.UseSvrLocalIPClient = Preferences.Get("UseSvrLocalIPClient", Settings.UseSvrLocalIPClient);
     }
     public static void SaveSettings()
     {
@@ -202,5 +203,6 @@ public static class MauiProgram
         Preferences.Set("StunPort", Settings.StunPort);
         Preferences.Set("TimeoutSecsClient", Settings.TimeoutSecsClient);
         Preferences.Set("BufSizeMoreOrLess", Settings.BufSizeMoreOrLess);
+        Preferences.Set("UseSvrLocalIPClient", Settings.UseSvrLocalIPClient);
     }
 }

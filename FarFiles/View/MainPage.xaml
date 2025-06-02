@@ -12,7 +12,7 @@
     <Grid
         ColumnDefinitions="*,*"
         ColumnSpacing="5"
-        RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto"
+        RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}"
         >
 
@@ -33,7 +33,7 @@
         <Label Grid.Row="4" Grid.Column="0" Text="Connect Mode:"></Label>
         <Picker Grid.Row="4" Grid.Column="1"
                 Style="{StaticResource PickerStyle}"
-                SelectedIndex="{Binding Settings.Idx0isSvr1isCl}">
+                SelectedIndex="{Binding Idx0isSvr1isCl}">
             <Picker.ItemsSource>
                 <x:Array Type="{x:Type x:String}">
                     <x:String>Server</x:String>
@@ -66,23 +66,39 @@
             Text="Back to files"
             IsVisible="{Binding IsBtnBackToFilesVisible}"/>
 
+
+        <!--JWdP 20250601 tremendous fight just to get a checkbox with a label
+        at the right with a margin of 5. HorizontalStackLayout wouldn't work,
+        even with Label HorizontalOptions="Start"; labeltext kept being centered
+        somewhere in the center, horizontally. Only a Grid with first column definition 30
+        would work.-->
+        <Grid Grid.Row="7" Grid.Column="1"
+                       IsVisible="{Binding IsChkLocalIPVisible}"
+              RowDefinitions="Auto"
+              ColumnDefinitions="30,Auto">
+
+            <!--Border is measure to avoid CheckBox hardly visible in Android (dark theme):-->
+            <Border Padding="5"
+                   BackgroundColor="#00FFDD">
+                <CheckBox IsChecked="{Binding UseSvrLocalIPClient}"
+                          WidthRequest="30"
+                          Grid.Row="0" Grid.Column="0"/>
+            </Border>
+            <Label Grid.Row="0" Grid.Column="1"
+                Text="use localIP server"
+                   VerticalTextAlignment="Center"
+                   Margin="5,0,0,0" />
+        </Grid>
+
+
+
         <Button
-                Grid.Row="7"
+                Grid.Row="8"
                 Grid.Column="1"
                 Margin="8,0,0,0" WidthRequest="200"
                 Command="{Binding OpenAdvancedDlgCommand}"
                 Style="{StaticResource ButtonOutline}"
                 Text="Advanced ..." />
-
-        <!--JEEWEE-->
-        <!--<HorizontalStackLayout Grid.Row="7" Grid.Column="1" IsVisible="{Binding VisClientMsg}">
-            <Entry Text="{Binding ClientMsg}"></Entry>
-            <Button
-                Margin="8,0,0,0"
-                Command="{Binding SendClientMsgCommand}"
-                Style="{StaticResource ButtonOutline}"
-                Text="send" />
-        </HorizontalStackLayout>-->
 
         <ActivityIndicator
             Grid.RowSpan="2"

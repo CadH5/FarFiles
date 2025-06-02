@@ -27,7 +27,7 @@ namespace FarFiles.Model
         //JEEWEE
         //public int BufSizeMoreOrLess { get; set; } = MsgSvrClBase.BUFSIZEMOREORLESS;
         public int BufSizeMoreOrLess { get; set; } = 20000;
-
+        public bool UseSvrLocalIPClient { get; set; } = false;
 
         public string PathFromRootAndSubPartsWindows(string[] subParts)
         {

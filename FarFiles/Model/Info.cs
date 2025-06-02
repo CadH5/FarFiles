@@ -20,5 +20,16 @@ namespace FarFiles.Model
         public List<string> SvrPathParts { get; set; } = new List<string>();
         public FileOrFolderData[] CurrSvrFolders { get; set; } = new FileOrFolderData[0];
         public FileOrFolderData[] CurrSvrFiles { get; set; } = new FileOrFolderData[0];
+
+
+        public void DisconnectOnClient()
+        {
+            UdpSvrPort = -1;
+            IpSvrThatClientConnectedTo = "";
+            Connected = false;
+            SvrPathParts.Clear();
+            CurrSvrFolders = new FileOrFolderData[0];
+            CurrSvrFiles = new FileOrFolderData[0];
+        }
     }
 }

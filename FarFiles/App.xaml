@@ -92,8 +92,15 @@
             </Style>
 
             <Style x:Key="PickerStyle" TargetType="Picker">
-                <Setter Property="Background" Value="#00DDDD" />
+                <Setter Property="Background" Value="#00FFDD" />
             </Style>
+
+            <!--JEEWEE-->
+            <!--<Style x:Key="CheckBoxStyle" TargetType="CheckBox">
+                <Setter Property="BackgroundColor" Value="#00FFDD" />
+                <Setter Property="Background" Value="#00FFDD" />
+                <Setter Property="Color" Value="#00FFDD" />
+            </Style>-->
 
             <Style x:Key="CardView" TargetType="Border">
                 <Setter Property="Stroke" Value="#DDDDDD" />
