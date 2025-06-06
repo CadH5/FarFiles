@@ -1,7 +1,5 @@
 ﻿using Android.App;
 using Android.Content;
-//JEEWEE
-//using Android.Net;
 using AndroidX.Activity.Result;
 using AndroidX.Activity.Result.Contract;
 using FarFiles.Services;

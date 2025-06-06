@@ -1,6 +1,4 @@
-﻿//JEEWEE
-//using Android.Widget;
-using CommunityToolkit.Maui.Alerts;
+﻿using CommunityToolkit.Maui.Alerts;
 using CommunityToolkit.Maui.Storage;
 
 using FarFiles.Services;

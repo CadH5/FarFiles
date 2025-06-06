@@ -1,29 +1,17 @@
-﻿//JEEWEE
-//using Android.Media;
-using CommunityToolkit.Maui.Alerts;
+﻿using CommunityToolkit.Maui.Alerts;
 using CommunityToolkit.Maui.Storage;
 using FarFiles.Services;
 using Microsoft.Maui.Controls;
 
-//JEEWEE
-//using Java.Time.Chrono;
 using STUN.Client;
 using STUN.Enums;
 using System;
-//JEEWEE
-//using Java.Util;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
-
-//JEEWEE
-//using FarFiles.Platforms.Android;
-//using Microsoft.Maui.Controls.Compatibility.Platform.Android;
-//using Android.Content.Res;
-//using Android.Content.Res;
 
 namespace FarFiles.ViewModel;
 
@@ -46,10 +34,6 @@ public partial class MainPageViewModel : BaseViewModel
         _fileDataService = fileDataService;
         MauiProgram.Info.MainPageVwModel = this;
         MauiProgram.Log.LogLine($"FarFiles: started");
-
-        //JEEWEE
-        //_settingsService = settingsService;
-        //LoadSettings();
     }
 
     // xaml cannot bind to MauiProgram.Settings directly.
@@ -115,12 +99,6 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    //JEEWEE
-    //public void OnChangedIdx0isSvr1isCl(object sender, EventArgs e)
-    //{
-    //    OnPropertyChanged(nameof(IsChkLocalIPVisible));
-    //}
-
     public string FullPathRoot
     {
         // unlike ConnectKey, FullPathRoot needs an intermediate variable for binding
@@ -183,11 +161,6 @@ public partial class MainPageViewModel : BaseViewModel
             IsBusy = true;
 
 #if ANDROID
-            //JEEWEE
-            //AndroidUri = Android.Net.Uri.Parse(folderPickerResult.Folder.Path);
-            //AndroidUri = (Android.Net.Uri)(Java.Lang.Object)folderPickerResult.Folder.Uri;
-            //AndroidUri = folderPickerResult.Folder.Uri;
-
             //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PUT COMMENT (why the heck is this necessary)
             MauiProgram.SaveSettings();
             Settings.AndroidUriRoot = await MauiProgram.AndroidFolderPicker.PickFolderAsync();
@@ -379,22 +352,6 @@ public partial class MainPageViewModel : BaseViewModel
                     LblInfo2 = "retrieving server path info failed";
                 }
             }
-
-            //JEEWEE: INTERESTING CODE
-            //===============================================
-            //if (false)
-            //{
-            //    var stunData = await GetPublicIPAsync();
-            //    await Shell.Current.DisplayAlert("GetPublicIPAsync",
-            //        $"publicIP={stunData.publicIP}, natType={stunData.natType}", "Cancel");
-            //}
-
-            //if (false)
-            //{
-            //    msg = await TestStunUdpConnection();
-            //    await Shell.Current.DisplayAlert("Test", msg, "Cancel");
-            //}
-            //===============================================
         }
         catch (Exception exc)
         {
@@ -601,7 +558,6 @@ public partial class MainPageViewModel : BaseViewModel
     [RelayCommand]
     async Task OpenAdvancedDlg()
     {
-        //JEEWEE
         await Shell.Current.GoToAsync(nameof(AdvancedPage), true);
     }
 
@@ -616,22 +572,14 @@ public partial class MainPageViewModel : BaseViewModel
     {
         try
         {
-            //JEEWEE
-            //LblInfo2 = "";
-            //LblInfo1 = $"sending to server: msg {++_numSendMsg}, {sendBytes.Length} bytes ...";
             int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
 
-            //JEEWEE
-            //LblInfo2 = $"sent to server: msg {_numSendMsg}, {iResult} bytes, waiting for server ...";
             Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
 
             UdpReceiveResult response = await _udpClient.ReceiveAsync(
                                 new CancellationTokenSource(
                                     MauiProgram.Settings.TimeoutSecsClient * 1000).Token);
 
-            //JEEWEE
-            //LblInfo2 = $"Received from server: {Encoding.UTF8.GetString(response.Buffer)}'";
-            //LblInfo2 = $"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes";
             Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
 
             return response.Buffer;
@@ -661,13 +609,7 @@ public partial class MainPageViewModel : BaseViewModel
             UdpReceiveResult received = await udpServer.ReceiveAsync();
             MsgSvrClBase msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
             
-            Console.WriteLine($"JEEWEE: server: received type: {msgSvrCl.GetType()}");
-
             MsgSvrClBase msgSvrClAns = null;
-
-            //JEEWEE
-            //string receivedTxt = "";
-            //string errToSendTxt = "";
 
             // we should close _reader if for any reason another message comes in than as expected
             if (null != _copyMgr && !(msgSvrCl is MsgSvrClCopyNextpartRequest))
@@ -688,8 +630,6 @@ public partial class MainPageViewModel : BaseViewModel
             }
             else if (msgSvrCl is MsgSvrClPathInfoRequest)
             {
-                //JEEWEE
-                //receivedTxt = msgSvrCl.Type.ToString();
                 _seqNrPathInfoAns = 0;
 
                 string[] svrSubParts = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
@@ -713,12 +653,6 @@ public partial class MainPageViewModel : BaseViewModel
                 }
 
 #else
-                //JEEWEE
-                //FileOrFolderData[] data = _fileDataService.GetFilesAndFoldersDataGeneric(
-                //            Settings.FullPathRoot,
-                //            Settings.AndroidUriRoot,
-                //            svrSubParts);
-
                 // on Windows there is no performance trouble
                 GetFileOrFolderDataArray(svrSubParts);
                 msgSvrClAns = HandleFileOrFolderDataArrayOnSvr(out sendWhatStr);
@@ -744,11 +678,6 @@ public partial class MainPageViewModel : BaseViewModel
                 LblInfo1 = "received: request next part path info";
                 if (null == _currPathInfoAnswerState)
                 {
-                    //JEEWEE
-                    //errToSendTxt =
-                    //    $"Server: wrong request last {msgSvrCl.GetType()}, no active path info answer state";
-                    //msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
-
                     msgSvrClAns = new MsgSvrClErrorAnswer(
                         $"Server: wrong request last {msgSvrCl.GetType()}, no active path info answer state");
                     sendWhatStr = "ERRORMSG (wrong request next part path info)";
@@ -774,10 +703,6 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 if (null == _copyMgr)
                 {
-                    //JEEWEE
-                    //errToSendTxt =
-                    //    $"Server: wrong request last {msgSvrCl.GetType()}, no active copy process";
-                    //msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
                     msgSvrClAns = new MsgSvrClErrorAnswer(
                         $"Server: wrong request last {msgSvrCl.GetType()}, no active copy process");
                     sendWhatStr = $"ERRORMSG (wrong request {msgSvrCl.GetType()})";
@@ -805,37 +730,19 @@ public partial class MainPageViewModel : BaseViewModel
             }
             else
             {
-                //JEEWEE
-                //errToSendTxt =
-                //    $"Server: received unexpected message type {msgSvrCl.GetType()}";
-                //msgSvrClAns = new MsgSvrClErrorAnswer(errToSendTxt);
-
                 msgSvrClAns = new MsgSvrClErrorAnswer(
                     $"Server: received unexpected message type {msgSvrCl.GetType()}");
                 sendWhatStr = $"ERRORMSG (wrong request {msgSvrCl.GetType()})";
             }
 
-            //JEEWEE
-            //LblInfo1 = $"Received from client: '{receivedTxt}'";
-
             //5️ Respond to client(hole punching)
-            //JEEWEE
-            //int numAnswer = MauiProgram.Info.NumAnswersSent + 1;
-
-            Console.WriteLine($"JEEWEE: server: sending: {msgSvrClAns.GetType()}");
 
             LblInfo2 = $"sending {sendWhatStr} ...";
             Log($"server: going to send bytes: {msgSvrClAns.Bytes.Length}, {msgSvrClAns.GetType()}");
             await udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
                         received.RemoteEndPoint);
-            //JEEWEE
-            //LblInfo2 = $"answer {numAnswer} sent: " +
-            //    (!String.IsNullOrEmpty(errToSendTxt) ? errToSendTxt :
-            //    $"{msgSvrClAns.Bytes.Length} bytes");
             LblInfo2 = $"sent: {sendWhatStr}";
 
-            //JEEWEE
-            //MauiProgram.Info.NumAnswersSent = numAnswer;
             MauiProgram.Info.NumAnswersSent++;
         }
         catch (Exception exc)
@@ -878,8 +785,6 @@ public partial class MainPageViewModel : BaseViewModel
             _currPathInfoAnswerState = new PathInfoAnswerState(folderNames,
                         fileNames, fileSizes);
 
-            Console.WriteLine($"JEEWEE: server: created _currPathInfoAnswerState: {_currPathInfoAnswerState}");
-
             msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
 					Settings.SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE,
 					_currPathInfoAnswerState,
@@ -888,8 +793,6 @@ public partial class MainPageViewModel : BaseViewModel
                     (_currPathInfoAnswerState.EndReached ?
                     "last part" : $"part {_seqNrPathInfoAns}");
         }
-
-        Console.WriteLine($"JEEWEE: server: HandleFileOrFolderDataArrayOnSvr: {msgSvrClAns.GetType()}");
 
         return msgSvrClAns;
     }
@@ -961,9 +864,6 @@ public partial class MainPageViewModel : BaseViewModel
 
     protected async Task<string> TestStunUdpConnection()
     {
-        //JEEWEE
-        //var stunServer = "stun.l.google.com";
-        //var stunPort = 19302;
         var stunServer = "stun.sipgate.net";
         var stunPort = 3478;
 
@@ -988,12 +888,6 @@ public partial class MainPageViewModel : BaseViewModel
     protected static async Task<IPEndPoint> GetUdpSvrIEndPointFromStun(
             Settings settings)
     {
-        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! MAKE THIS A SETTING, SOMEHOW
-        //var stunServer = "stun.l.google.com";
-        //var stunPort = 19302;
-        //var stunServer = "stun.sipgate.net";
-        //var stunPort = 3478;
-
         IPEndPoint localUdpEndPoint;
         using (var udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0)))
         {
@@ -1001,7 +895,7 @@ public partial class MainPageViewModel : BaseViewModel
             int localUdpPort = localUdpEndPoint.Port;
         }
 
-        // 2️⃣ Use STUN to find public IP & port
+        // 2️ Use STUN to find public IP & port
         // Resolve STUN server hostname to an IP address
         var addresses = await Dns.GetHostAddressesAsync(settings.StunServer);
         var stunServerIP = addresses
@@ -1014,14 +908,6 @@ public partial class MainPageViewModel : BaseViewModel
         await stunClient.QueryAsync(); // Perform the STUN request
 
         return stunClient.State.PublicEndPoint;
-
-        //JEEWEE
-        //if (stunClient.State.PublicEndPoint != null)
-        //{
-        //    string publicIp = stunClient.State.PublicEndPoint.Address.ToString();
-        //    int publicPort = stunClient.State.PublicEndPoint.Port;
-        //    Console.WriteLine($"Detected Public IP: {publicIp}, Port: {publicPort}");
-        //}
     }
 
 
@@ -1039,50 +925,6 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    public async Task<(IPAddress publicIP, string natType)> GetPublicIPAsync()
-    {
-        //JEEWEE
-        //var stunServer = "stun.l.google.com";
-        //var stunServer = "stun1.l.google.com";
-        //var stunPort = 19302;
-
-        //stun.l.google.com   19302
-        //stun1.l.google.com  19302
-        //stun.sipgate.net    3478
-        //stun.voip.blackberry.com    3478
-
-        var stunServer = "stun.l.google.com";
-        var stunPort = 19302;
-
-
-        using var udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0));
-        udpClient.Connect(stunServer, stunPort);
-
-        var localEndPoint = (IPEndPoint)udpClient.Client.LocalEndPoint!;
-
-        // Resolve STUN server hostname to an IP address
-        var addresses = await Dns.GetHostAddressesAsync(stunServer);
-        var stunServerIP = addresses
-            .First(ip => ip.AddressFamily == AddressFamily.InterNetwork);
-        var stunServerEndPoint = new IPEndPoint(stunServerIP, stunPort);
-
-        // Create StunClient3489 instance
-        var stunClient = new StunClient3489(localEndPoint, stunServerEndPoint);
-        //var stunClient = new StunClient5389UDP(localEndPoint, stunServerEndPoint);
-
-        await stunClient.QueryAsync(); // Perform the STUN request
-
-        if (stunClient.State.PublicEndPoint == null)
-        {
-            throw new Exception("Failed to determine public IP");
-        }
-
-        //StunClient3489:
-        return (stunClient.State.PublicEndPoint.Address, stunClient.State.NatType.ToString());
-
-        //StunClient5389UDP:
-        //return (stunClient.State.PublicEndPoint.Address, stunClient.State.MappingBehavior.ToString());
-    }
 
 
     protected static string GetJsonProp(string strJson, string propName)

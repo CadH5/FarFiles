@@ -5,16 +5,12 @@ using CommunityToolkit.Maui;
 using Microsoft.Maui.LifecycleEvents;
 using System.Text;
 using System;
-//JEEWEE
-//using ThreadNetwork;
 using Microsoft.Maui.Media;
 
 namespace FarFiles;
 
 public static class MauiProgram
 {
-    //JEEWEE
-    //public static int UdpSvrPort_0isclient { get; set; } = 0;
     public static string StrLocalIP { get; set; } = "";
     public static Settings Settings { get; set; } = new Settings();
     public static Info Info { get; set; } = new Info();
@@ -80,8 +76,6 @@ public static class MauiProgram
         builder.Services.AddSingleton<MainPageViewModel>();
 
         builder.Services.AddSingleton<AdvancedViewModel>();
-        //JEEWEE
-        //builder.Services.AddSingleton<DetailsPage>();
 
         return builder.Build();
     }

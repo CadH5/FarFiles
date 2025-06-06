@@ -481,9 +481,6 @@ namespace FarFiles.Model
             CopyBytesToList(lisBytes, idxNumFolders, BitConverter.GetBytes(numFolders));
             CopyBytesToList(lisBytes, idxNumFiles, BitConverter.GetBytes(numFiles));
 
-            Console.WriteLine($"JEEWEE: part: numFolders={numFolders}, numFiles={numFiles}," +
-                    $" EndReached={pathInfoAnswerState.EndReached}");
-
             // isLast:
             lisBytes.AddRange(BitConverter.GetBytes(pathInfoAnswerState.EndReached));
 

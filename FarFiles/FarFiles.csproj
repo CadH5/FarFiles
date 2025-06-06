@@ -24,13 +24,6 @@
 		<ApplicationVersion>1</ApplicationVersion>
 	</PropertyGroup>
 
-  <!--JEEWEE-->
-  <!--<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <Optimize>false</Optimize>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-  </PropertyGroup>-->
-  
   <ItemGroup>
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
@@ -62,15 +55,9 @@
 	  <Compile Update="View\AdvancedPage.xaml.cs">
 	    <DependentUpon>AdvancedPage.xaml</DependentUpon>
 	  </Compile>
-	  <Compile Update="View\ServerPage.xaml.cs">
-	    <DependentUpon>ServerPage.xaml</DependentUpon>
-	  </Compile>
 	</ItemGroup>
 	<ItemGroup>
 	  <MauiXaml Update="View\ClientPage.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
-	  <MauiXaml Update="View\ServerPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	</ItemGroup>

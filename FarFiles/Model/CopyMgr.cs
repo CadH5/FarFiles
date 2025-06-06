@@ -1,6 +1,4 @@
-﻿//JEEWEE
-//using AudioToolbox;
-using FarFiles.Services;
+﻿using FarFiles.Services;
 using Microsoft.Maui.Storage;
 using System;
 using System.Collections.Generic;
@@ -10,8 +8,6 @@ using System.Reflection.PortableExecutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-//JEEWEE
-//using static CoreFoundation.DispatchSource;
 
 namespace FarFiles.Model
 {
@@ -27,24 +23,10 @@ namespace FarFiles.Model
     public class CopyMgr : IDisposable
     {
         protected FileDataService _fileDataService;
-        //JEEWEE
-        //protected string[] _folderNamesToCopy;
-        //protected string[] _fileNamesToCopy;
-        //protected string _currPathOnSvr;
-        //protected string _currRelPathOnClient;
-        //JEEWEE
-        //protected FileOrFolderData[] _allFileDataInCurrPath;
-        //protected int _idxFolders = 0;
-        //protected int _idxFiles = 0;
-
         protected BinaryWriter _writer = null;
         protected BinaryReader _reader = null;
         protected const int REMAININGLIMIT = 100;
 
-        //protected const int _bufSizeMoreOrLessJEEWEE = 2000;    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        
-        //JEEWEE
-        //protected int _bufSizeMoreOrLess = MsgSvrClBase.BUFSIZEMOREORLESS;
         protected int _remainingLimit = REMAININGLIMIT;
         protected List<byte> _bufSvrMsg = new List<byte>();
         protected List<NavLevel> _navLevels = new List<NavLevel>();
@@ -74,14 +56,10 @@ namespace FarFiles.Model
         public List<string> ErrMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
 
         public CopyMgr(FileDataService fileDataService, Settings alternativeSettings = null,
-            //JEEWEE   
-            //int bufSizeMoreOrLess = MsgSvrClBase.BUFSIZEMOREORLESS,
                 int remainingLimit = REMAININGLIMIT)
         {
             _fileDataService = fileDataService;
             _settings = alternativeSettings ?? MauiProgram.Settings;
-            //JEEWEE
-            //_bufSizeMoreOrLess = bufSizeMoreOrLess;
             _remainingLimit = remainingLimit;
         }
 
@@ -90,9 +68,6 @@ namespace FarFiles.Model
             CloseThings();
             copyRequest.GetSvrSubPartsAndFolderAndFileNames(out string[] svrSubParts,
                 out string[] folderNamesToCopy, out string[] fileNamesToCopy);
-            //JEEWEE
-            //string pathOnSvr = _settings.PathFromRootAndSubParts(svrSubParts);
-            //string relPathOnClient = "";
             _seqNr = 0;
             TotalNumFilesToCopyOnSvr = CalcTotalNumFilesToCopy(svrSubParts,
                                 folderNamesToCopy, fileNamesToCopy);
@@ -100,9 +75,6 @@ namespace FarFiles.Model
             _infoTotalNumFilesAddedOnSvr = false;
 
             _navLevels.Clear();
-            //JEEWEE
-            //_navLevels.Add(new NavLevel(pathOnSvr, relPathOnClient,
-            //        folderNamesToCopy, fileNamesToCopy));
             _navLevels.Add(new NavLevel(_fileDataService, _settings, svrSubParts,
                     folderNamesToCopy, fileNamesToCopy));
         }
@@ -162,11 +134,6 @@ namespace FarFiles.Model
                                     out FileOrFolderData fData);
                             NumFilesOpenedOnSvr++;
 
-                            //JEEWEE
-                            //string fullPath = Path.Combine(currNavLevel.PathOnSvr, fileName);
-                            //var fData = new FileOrFolderData(fullPath, false, true);
-                            //_reader = new BinaryReader(File.Open(fullPath,
-                            //            FileMode.Open, FileAccess.Read));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.FILE));
                             _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(fileName));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.FileSize));
@@ -193,17 +160,11 @@ namespace FarFiles.Model
                         {
                             folderName = currNavLevel.FolderNames[currNavLevel.CurrIdxFolders];
                             currNavLevel.CurrIdxFolders++;
-                            //JEEWEE
-                            //string fullPathOnSvr = Path.Combine(currNavLevel.PathOnSvr, folderName);
-                            //string relPathOnClient = Path.Combine(currNavLevel.RelPathOnClient, folderName);
-                            //var fData = new FileOrFolderData(fullPathOnSvr, true, true);
                             
                             var fData = _fileDataService.NewFileOrFolderDataGeneric(_settings.FullPathRoot,
                                     _settings.AndroidUriRoot, currNavLevel.SvrSubParts, folderName, true);
                             //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! fData may contain only exception, what then?
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.FOLDER));
-                            //JEEWEE
-                            //_bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(relPathOnClient));
 
                             var newNavLevel = new NavLevel(currNavLevel, folderName);
                             _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
@@ -347,13 +308,6 @@ namespace FarFiles.Model
                                 NumFilesCreated++;
                                 if (_currFileExistedBefore)
                                     NumFilesOverwritten++;
-
-                                //JEEWEE
-                                //if (null != actDispLbl)
-                                //{
-                                //    actDispLbl(2, $"files: {NumFilesCreated} created" +
-                                //        (0 == NumFilesSkipped ? "" : $", {NumFilesSkipped} skipped"));
-                                //}
                             }
                             catch (Exception exc)
                             {
@@ -547,9 +501,6 @@ namespace FarFiles.Model
         {
             protected FileDataService _fileDataService;
             protected Settings _settings;
-            //JEEWEE
-            //public string PathOnSvr { get; protected set; }
-            //public string RelPathOnClient { get; protected set; }
             public string[] SvrSubParts { get; protected set; }
             public int IdxStartClientpathInSvrSubParts { get; protected set; }
             public string[] FileNames { get; protected set; }
@@ -566,9 +517,6 @@ namespace FarFiles.Model
                     IdxStartClientpathInSvrSubParts,
                     SvrSubParts.Length - IdxStartClientpathInSvrSubParts); }
 
-            //JEEWEE
-            //public NavLevel(string pathOnSvr, string relPathOnClient,
-            //        string[] folderNamesSelection = null, string[] fileNamesSelection = null)
 
 
             /// <summary>

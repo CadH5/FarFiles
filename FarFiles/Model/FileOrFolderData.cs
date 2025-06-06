@@ -10,46 +10,8 @@ public class FileOrFolderData
     public DateTime DtCreation { get; set; }
     public DateTime DtLastWrite { get; set; }
     public long FileSize { get; set; }
-    //JEEWEE
-    //public FileOrFolderData[] Children_NullIfFile { get; set; }
-    //public bool IsDir { get => null != Children_NullIfFile; }
     public bool IsDir { get; set; }
     public string ImageSrc { get => IsDir ? "folder.png" : "file.png"; }
-
-    //JEEWEE
-    ///// <summary>
-    ///// This does not fill the children if it's a folder (a dir)
-    ///// </summary>
-    ///// <param name="fullPath">this does not get stored in a member, only Name</param>
-    ///// <param name="isDir"></param>
-    ///// <param name="shouldExist">pass true if file was found on this side's file system</param>
-    //public FileOrFolderData(string fullPath, bool isDir, bool shouldExist,
-    //            long fileSize = 0)
-    //{
-    //    Name = Path.GetFileName(fullPath);
-    //    //JEEWEE
-    //    //Children_NullIfFile = isDir ? new FileOrFolderData[0] : null;
-    //    IsDir = isDir;
-    //    FileSize = isDir ? 0 : fileSize;
-    //    bool exists = (!shouldExist) ? false :
-    //            (isDir ? Directory.Exists(fullPath) : File.Exists(fullPath));
-    //    if (exists)
-    //    {
-    //        if (isDir)
-    //        {
-    //            Attrs = FileAttributes.Directory;
-    //            DtCreation = Directory.GetCreationTime(fullPath);
-    //            DtLastWrite = Directory.GetLastWriteTime(fullPath);
-    //        }
-    //        else
-    //        {
-    //            Attrs = File.GetAttributes(fullPath);
-    //            DtCreation = File.GetCreationTime(fullPath);
-    //            DtLastWrite = File.GetLastWriteTime(fullPath);
-    //            FileSize = new FileInfo(fullPath).Length;
-    //        }
-    //    }
-    //}
 
     public FileOrFolderData(string name, bool isDir, long fileSize,
                 FileAttributes attrs, DateTime dtCreation, DateTime dtLastWrite)

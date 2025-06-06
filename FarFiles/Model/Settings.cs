@@ -39,18 +39,6 @@ namespace FarFiles.Model
         public string PathFromRootAndSubPartsWindows(string[] subParts)
         {
             return FileDataService.PathFromRootAndSubPartsWindows(FullPathRoot, subParts);
-
-//JEEWEE
-//#if ANDROID
-//            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//            return "JEEWEE";
-//#else
-//            string path = FullPathRoot;
-//            foreach (string subPathPart in subParts)
-//                path = Path.Combine(path, subPathPart);
-//            return path;
-//#endif
-
         }
     }
 }

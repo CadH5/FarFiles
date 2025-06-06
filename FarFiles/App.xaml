@@ -30,8 +30,6 @@
             </Style>
 
             <Style TargetType="Label" x:Key="BaseLabel">
-                <!--JEEWEE-->
-                <!--<Setter Property="FontFamily" Value="OpenSansRegular" />-->
                 <Setter Property="FontFamily" Value="SegoeUI" />
                 <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LabelText}, Dark={StaticResource LabelTextDark}}" />
             </Style>
@@ -58,8 +56,6 @@
             </Style>
 
             <Style x:Key="ButtonOutline" TargetType="Button">
-                <!--JEEWEE-->
-                <!--<Setter Property="Background" Value="{AppThemeBinding Light={StaticResource PrimaryDark}, Dark={StaticResource DarkBackground}}" />-->
                 <Setter Property="BackgroundColor" Value="#88C488" />
                 <Setter Property="TextColor" Value="{StaticResource LightBackground}" />
                 <Setter Property="BorderColor" Value="{StaticResource Primary}" />
@@ -72,8 +68,6 @@
                         <VisualStateGroup x:Name="CommonStates">
                             <VisualState x:Name="Normal">
                                 <VisualState.Setters>
-                                    <!--JEEWEE-->
-                                    <!--<Setter Property="Background" Value="{AppThemeBinding Light={StaticResource PrimaryDark}, Dark={StaticResource DarkBackground}}" />-->
                                     <Setter Property="BackgroundColor" Value="#88C488" />
                                     <Setter Property="TextColor" Value="{StaticResource LightBackground}" />
                                     <Setter Property="BorderColor" Value="{StaticResource Primary}" />

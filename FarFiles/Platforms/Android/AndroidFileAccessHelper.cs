@@ -81,9 +81,6 @@ namespace FarFiles.Platforms.Android
             if (null == _uriDir || !_uriDir.IsDirectory)
                 throw new Exception($"AndroidUri is invalid or not a directory: {androidUri.ToString()}");
 
-            //JEEWEE
-            //int count = GetNumDocumentFiles(_uriDir);
-
             string joinedPath = "";
             DocumentFile[] fileOrFolders = _navCachePerPath.GetDocusUpdCache(
                         joinedPath, _uriDir);
@@ -94,12 +91,9 @@ namespace FarFiles.Platforms.Android
                 if (subDir == null)
                     throw new Exception(
                         $"ListDocumentFilesInUriAndSubpath: error finding sub path '{joinedPath}'");
-                //JEEWEE
-                //count = GetNumDocumentFiles(subDir);
                 fileOrFolders = _navCachePerPath.GetDocusUpdCache(joinedPath, subDir);
             }
 
-            //JEEWEE IS THIS FASTER?
             if (null != searchFileOrFolderNameOrNull)
                 return fileOrFolders.FirstOrDefault(f =>
                     f.Name == searchFileOrFolderNameOrNull &&
@@ -110,19 +104,6 @@ namespace FarFiles.Platforms.Android
                 fileOrDirDocusOrNull.AddRange(fileOrFolders.Where(f =>
                     f.IsDirectory == forDirs &&
                     f.IsFile != forDirs));   // also f.IsVirtual exists
-
-            //JEEWEE
-            //foreach (DocumentFile f in fileOrFolders)
-            //{
-            //    if (forDirs && f.IsDirectory ||
-            //        !forDirs && f.IsFile)
-            //    {
-            //        if (f.Name == searchFileOrFolderNameOrNull)
-            //            return f;
-            //        if (null != fileOrDirDocusOrNull)
-            //            fileOrDirDocusOrNull.Add(f);
-            //    }
-            //}
 
             return null;
         }

@@ -5,8 +5,6 @@ using Microsoft.Maui.Controls.PlatformConfiguration;
 using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Net.Http.Json;
-//JEEWEE
-//using static Java.Util.Jar.Attributes;
 
 namespace FarFiles.Services;
 
@@ -84,19 +82,6 @@ public class FileDataService
                             i == 0));
                 }
             }
-
-            //JEEWEE
-            ////JEEWEE NOT SUPPORTED YET ON ANDROID,
-            ////how to get an uri for a subdir (but actually for this app we dont need AllDirectories)
-            //if (searchOption == SearchOption.AllDirectories)
-            //{
-            //    foreach (FileOrFolderData fileOrFolderData in dataList.Where(d => d.IsDir))
-            //    {
-            //        fileOrFolderData.Children_NullIfFile = GetFilesAndFoldersDataWindows(
-            //                Path.Combine(fullRootPath, fileOrFolderData.Name),
-            //                searchOption);
-            //    }
-            //}
         }
         catch (Exception exc)
         {
@@ -201,20 +186,6 @@ public class FileDataService
                 .Select(f => Path.GetFileName(f)).ToArray();
 #endif
     }
-
-
-//JEEWEE
-//    public FileOrFolderData[] GetFilesAndFoldersDataGeneric(string fullPathTopDir, object androidUriRoot,
-//                        string[] svrSubParts)
-//    {
-//#if ANDROID
-//        return GetFilesAndFoldersDataAndroid((Android.Net.Uri)androidUriRoot, svrSubParts);
-//#else
-//        return GetFilesAndFoldersDataWindows(PathFromRootAndSubPartsWindows(
-//                        fullPathTopDir, svrSubParts),
-//                SearchOption.TopDirectoryOnly);
-//#endif
-//    }
 
 
 
