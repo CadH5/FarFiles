@@ -12,7 +12,7 @@ namespace FarFiles.ViewModel;
 public partial class ClientViewModel : BaseViewModel
 {
     public ClientPage ContentPageRef;
-    public ObservableCollection<Model.FileOrFolderData> FileOrFolderColl { get; } = new();
+    public ObservableCollection<FfCollViewItem> FfColl { get; } = new();
     FileDataService fileDataService;
 
     // xaml cannot bind to MauiProgram.Settings directly.
@@ -118,18 +118,18 @@ public partial class ClientViewModel : BaseViewModel
 
     protected void UpdateCollView()
     {
-        FileOrFolderColl.Clear();
+        FfColl.Clear();
 
         if (MauiProgram.Info.SvrPathParts.Count > 0)
-            FileOrFolderColl.Add(new FileOrFolderData("..", true, 0));
+            FfColl.Add(new FfCollViewItem(new FileOrFolderData("..", true, 0)));
 
         foreach (FileOrFolderData fo in MauiProgram.Info.CurrSvrFolders)
-            FileOrFolderColl.Add(fo);
+            FfColl.Add(new FfCollViewItem(fo));
         foreach (FileOrFolderData fi in MauiProgram.Info.CurrSvrFiles)
-            FileOrFolderColl.Add(fi);
+            FfColl.Add(new FfCollViewItem(fi));
 
         //JEEWEE
-        ContentPageRef?.DoWeird(FileOrFolderColl);        // otherwise sometimes items in new contents seem selected
+        //ContentPageRef?.DoWeird(FfColl);        // otherwise sometimes items in new contents seem selected
     }
 
 
@@ -151,21 +151,21 @@ public partial class ClientViewModel : BaseViewModel
     [RelayCommand]
     void ClrAll()
     {
-        ContentPageRef.ClrAll();
+        ContentPageRef.ClrAll(FfColl);
     }
 
 
     [RelayCommand]
     void SelectAll()
     {
-        ContentPageRef.SelectAll(FileOrFolderColl);
+        ContentPageRef.SelectAll(FfColl);
         MoreButtonsMode = false;
     }
 
     [RelayCommand]
     void SelectFltr()
     {
-        ContentPageRef.SelectFltr(FileOrFolderColl, TxtSelectFltr);
+        ContentPageRef.SelectFltr(FfColl, TxtSelectFltr);
         MoreButtonsMode = false;
     }
 
@@ -185,13 +185,13 @@ public partial class ClientViewModel : BaseViewModel
             var savSvrPathParts = new List<string>();
             savSvrPathParts.AddRange(MauiProgram.Info.SvrPathParts);
 
-            FileOrFolderData[] selecteds = ContentPageRef.GetSelecteds();
-            if (selecteds.Length != 1 || ! selecteds.First().IsDir)      // button should be disabled
+            FfCollViewItem[] selecteds = ContentPageRef.GetSelecteds();
+            if (selecteds.Length != 1 || ! selecteds.First().FfData.IsDir)      // button should be disabled
                 throw new Exception(
                     $"PROGRAMMERS: GotoDirAsync: num selecteds ({selecteds.Length}) not 1" +
                     " or selected is not dir");
 
-            FileOrFolderData gotoDir = selecteds.First();
+            FileOrFolderData gotoDir = selecteds.First().FfData;
 
             if (gotoDir.Name == "..")
             {
@@ -253,7 +253,7 @@ public partial class ClientViewModel : BaseViewModel
             _abortProgress = false;
 
             ContentPageRef.ClrDotDotAt0();
-            FileOrFolderData[] selecteds = ContentPageRef.GetSelecteds();
+            FfCollViewItem[] selecteds = ContentPageRef.GetSelecteds();
             if (selecteds.Length == 0)      // possible if they only had selected ".."
                 return;
 
@@ -268,7 +268,8 @@ public partial class ClientViewModel : BaseViewModel
             if (!accepted)
                 return;
 
-            await MauiProgram.Info.MainPageVwModel.CopyFromSvr_msgbxs_Async(selecteds,
+            await MauiProgram.Info.MainPageVwModel.CopyFromSvr_msgbxs_Async(
+                        selecteds.Select(i => i.FfData).ToArray(),
                         FuncCopyGetAbortSetLbls);
         }
         catch (Exception ex)
@@ -348,6 +349,37 @@ public partial class ClientViewModel : BaseViewModel
         LblFileNofN = $"android on server busy ({seqNr}) ...";
         LblByteNofN = "";
         return false;
+    }
+
+}
+
+
+public class FfCollViewItem : INotifyPropertyChanged
+{
+    public Model.FileOrFolderData FfData { get; set; }
+
+    private bool isSelected;
+    public bool IsSelected
+    {
+        get => isSelected;
+        set
+        {
+            if (isSelected != value)
+            {
+                isSelected = value;
+                OnPropertyChanged(nameof(IsSelected));
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler PropertyChanged;
+    protected void OnPropertyChanged(string name) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    public FfCollViewItem(FileOrFolderData fData)
+    {
+        FfData = fData;
+        IsSelected = false;
     }
 
 }

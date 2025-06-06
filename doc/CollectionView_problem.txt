@@ -1,4 +1,25 @@
 
+Hi ChatGPT, troubles with .NET Maui CollectionView, multiselect.
+
+I have consulted you before, and you did a suggestion that helped a lot. But not 100%.
+Now, I discover it is even worse in the youngest functionality of my app.
+The trouble is: I want to programmaticaly set certain selections. That succeeds, internally:
+the CollectionView.SelectedItems collection is correctly filled, I can verify that.
+But they are incorrectly displayed. Specially the invisible ones, below, because there are
+many more items than contained in screen, and there is a vertical scrollbar.
+Also, when I have selections on screen, then scroll far down, then scroll back up, the
+selections are different!
+
+Now I know this exact behaviour from the past in WPF with ListView . Solution then, after days of searching, was:
+set VirtualizingStackPanel.IsVirtualizing to false in xaml for the ListView.
+Nowadays I understand a little about what is Virtualization.
+
+Is it possible to turn it off, for .NET Maui CollectionView ?
+
+
+
+
+
 In XAML, a ListView with virtualization is commonly used to efficiently display large sets of data by rendering only the visible items
 and reusing UI elements as the user scrolls. This improves performance and reduces memory usage.
 

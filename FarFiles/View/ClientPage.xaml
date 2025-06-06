@@ -103,7 +103,7 @@
         
             <CollectionView x:Name="FfCollView"
                         Grid.Row="8"
-                        ItemsSource="{Binding FileOrFolderColl}"
+                        ItemsSource="{Binding FfColl}"
                         SelectionMode="Multiple"
                         SelectionChanged="FfCollView_SelectionChanged"
                         ItemsLayout="VerticalList"
@@ -111,7 +111,7 @@
                         VerticalScrollBarVisibility="Always">
 
                     <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="model:FileOrFolderData">
+                    <DataTemplate x:DataType="viewmodel:FfCollViewItem">
                         <!--<Grid Padding="10" ColumnSpacing="10">-->
                         <Grid Padding="3" x:Name="ItemGrid">
                             <Grid.ColumnDefinitions>
@@ -121,38 +121,28 @@
                                     <!-- Main Text -->
                                     <ColumnDefinition Width="100" />
                                     <!-- Right Text -->
-                                </Grid.ColumnDefinitions>
+                            </Grid.ColumnDefinitions>
 
-                                <Image Source="{Binding ImageSrc}" 
-                                       WidthRequest="30" HeightRequest="20"
-                                       Grid.Column="0" />
+                            <Grid.Triggers>
+                                <DataTrigger TargetType="Grid" Binding="{Binding IsSelected}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="#88FF88" />
+                                </DataTrigger>
+                            </Grid.Triggers>
 
-                                <Label Text="{Binding Name}" 
-                                       VerticalOptions="Center"
-                                       Grid.Column="1" />
+                            <Image Source="{Binding FfData.ImageSrc}" 
+                                    WidthRequest="30" HeightRequest="20"
+                                    Grid.Column="0" />
+
+                            <Label Text="{Binding FfData.Name}" 
+                                    VerticalOptions="Center"
+                                    Grid.Column="1" />
 
                             <!--FontSize="16"-->
 
-                                <Label Text="{Binding FormatFileSize}" 
+                            <Label Text="{Binding FfData.FormatFileSize}" 
                                        VerticalOptions="Center"
                                         Grid.Column="2" />
                             <!--HorizontalOptions="End"-->
-
-                            <VisualStateManager.VisualStateGroups>
-                                <VisualStateGroup Name="CommonStates">
-                                    <VisualState Name="Normal">
-                                        <VisualState.Setters>
-                                            <Setter TargetName="ItemGrid" Property="BackgroundColor" Value="Transparent" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState Name="Selected">
-                                        <VisualState.Setters>
-                                            <Setter TargetName="ItemGrid" Property="BackgroundColor" Value="#88FF88" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                </VisualStateGroup>
-                            </VisualStateManager.VisualStateGroups>
-
                         </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

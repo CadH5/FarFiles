@@ -19,40 +19,42 @@ public partial class ClientPage : ContentPage
 		viewModel.ContentPageRef = this;
 	}
 
-    public void ClrAll()
+    public void ClrAll(ObservableCollection<FfCollViewItem> items)
 	{
 		FfCollView.SelectedItems.Clear();
+        foreach (FfCollViewItem item in items)
+            item.IsSelected = false;
 	}
 
-    public void SelectAll(ObservableCollection<Model.FileOrFolderData> items)
+    public void SelectAll(ObservableCollection<FfCollViewItem> items)
     {
         SelectCore(items, false, "");
     }
 
-    public void SelectFltr(ObservableCollection<Model.FileOrFolderData> items,
+    public void SelectFltr(ObservableCollection<FfCollViewItem> items,
                     string txtSelectFltr)
     {
         SelectCore(items, true, txtSelectFltr);
     }
 
-    protected void SelectCore(ObservableCollection<Model.FileOrFolderData> items,
+    protected void SelectCore(ObservableCollection<FfCollViewItem> items,
                     bool useSelectFltr, string txtSelectFltr)
     {
-        FfCollView.SelectedItems.Clear();
-        DoWeird(items);
+        ClrAll(items);
         string txtSelectFltrUpc = txtSelectFltr.ToUpper();
         foreach (var item in items)
         {
-            if (item.IsDir)
+            if (item.FfData.IsDir)
                 continue;
 
             if (useSelectFltr)
             {
                 if (System.String.IsNullOrEmpty(txtSelectFltr))
                     continue;
-                if (! item.Name.ToUpper().Contains(txtSelectFltrUpc))
+                if (! item.FfData.Name.ToUpper().Contains(txtSelectFltrUpc))
                     continue;
             }
+            item.IsSelected = true;
             FfCollView.SelectedItems.Add(item);
         }
     }
@@ -60,16 +62,17 @@ public partial class ClientPage : ContentPage
     public void ClrDotDotAt0()
     {
         var fDataFirst = GetSelecteds().FirstOrDefault();
-        if (fDataFirst != null && fDataFirst.Name == "..")
+        if (fDataFirst != null && fDataFirst.FfData.IsDir && fDataFirst.FfData.Name == "..")
         {
+            fDataFirst.IsSelected = false;
             FfCollView.SelectedItems.RemoveAt(0);
             UpdatePage();
         }
     }
 
-    public FileOrFolderData[] GetSelecteds()
+    public FfCollViewItem[] GetSelecteds()
     {
-        return FfCollView.SelectedItems.Cast<FileOrFolderData>().ToArray();
+        return FfCollView.SelectedItems.Cast<FfCollViewItem>().ToArray();
     }
 
     public void SetValuesForUpdpgDoUpd(bool isBusy, bool moreButtons)
@@ -81,9 +84,10 @@ public partial class ClientPage : ContentPage
 
     /// <summary>
     /// Sugestion from ChatGPT to resolve weird display problem
+    /// Later on: many more measures were necessary
     /// </summary>
-    /// <param name="fileOrFolderData"></param>
-    public void DoWeird(ObservableCollection<FileOrFolderData> fileOrFolderData)
+    /// <param name="ffCollvwItems"></param>
+    public void DoWeird(ObservableCollection<FfCollViewItem> ffCollvwItems)
     {
         // May 2025: to resolve the following problem:
         // Now, my page that has the CollectionView has a problem.
@@ -100,7 +104,7 @@ public partial class ClientPage : ContentPage
         // different rows are displayed selected.
 
         FfCollView.ItemsSource = null;
-        FfCollView.ItemsSource = fileOrFolderData;
+        FfCollView.ItemsSource = ffCollvwItems;
         UpdatePage();
     }
     private void ClientPage_Loaded(object sender, EventArgs e)
@@ -108,8 +112,16 @@ public partial class ClientPage : ContentPage
         _clientViewModel = (ClientViewModel)BindingContext;
         UpdatePage();
     }
+
+
     public void FfCollView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        foreach (FfCollViewItem oldItem in e.PreviousSelection)
+            oldItem.IsSelected = false;
+
+        foreach (FfCollViewItem newItem in e.CurrentSelection)
+            newItem.IsSelected = true;
+
         UpdatePage();
     }
 
@@ -119,9 +131,9 @@ public partial class ClientPage : ContentPage
         bool can = !_isBusy && !_moreButtons;
         BtnClrAll.IsEnabled = can && numSelected > 0;
         BtnCopy.IsEnabled = can && numSelected > 0;
-        BtnGoto.IsEnabled = can && numSelected == 1 && GetSelecteds().First().IsDir;
+        BtnGoto.IsEnabled = can && numSelected == 1 && GetSelecteds().First().FfData.IsDir;
         LblSelectedNofN.Text = $"selected from server: {numSelected}" +
-            $" of {_clientViewModel.FileOrFolderColl.Count}";
+            $" of {_clientViewModel.FfColl.Count}";
     }
 }
 
