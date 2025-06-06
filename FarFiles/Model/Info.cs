@@ -6,6 +6,11 @@ using System.Threading.Tasks;
 
 namespace FarFiles.Model
 {
+    public enum CpClientToFromMode
+    {
+        CLIENTFROMSVR,
+        CLIENTTOSVR,
+    }
     public class Info
     {
         public MainPageViewModel MainPageVwModel { get; set; }

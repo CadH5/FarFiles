@@ -19,6 +19,52 @@ public partial class ClientViewModel : BaseViewModel
     // And for Idx0isOverwr1isSkip an extra measure is necessary:
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
+    protected CpClientToFromMode _copyToFromSvrMode = CpClientToFromMode.CLIENTFROMSVR;
+    public CpClientToFromMode CopyToFromSvrMode
+    {
+        get => _copyToFromSvrMode;
+        set
+        {
+            _copyToFromSvrMode = value; OnPropertyChanged();
+        }
+    }
+
+
+    public bool IsSvrWritable { get => MauiProgram.Info.IsSvrWritableReportedToClient; }
+
+    public string TxtBtnCopyToFromSvr
+    {
+        // the buttontext must be precisely the oposite of the current state:
+        get => _copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
+                "copy TO server" : "copy from server";
+    }
+
+
+
+    protected bool _moreButtonsMode = false;
+    public bool MoreButtonsMode
+    {
+        get => _moreButtonsMode;
+        set
+        {
+            _moreButtonsMode = value;
+            IsBusy = value;         // to disable/enable CollectionView
+            OnPropertyChanged();
+            ContentPageRef.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode);
+        }
+    }
+
+    public bool IsBusyPlus
+    {
+        get => IsBusy;
+        set
+        {
+            IsBusy = value;
+            OnPropertyChanged();
+            ContentPageRef.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode);
+        }
+    }
+
     protected bool _abortProgress = false;
     protected bool _isProgressing = false;
     public bool IsProgressing
@@ -47,6 +93,17 @@ public partial class ClientViewModel : BaseViewModel
         set
         {
             _lblByteNofN = value; OnPropertyChanged();
+        }
+    }
+
+
+    protected string _txtSelectFltr = "";
+    public string TxtSelectFltr
+    {
+        get => _txtSelectFltr;
+        set
+        {
+            _txtSelectFltr = value; OnPropertyChanged();
         }
     }
 
@@ -92,10 +149,26 @@ public partial class ClientViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    async Task ClrAll()
+    void ClrAll()
     {
         ContentPageRef.ClrAll();
     }
+
+
+    [RelayCommand]
+    void SelectAll()
+    {
+        ContentPageRef.SelectAll(FileOrFolderColl);
+        MoreButtonsMode = false;
+    }
+
+    [RelayCommand]
+    void SelectFltr()
+    {
+        ContentPageRef.SelectFltr(FileOrFolderColl, TxtSelectFltr);
+        MoreButtonsMode = false;
+    }
+
 
     [RelayCommand]
     async Task GotoDirAsync()
@@ -105,7 +178,7 @@ public partial class ClientViewModel : BaseViewModel
 
         try
         {
-            IsBusy = true;
+            IsBusyPlus = true;
             IsProgressing = true;
             _abortProgress = false;
 
@@ -159,7 +232,7 @@ public partial class ClientViewModel : BaseViewModel
         }
         finally
         {
-            IsBusy = false;
+            IsBusyPlus = false;
             IsProgressing = false;
             UpdateCollView();
         }
@@ -175,7 +248,7 @@ public partial class ClientViewModel : BaseViewModel
 
         try
         {
-            IsBusy = true;
+            IsBusyPlus = true;
             IsProgressing = true;
             _abortProgress = false;
 
@@ -205,12 +278,20 @@ public partial class ClientViewModel : BaseViewModel
         }
         finally
         {
-            IsBusy = false;
+            IsBusyPlus = false;
             IsProgressing = false;
             LblFileNofN = "";
             LblByteNofN = "";
         }
     }
+
+
+    [RelayCommand]
+    void MoreButtons()
+    {
+        MoreButtonsMode = ! MoreButtonsMode;
+    }
+
 
 
     [RelayCommand]

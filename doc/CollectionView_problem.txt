@@ -1,0 +1,19 @@
+
+In XAML, a ListView with virtualization is commonly used to efficiently display large sets of data by rendering only the visible items
+and reusing UI elements as the user scrolls. This improves performance and reduces memory usage.
+
+Here’s an example of how to implement a virtualized ListView in XAML:
+
+
+<ListView ItemsSource="{Binding Items}" VirtualizingStackPanel.IsVirtualizing="True" 
+          VirtualizingStackPanel.VirtualizationMode="Standard" 
+          ScrollViewer.IsDeferredScrollingEnabled="True">
+    <ListView.ItemTemplate>
+        <DataTemplate>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Name}" Margin="5" />
+                <TextBlock Text="{Binding Description}" Margin="5" />
+            </StackPanel>
+        </DataTemplate>
+    </ListView.ItemTemplate>
+</ListView>

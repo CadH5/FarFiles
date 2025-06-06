@@ -470,13 +470,13 @@ public partial class MainPageViewModel : BaseViewModel
                 lisFiles.AddRange(fileNames);
                 lisSizes.AddRange(fileSizes);
 
+                MauiProgram.Info.IsSvrWritableReportedToClient = isSvrWritable;
+
                 if (isLast)
                 {
                     LblInfo2 = "received: path info from server";
                     break;
                 }
-
-                MauiProgram.Info.IsSvrWritableReportedToClient = isSvrWritable;
             }
 
             if (null != funcPathInfoGetAbortSetLbls)
