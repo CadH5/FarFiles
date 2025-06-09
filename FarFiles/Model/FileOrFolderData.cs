@@ -11,7 +11,10 @@ public class FileOrFolderData
     public DateTime DtLastWrite { get; set; }
     public long FileSize { get; set; }
     public bool IsDir { get; set; }
-    public string ImageSrc { get => IsDir ? "folder.png" : "file.png"; }
+    public string ImageSrc { get => IsDir ?
+        (MauiProgram.Info.CpClientToFromMode == CpClientToFromMode.CLIENTFROMSVR ?
+            "folder.png" : "folderLocal.png") :
+            "file.png"; }
 
     public FileOrFolderData(string name, bool isDir, long fileSize,
                 FileAttributes attrs, DateTime dtCreation, DateTime dtLastWrite)

@@ -11,20 +11,29 @@ public partial class ClientViewModel : BaseViewModel
 {
     public ClientPage ContentPageRef;
     public ObservableCollection<FfCollViewItem> FfColl { get; } = new();
-    FileDataService fileDataService;
+    FileDataService _fileDataService;
 
     // xaml cannot bind to MauiProgram.Settings directly.
     // And for Idx0isOverwr1isSkip an extra measure is necessary:
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
-    protected CpClientToFromMode _copyToFromSvrMode = CpClientToFromMode.CLIENTFROMSVR;
     public CpClientToFromMode CopyToFromSvrMode
     {
-        get => _copyToFromSvrMode;
+        get => MauiProgram.Info.CpClientToFromMode;
         set
         {
-            _copyToFromSvrMode = value; OnPropertyChanged();
+            MauiProgram.Info.CpClientToFromMode = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(TxtBtnCopyToFromSvr));
+            OnPropertyChanged(nameof(TxtLocalRoot));
         }
+    }
+
+    protected List<string> _currInfoPathParts
+    {
+        get => CopyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
+                MauiProgram.Info.SvrPathParts :
+                MauiProgram.Info.LocalPathPartsCl;
     }
 
 
@@ -33,7 +42,7 @@ public partial class ClientViewModel : BaseViewModel
     public string TxtBtnCopyToFromSvr
     {
         // the buttontext must be precisely the oposite of the current state:
-        get => _copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
+        get => CopyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
                 "copy TO server" : "copy from server";
     }
 
@@ -48,7 +57,8 @@ public partial class ClientViewModel : BaseViewModel
             _moreButtonsMode = value;
             IsBusy = value;         // to disable/enable CollectionView
             OnPropertyChanged();
-            ContentPageRef.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode);
+            ContentPageRef.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode,
+                    CopyToFromSvrMode);
         }
     }
 
@@ -59,7 +69,8 @@ public partial class ClientViewModel : BaseViewModel
         {
             IsBusy = value;
             OnPropertyChanged();
-            ContentPageRef.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode);
+            ContentPageRef.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode,
+                    CopyToFromSvrMode);
         }
     }
 
@@ -108,7 +119,7 @@ public partial class ClientViewModel : BaseViewModel
     public ClientViewModel(FileDataService fileDataService, IConnectivity connectivity)
     {
         Title = "Far Away Files Access";
-        this.fileDataService = fileDataService;
+        _fileDataService = fileDataService;
 
         UpdateCollView();
     }
@@ -118,7 +129,7 @@ public partial class ClientViewModel : BaseViewModel
     {
         FfColl.Clear();
 
-        if (MauiProgram.Info.SvrPathParts.Count > 0)
+        if (_currInfoPathParts.Count > 0)
             FfColl.Add(new FfCollViewItem(new FileOrFolderData("..", true, 0)));
 
         foreach (FileOrFolderData fo in MauiProgram.Info.CurrSvrFolders)
@@ -133,7 +144,16 @@ public partial class ClientViewModel : BaseViewModel
 
     public string TxtLocalRoot
     {
-        get => $"Local path: {MauiProgram.Settings.FullPathRoot}";
+        get
+        {
+            string dispPath = MauiProgram.Settings.FullPathRoot;
+            if (CopyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
+            {
+                foreach (string part in MauiProgram.Info.LocalPathPartsCl)
+                    dispPath = Path.Combine(dispPath, part);
+            }
+            return $"Local path: {dispPath}";
+        }
     }
 
     public string TxtSvrPath
@@ -167,6 +187,16 @@ public partial class ClientViewModel : BaseViewModel
         MoreButtonsMode = false;
     }
 
+    [RelayCommand]
+    async Task CopyToFromSvr()
+    {
+        CopyToFromSvrMode = CopyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
+                CpClientToFromMode.CLIENTTOSVR : CpClientToFromMode.CLIENTFROMSVR;
+        await GotoDirCoreAsync();
+        MoreButtonsMode = false;
+        UpdateCollView();
+    }
+
 
     [RelayCommand]
     async Task GotoDirAsync()
@@ -180,27 +210,59 @@ public partial class ClientViewModel : BaseViewModel
             IsProgressing = true;
             _abortProgress = false;
 
-            var savSvrPathParts = new List<string>();
-            savSvrPathParts.AddRange(MauiProgram.Info.SvrPathParts);
-
             FfCollViewItem[] selecteds = ContentPageRef.GetSelecteds();
-            if (selecteds.Length != 1 || ! selecteds.First().FfData.IsDir)      // button should be disabled
+            if (selecteds.Length != 1 || !selecteds.First().FfData.IsDir)      // button should be disabled
                 throw new Exception(
                     $"PROGRAMMERS: GotoDirAsync: num selecteds ({selecteds.Length}) not 1" +
                     " or selected is not dir");
 
             FileOrFolderData gotoDir = selecteds.First().FfData;
-
             if (gotoDir.Name == "..")
             {
-                if (MauiProgram.Info.SvrPathParts.Count > 0)    // should be
-                    MauiProgram.Info.SvrPathParts.RemoveAt(
-                                MauiProgram.Info.SvrPathParts.Count - 1);
+                if (_currInfoPathParts.Count > 0)    // should be
+                    _currInfoPathParts.RemoveAt(
+                                _currInfoPathParts.Count - 1);
             }
             else
             {
-                MauiProgram.Info.SvrPathParts.Add(gotoDir.Name);
+                _currInfoPathParts.Add(gotoDir.Name);
             }
+
+            await GotoDirCoreAsync();
+        }
+        catch (Exception exc)
+        {
+            Debug.WriteLine($"Unable to goto dir: {exc.Message}");
+            await Shell.Current.DisplayAlert("Error!", exc.Message, "OK");
+        }
+        finally
+        {
+            IsBusyPlus = false;
+            IsProgressing = false;
+            UpdateCollView();
+        }
+    }
+
+
+
+    async Task GotoDirCoreAsync()
+    {
+        if (CopyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
+        {
+            // GotoDir locally
+            FileOrFolderData[] fDataFromCurr = _fileDataService.GetFilesAndFoldersDataGeneric(
+                    MauiProgram.Settings.FullPathRoot, MauiProgram.Settings.AndroidUriRoot,
+                    MauiProgram.Info.LocalPathPartsCl.ToArray());
+            OnPropertyChanged(nameof(TxtLocalRoot));
+
+            MauiProgram.Info.CurrSvrFolders = fDataFromCurr.Where(f => f.IsDir).ToArray();
+            MauiProgram.Info.CurrSvrFiles = fDataFromCurr.Where(f => !f.IsDir).ToArray();
+        }
+        else
+        {
+            // GotoDir on server, by sending and receiving messages
+            var savSvrPathParts = new List<string>();
+            savSvrPathParts.AddRange(MauiProgram.Info.SvrPathParts);
 
             Exception excSendRcv = null;
             try
@@ -223,18 +285,8 @@ public partial class ClientViewModel : BaseViewModel
             if (null != excSendRcv)
                 throw excSendRcv;
         }
-        catch (Exception exc)
-        {
-            Debug.WriteLine($"Unable to goto dir: {exc.Message}");
-            await Shell.Current.DisplayAlert("Error!", exc.Message, "OK");
-        }
-        finally
-        {
-            IsBusyPlus = false;
-            IsProgressing = false;
-            UpdateCollView();
-        }
     }
+
 
 
 

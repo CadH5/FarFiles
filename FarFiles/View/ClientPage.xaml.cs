@@ -10,6 +10,7 @@ public partial class ClientPage : ContentPage
     protected ClientViewModel _clientViewModel;
     protected bool _isBusy;
     protected bool _moreButtons;
+    protected CpClientToFromMode _cpClientToFromMode;
 
 
     public ClientPage(ClientViewModel viewModel)
@@ -75,10 +76,12 @@ public partial class ClientPage : ContentPage
         return FfCollView.SelectedItems.Cast<FfCollViewItem>().ToArray();
     }
 
-    public void SetValuesForUpdpgDoUpd(bool isBusy, bool moreButtons)
+    public void SetValuesForUpdpgDoUpd(bool isBusy, bool moreButtons,
+            CpClientToFromMode cpClientToFromMode)
     {
         _isBusy = isBusy;
         _moreButtons = moreButtons;
+        _cpClientToFromMode = cpClientToFromMode;
         UpdatePage();
     }
 
@@ -132,7 +135,9 @@ public partial class ClientPage : ContentPage
         BtnClrAll.IsEnabled = can && numSelected > 0;
         BtnCopy.IsEnabled = can && numSelected > 0;
         BtnGoto.IsEnabled = can && numSelected == 1 && GetSelecteds().First().FfData.IsDir;
-        LblSelectedNofN.Text = $"selected from server: {numSelected}" +
+        string descr = _cpClientToFromMode == CpClientToFromMode.CLIENTFROMSVR ?
+                    "from server" : "locally";
+        LblSelectedNofN.Text = $"selected {descr}: {numSelected}" +
             $" of {_clientViewModel.FfColl.Count}";
     }
 }

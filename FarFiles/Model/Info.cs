@@ -21,9 +21,11 @@ namespace FarFiles.Model
         public string LocalIpSvrRegistered { get; set; } = "";
         public string IpSvrThatClientConnectedTo { get; set; } = "";
         public bool IsSvrWritableReportedToClient { get; set; } = false;
+        public CpClientToFromMode CpClientToFromMode { get; set; } = CpClientToFromMode.CLIENTFROMSVR;
         public bool Connected { get; set; } = false;
         public int NumAnswersSent { get; set; } = 0;
         public List<string> SvrPathParts { get; set; } = new List<string>();
+        public List<string> LocalPathPartsCl { get; set; } = new List<string>();
         public FileOrFolderData[] CurrSvrFolders { get; set; } = new FileOrFolderData[0];
         public FileOrFolderData[] CurrSvrFiles { get; set; } = new FileOrFolderData[0];
 
@@ -34,6 +36,7 @@ namespace FarFiles.Model
             IpSvrThatClientConnectedTo = "";
             Connected = false;
             SvrPathParts.Clear();
+            LocalPathPartsCl.Clear();
             CurrSvrFolders = new FileOrFolderData[0];
             CurrSvrFiles = new FileOrFolderData[0];
         }
