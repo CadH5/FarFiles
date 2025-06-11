@@ -191,19 +191,19 @@ public class FileDataService
 
     public BinaryReader OpenBinaryReaderGeneric(
             string fullPathTopDir, object androidUriRoot,
-            string[] svrSubParts, string fileName,
+            string[] subParts, string fileName,
             out FileOrFolderData fData)
     {
 
-        fData = NewFileOrFolderDataGeneric(fullPathTopDir, androidUriRoot, svrSubParts,
+        fData = NewFileOrFolderDataGeneric(fullPathTopDir, androidUriRoot, subParts,
                     fileName, false);
 
 #if ANDROID
         return _androidFileAccessHelper.GetBinaryReaderFromUriAndSubpath(
-                (Android.Net.Uri)androidUriRoot, svrSubParts, fileName);
+                (Android.Net.Uri)androidUriRoot, subParts, fileName);
 #else
         string fullPathFile = Path.Combine(PathFromRootAndSubPartsWindows(
-                        fullPathTopDir, svrSubParts), fileName);
+                        fullPathTopDir, subParts), fileName);
         return new BinaryReader(File.Open(fullPathFile, FileMode.Open, FileAccess.Read));
 #endif
 

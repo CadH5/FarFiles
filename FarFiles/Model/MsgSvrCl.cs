@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,6 +22,8 @@ namespace FarFiles.Model
         COPY_ANS,
         ABORTED_INFO,
         ABORTED_CONFIRM,
+        COPY_TOSVRPART,
+        COPY_TOSVRCONFIRM,
     }
 
     public class MsgSvrClBase
@@ -117,6 +120,12 @@ namespace FarFiles.Model
                 case MsgSvrClType.ABORTED_CONFIRM:
                     return new MsgSvrClAbortedConfirmation(bytes);
 
+                case MsgSvrClType.COPY_TOSVRPART:
+                    return new MsgSvrClCopyToSvrPart(bytes);
+
+                case MsgSvrClType.COPY_TOSVRCONFIRM:
+                    return new MsgSvrClCopyToSvrConfirmation(bytes);
+
                 default:
                     throw new Exception(
                         $"PROGRAMMERS: CreateFromBytes(): not handled type {type}");
@@ -170,6 +179,21 @@ namespace FarFiles.Model
                     (iType == -1 ? "" : $" starting with int {iType}") +
                     ": " + exc.Message);
             }
+        }
+
+
+
+
+        /// <summary>
+        /// Tries to copy MsgSvrClType into first 4 bytes; bytes must have already length >= 4
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public static void CopyTypeIntoBytes(MsgSvrClType type, byte[] bytes)
+        {
+            Array.Copy(BitConverter.GetBytes((int)type),
+                            0, bytes, 0, sizeof(int));
         }
 
 
@@ -601,7 +625,7 @@ namespace FarFiles.Model
         }
 
 
-        public void GetSvrSubPartsAndFolderAndFileNames(out string[] svrSubParts,
+        public void GetSubPartsAndFolderAndFileNames(out string[] svrSubParts,
                 out string[] folderNames, out string[] fileNames)
         {
             try
@@ -735,5 +759,58 @@ namespace FarFiles.Model
         {
         }
     }
+
+
+
+
+
+    /// <summary>
+    /// This class has the very same functionality as MsgSvrClCopyAnswer,
+    /// but is separated for sake of more clarity; used to copy FROM client TO server
+    /// </summary>
+    public class MsgSvrClCopyToSvrPart : MsgSvrClCopyAnswer
+    {
+        public MsgSvrClCopyToSvrPart(int seqNr, bool isLastPart, byte[] data)
+            : base(seqNr, isLastPart, data)
+        {
+            // This has filled the wrong MsgSvrClType COPY_ANS
+            CopyTypeIntoBytes(MsgSvrClType.COPY_TOSVRPART, Bytes);
+        }
+
+        public MsgSvrClCopyToSvrPart(byte[] bytes)
+            : base(bytes)
+        {
+            // This has filled the wrong MsgSvrClType COPY_ANS
+            CopyTypeIntoBytes(MsgSvrClType.COPY_TOSVRPART, Bytes);
+        }
+
+    }
+
+
+
+
+    //JEEWEE: NO, PUT MORE INFO HERE, BUSY OR NUM FILES COPIED ETC
+    /// <summary>
+    /// This is the answer from server upon MsgSvrClCopyToSvrPart; just a confirmation
+    /// </summary>
+    public class MsgSvrClCopyToSvrConfirmation : MsgSvrClBase
+    {
+        public MsgSvrClCopyToSvrConfirmation()
+            : base(MsgSvrClType.COPY_TOSVRCONFIRM)
+        {
+        }
+
+
+        public MsgSvrClCopyToSvrConfirmation(byte[] bytes)
+            : base(bytes, MsgSvrClType.COPY_TOSVRCONFIRM)
+        {
+        }
+    }
+
+
+
+
+
+
 }
 

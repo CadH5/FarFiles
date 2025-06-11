@@ -244,7 +244,7 @@ namespace FarFiles.Model
                 msgSvrCl = new MsgSvrClCopyRequest(svrPathPartsIn, folderNames, fileNames);
                 AssertEq(wrLog, MsgSvrClType.COPY_REQ, msgSvrCl.Type,
                         "MsgSvrClCopyRequest.Type");
-                ((MsgSvrClCopyRequest)msgSvrCl).GetSvrSubPartsAndFolderAndFileNames(
+                ((MsgSvrClCopyRequest)msgSvrCl).GetSubPartsAndFolderAndFileNames(
                         out svrPathPartsOut, out foldersOut, out filesOut);
                 AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
                         "MsgSvrClCopyRequest svrPathParts");
@@ -284,6 +284,28 @@ namespace FarFiles.Model
                 msgSvrCl = new MsgSvrClAbortedConfirmation();
                 AssertEq(wrLog, MsgSvrClType.ABORTED_CONFIRM, msgSvrCl.Type,
                         "MsgSvrClAbortedConfirmation.Type");
+
+                // MsgSvrClCopyToSvrPart
+                seqNrIn = 3;
+                isLastIn = true;
+                dataIn = new byte[] { 0, 1, 2, 255, 0 };
+                msgSvrCl = new MsgSvrClCopyToSvrPart(seqNrIn, isLastIn, dataIn);
+                AssertEq(wrLog, MsgSvrClType.COPY_TOSVRPART, msgSvrCl.Type,
+                        "MsgSvrClCopyToSvrPart.Type");
+                ((MsgSvrClCopyAnswer)msgSvrCl).GetSeqnrAndIslastAndData(
+                        out seqNrOut, out isLastOut, out dataOut);
+                AssertEq(wrLog, seqNrIn, seqNrOut,
+                        "MsgSvrClCopyToSvrPart seqNr");
+                AssertEq(wrLog, isLastIn, isLastOut,
+                        "MsgSvrClCopyToSvrPart isLast");
+                AssertEq(wrLog, dataIn.Select(b => (long)b).ToArray(),
+                        dataOut.Select(b => (long)b).ToArray(),
+                        "MsgSvrClCopyToSvrPart data");
+
+                // MsgSvrClCopyToSvrConfirmation
+                msgSvrCl = new MsgSvrClCopyToSvrConfirmation();
+                AssertEq(wrLog, MsgSvrClType.COPY_TOSVRCONFIRM, msgSvrCl.Type,
+                        "MsgSvrClCopyToSvrConfirmation.Type");
             }
             catch (Exception exc)
             {
@@ -307,6 +329,7 @@ namespace FarFiles.Model
                 if (!testPath.StartsWith(@"C:\temp\_FARFILES"))
                     throw new Exception("IS IT CORRECT TO DELETE ALL FROM " + testPath);
 
+                // cleanup tree from previous run, if present
                 var errMsgs = _fileDataService.DeleteDirPlusSubdirsPlusFilesWindows(testPath);
                 AssertEq(wrLog, 0, errMsgs.Length, "Num errMsgs DeleteDirPlusSubdirsPlusFilesWindows");
                 LogErrMsgsIfAny(wrLog, "ErrMsgs DeleteDirPlusSubdirsPlusFilesWindows:", errMsgs);
@@ -317,6 +340,8 @@ namespace FarFiles.Model
                     FullPathRoot = testPathSvr,
                     BufSizeMoreOrLess = 200,
                 };
+
+                // Determine clientSvrPathParts, and use them also to set up initial test file tree
                 var clientSvrPathParts = new List<string> { "aa", "bb" };
                 string topDirOnSvr = settingsSvr.PathFromRootAndSubPartsWindows(
                                     clientSvrPathParts.ToArray());
@@ -325,6 +350,8 @@ namespace FarFiles.Model
                 Directory.CreateDirectory(Path.Combine(topDirOnSvr, "sub1", "sub1sub1"));
                 Directory.CreateDirectory(Path.Combine(topDirOnSvr, "sub1", "sub1sub2"));
                 Directory.CreateDirectory(Path.Combine(topDirOnSvr, "sub2"));
+
+                // manual determinations:
                 var createFilesSvr = new List<string> {
                         @"test_1.txt", @"test_notCopy.txt",
                         @"sub1\test_2.txt", @"sub1\test_3_size0.txt",
@@ -342,8 +369,10 @@ namespace FarFiles.Model
                 {
                     FullPathRoot = testPathClient,
                     Idx0isOverwr1isSkip = 0,
+                    BufSizeMoreOrLess = 200,
                 };
 
+                // create the files (one having size 0):
                 foreach (var relPathFile in createFilesSvr)
                 {
                     using (var wr = new StreamWriter(Path.Combine(topDirOnSvr, relPathFile)))
@@ -358,8 +387,10 @@ namespace FarFiles.Model
                         topDirOnSvr, null, new string[] { "" }, "sub1"),
                         "CalcTotalNumFilesOfFolderWithSubfolders");
 
-                // Now 3 tests: 1. create, 2. overwrite, 3. skip
+                // Now 3 tests 'copy from server': 1. create, 2. overwrite, 3. skip
+                // note: the tests do not include real communication through Internet
 
+                int alterRemainingLimit = 40;
                 var cploopDescr = new string[] { "create", "overwrite", "skip" };
                 for (int iCploop = 0; iCploop < 3; iCploop++)
                 {
@@ -367,30 +398,31 @@ namespace FarFiles.Model
                     wrLog.WriteLine($"Copyloop {iCploop+1}: {cploopDescr[iCploop]}");
 
                     settingsClient.Idx0isOverwr1isSkip = iCploop == 2 ? 1 : 0;
-                    int alterRemainingLimit = 40;
 
                     int prevSeqNr = -1;
                     var copyMgrSvr = new CopyMgr(_fileDataService, settingsSvr,
                             alterRemainingLimit);
                     var copyMgrClient = new CopyMgr(_fileDataService, settingsClient);
-                    copyMgrSvr.StartCopyFromSvr(new MsgSvrClCopyRequest(clientSvrPathParts,
+                    copyMgrSvr.StartCopyFromOrToSvrOnSvrOrClient(
+                            new MsgSvrClCopyRequest(clientSvrPathParts,
                             folderNamesToCopy, fileNamesToCopy));
                     while (true)
                     {
-                        MsgSvrClBase msgSvrCl = copyMgrSvr.GetNextPartCopyansFromSvr();
+                        MsgSvrClBase msgSvrCl = copyMgrSvr.GetNextPartCopyansFromSrc(false);
                         AssertEq(wrLog, MsgSvrClType.COPY_ANS, msgSvrCl.Type,
                                 "answer from svr");
                         int seqNr = ((MsgSvrClCopyAnswer)msgSvrCl).SeqNr;
                         AssertEq(wrLog, prevSeqNr + 1, seqNr,
                                 "seqNr from svr");
                         prevSeqNr++;
-                        if (copyMgrClient.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrCl))
+                        if (copyMgrClient.CreateOnDestFromNextPart((MsgSvrClCopyAnswer)msgSvrCl))
                             break;
                     }
 
-                    LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrScr:", copyMgrSvr.ErrMsgs);
+                    LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrSvr:", copyMgrSvr.ErrMsgs);
                     LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrClient:", copyMgrClient.ErrMsgs);
 
+                    // check results for this loop
                     foreach (string expectedRelPathFile in expectedFilesClient)
                     {
                         string fullPathSvr = Path.Combine(topDirOnSvr, expectedRelPathFile);
@@ -409,6 +441,66 @@ namespace FarFiles.Model
                                 copyMgrClient.NumFilesOverwritten, "NumFilesOverwritten");
                     AssertEq(wrLog, 2 == iCploop ? 5 : 0,
                                 copyMgrClient.NumFilesSkipped, "NumFilesSkipped");
+                }
+
+                // just a save of the original tree on server; now we are going to
+                // copy back from client:
+                Directory.Move(Path.Combine(topDirOnSvr, "sub1"),
+                        Path.Combine(topDirOnSvr, "sub1SAV"));
+
+                // Now 3 tests 'copy TO server': 1. create, 2. overwrite, 3. skip
+                for (int iCploop = 0; iCploop < 3; iCploop++)
+                {
+                    wrLog.WriteLine();
+                    wrLog.WriteLine($"TO server: Copyloop {iCploop + 1}: {cploopDescr[iCploop]}");
+
+                    settingsClient.Idx0isOverwr1isSkip = iCploop == 2 ? 1 : 0;
+
+                    int prevSeqNr = -1;
+                    var copyMgrSvr = new CopyMgr(_fileDataService, settingsSvr,
+                            alterRemainingLimit);
+                    var copyMgrClient = new CopyMgr(_fileDataService, settingsClient);
+                    var reqToClientItself = new MsgSvrClCopyRequest(
+                            clientSvrPathParts,
+                            folderNamesToCopy, fileNamesToCopy);
+                    copyMgrClient.StartCopyFromOrToSvrOnSvrOrClient(reqToClientItself);
+
+                    while (true)
+                    {
+                        MsgSvrClBase msgSvrCl = (MsgSvrClCopyToSvrPart)copyMgrClient
+                                    .GetNextPartCopyansFromSrc(true);
+                        AssertEq(wrLog, MsgSvrClType.COPY_TOSVRPART, msgSvrCl.Type,
+                                "copydata part from client");
+                        int seqNr = ((MsgSvrClCopyToSvrPart)msgSvrCl).SeqNr;
+                        AssertEq(wrLog, prevSeqNr + 1, seqNr,
+                                "seqNr from client");
+                        prevSeqNr++;
+                        if (copyMgrSvr.CreateOnDestFromNextPart((MsgSvrClCopyToSvrPart)msgSvrCl))
+                            break;
+                    }
+
+                    LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrClient:", copyMgrClient.ErrMsgs);
+                    LogErrMsgsIfAny(wrLog, "ErrMsgs copyMgrSvr:", copyMgrSvr.ErrMsgs);
+
+                    foreach (string expectedRelPathFile in expectedFilesClient)
+                    {
+                        string fullPathSvr = Path.Combine(topDirOnSvr, expectedRelPathFile);
+                        string fullPathClient = Path.Combine(testPathClient, expectedRelPathFile);
+
+                        AssertEqFile(wrLog, fullPathSvr, fullPathClient);
+                    }
+
+                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    //AssertEq(wrLog, 5,
+                    //            copyMgrClient.ClientInfoTotalNumFilesToCopy, "ClientInfoTotalNumFilesToCopy from server");
+                    //AssertEq(wrLog, 0 == iCploop ? 3 : 0,
+                    //            copyMgrClient.NumFoldersCreated, "NumFoldersCreated");
+                    //AssertEq(wrLog, 2 == iCploop ? 0 : 5,
+                    //            copyMgrClient.NumFilesCreated, "NumFilesCreated");
+                    //AssertEq(wrLog, 1 == iCploop ? 5 : 0,
+                    //            copyMgrClient.NumFilesOverwritten, "NumFilesOverwritten");
+                    //AssertEq(wrLog, 2 == iCploop ? 5 : 0,
+                    //            copyMgrClient.NumFilesSkipped, "NumFilesSkipped");
                 }
             }
             catch (Exception exc)

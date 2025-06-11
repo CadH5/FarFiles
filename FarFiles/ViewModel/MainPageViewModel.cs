@@ -259,8 +259,8 @@ public partial class MainPageViewModel : BaseViewModel
 
         //JWdP 20250507 Introduced "unittests", to be executed from this button if incommented
         //====================================================================================
-        //await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
-        //return;
+        await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
+        return;
         //====================================================================================
 
         //OpenClientJEEWEE();
@@ -477,15 +477,32 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    public async Task CopyFromSvr_msgbxs_Async(FileOrFolderData[] selecteds,
-            Func<int,int,long,long,bool> funcCopyGetAbortSetLbls = null)
+    public async Task CopyFromOrToSvrOnClient_msgbxs_Async(
+            CpClientToFromMode copyToFromSvrMode,
+            FileOrFolderData[] selecteds,
+            Func<int, int, long, long, bool> funcCopyGetAbortSetLbls = null)
     {
-        MsgSvrClBase msgSvrCl = new MsgSvrClCopyRequest(MauiProgram.Info.SvrPathParts,
-                selecteds.Where(f => f.IsDir).Select(f => f.Name),
-                selecteds.Where(f => ! f.IsDir).Select(f => f.Name));
+        IEnumerable<string> selectedDirs = selecteds.Where(f => f.IsDir).Select(f => f.Name);
+        IEnumerable<string> selectedFiles = selecteds.Where(f => !f.IsDir).Select(f => f.Name);
+
+        MsgSvrClBase msgSvrCl = null;
+        if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
+        {
+            msgSvrCl = new MsgSvrClCopyRequest(MauiProgram.Info.SvrPathParts,
+                    selectedDirs, selectedFiles);
+        }
 
         using (var copyMgr = new CopyMgr(_fileDataService))
         {
+            if (copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
+            {
+                var reqToClientItself = new MsgSvrClCopyRequest(
+                        MauiProgram.Info.LocalPathPartsCl,
+                        selectedDirs, selectedFiles);
+                copyMgr.StartCopyFromOrToSvrOnSvrOrClient(reqToClientItself);
+                msgSvrCl = (MsgSvrClCopyToSvrPart)copyMgr.GetNextPartCopyansFromSrc(true);
+            }
+
             while (true)
             {
                 byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
@@ -494,21 +511,33 @@ public partial class MainPageViewModel : BaseViewModel
                     //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! make CopyMgr abort
                     return;
 
-                MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
-                if (msgSvrClAnswer is MsgSvrClAbortedConfirmation)
+                MsgSvrClBase msgSvrClRecieved = MsgSvrClBase.CreateFromBytes(byRecieved);
+                if (msgSvrClRecieved is MsgSvrClAbortedConfirmation)
                     break;
 
-                msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClCopyAnswer));
-                Log($"client: received bytes: {byRecieved.Length}, MsgSvrClCopyAnswer");
+                Type expectedType = copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
+                    typeof(MsgSvrClCopyAnswer) : typeof(MsgSvrClCopyToSvrConfirmation);
+                msgSvrClRecieved.CheckExpectedTypeMaybeThrow(expectedType);
+                Log($"client: received bytes: {byRecieved.Length}, {expectedType}");
 
-                if (copyMgr.CreateOnClientFromNextPart((MsgSvrClCopyAnswer)msgSvrClAnswer,
-                                                funcCopyGetAbortSetLbls))
-                    break;          // ready
+                if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
+                {
+                    if (copyMgr.CreateOnDestFromNextPart((MsgSvrClCopyAnswer)msgSvrClRecieved,
+                                                    funcCopyGetAbortSetLbls))
+                        break;          // ready
+                }
 
                 if (copyMgr.ClientAborted)
                     msgSvrCl = new MsgSvrClAbortedInfo();
-                else
+                else if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
                     msgSvrCl = new MsgSvrClCopyNextpartRequest();
+                else
+                {
+                    // copying from client to server
+                    if (((MsgSvrClCopyAnswer)msgSvrCl).IsLastPart)
+                        break;
+                    msgSvrCl = copyMgr.GetNextPartCopyansFromSrc(true);
+                }
             }
 
             string nl = Environment.NewLine;
@@ -543,6 +572,74 @@ public partial class MainPageViewModel : BaseViewModel
             }
         }
     }
+
+
+
+
+
+    //JEEWEE
+    //public async Task CopyToSvr_msgbxs_Async(FileOrFolderData[] selecteds,
+    //        Func<int, int, long, long, bool> funcCopyGetAbortSetLbls = null)
+    //{
+    //    using (var copyMgr = new CopyMgr(_fileDataService))
+    //    {
+    //        while (true)
+    //        {
+    //            byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
+    //                                msgSvrCl.Bytes);
+    //            if (byRecieved.Length == 0)
+    //                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! make CopyMgr abort
+    //                return;
+
+    //            MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
+    //            if (msgSvrClAnswer is MsgSvrClAbortedConfirmation)
+    //                break;
+
+    //            msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClCopyAnswer));
+    //            Log($"client: received bytes: {byRecieved.Length}, MsgSvrClCopyAnswer");
+
+    //            if (copyMgr.CreateOnDestFromNextPart((MsgSvrClCopyAnswer)msgSvrClAnswer,
+    //                                            funcCopyGetAbortSetLbls))
+    //                break;          // ready
+
+    //            if (copyMgr.ClientAborted)
+    //                msgSvrCl = new MsgSvrClAbortedInfo();
+    //            else
+    //                msgSvrCl = new MsgSvrClCopyNextpartRequest();
+    //        }
+
+    //        string nl = Environment.NewLine;
+    //        await Shell.Current.DisplayAlert("Copied",
+    //            $"Folders created: {copyMgr.NumFoldersCreated}{nl}" +
+    //            $"Files created: {copyMgr.NumFilesCreated}{nl}" +
+    //            $"Files overwritten: {copyMgr.NumFilesOverwritten}{nl}" +
+    //            $"Files skipped: {copyMgr.NumFilesSkipped}{nl}" +
+    //            (copyMgr.NumDtProblems > 0 ? $"Err dates replaced by Now: {copyMgr.NumDtProblems}{nl}" : "") +
+    //            (copyMgr.ErrMsgs.Count > 0 ? $"ERRORS: {copyMgr.ErrMsgs.Count}{nl}" : "") +
+    //            (copyMgr.ClientAborted ? $"ABORTED BY USER{nl}" : ""),
+    //            "OK");
+
+    //        if (copyMgr.ErrMsgs.Count > 0)
+    //        {
+    //            MauiProgram.Log.LogLine("", false);
+    //            MauiProgram.Log.LogLine("CopyMgr ErrMsgs:", false);
+    //            foreach (string errMsg in copyMgr.ErrMsgs)
+    //            {
+    //                MauiProgram.Log.LogLine(errMsg, false);
+    //            }
+
+    //            int maxDispMsgs = 5;
+    //            int numMsgs = Math.Min(maxDispMsgs, copyMgr.ErrMsgs.Count);
+    //            string totalMsg = "";
+    //            for (int iErr = 0; iErr < numMsgs; iErr++)
+    //                totalMsg += copyMgr.ErrMsgs[iErr] + nl;
+
+    //            if (copyMgr.ErrMsgs.Count > maxDispMsgs)
+    //                totalMsg += $"....... (not all {copyMgr.ErrMsgs.Count} errors listed)";
+    //            await Shell.Current.DisplayAlert("ERRORS", totalMsg, "OK");
+    //        }
+    //    }
+    //}
 
 
 
@@ -695,8 +792,20 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 LblInfo1 = "received: copy request";
                 _copyMgr = new CopyMgr(_fileDataService);
-                _copyMgr.StartCopyFromSvr((MsgSvrClCopyRequest)msgSvrCl);
-                msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
+                _copyMgr.StartCopyFromOrToSvrOnSvrOrClient((MsgSvrClCopyRequest)msgSvrCl);
+                msgSvrClAns = _copyMgr.GetNextPartCopyansFromSrc(false);
+                sendWhatStr = SendWhatStrFromCopyMsgtosend(msgSvrClAns);
+            }
+            else if (msgSvrCl is MsgSvrClCopyToSvrPart)
+            {
+                LblInfo1 = "received: data copy TO server";
+                if (null == _copyMgr)
+                    _copyMgr = new CopyMgr(_fileDataService);
+
+                //XXXXXXXXXXXXXXXXXXXXXXXXX JEEWEE!!!!!!!!!!!!!!
+                var msgSvrClCpPart = (MsgSvrClCopyToSvrPart)msgSvrCl;
+                _copyMgr.CreateOnDestFromNextPart(msgSvrClCpPart);
+                msgSvrClAns = new MsgSvrClCopyToSvrConfirmation();
                 sendWhatStr = SendWhatStrFromCopyMsgtosend(msgSvrClAns);
             }
             else if (msgSvrCl is MsgSvrClCopyNextpartRequest)
@@ -710,7 +819,7 @@ public partial class MainPageViewModel : BaseViewModel
                 else
                 {
                     LblInfo1 = "received: next part copy request";
-                    msgSvrClAns = _copyMgr.GetNextPartCopyansFromSvr();
+                    msgSvrClAns = _copyMgr.GetNextPartCopyansFromSrc(false);
                     if (msgSvrClAns is MsgSvrClCopyAnswer &&
                         ((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart)
                     {
@@ -806,7 +915,11 @@ public partial class MainPageViewModel : BaseViewModel
         if (msgSvrClAns is MsgSvrClCopyAnswer)
             return "copy info: " +
                 (((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart ? "last part" :
-                $"copy info; file {_copyMgr?.NumFilesOpenedOnSvr} of {_copyMgr?.TotalNumFilesToCopyOnSvr}");
+                $"copy info; file {_copyMgr?.NumFilesOpenedOnSrc} of {_copyMgr?.TotalNumFilesToCopyOnSrc}");
+
+        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        if (msgSvrClAns is MsgSvrClCopyToSvrConfirmation)
+            return "confirmation";
 
         // should not happen:
         return msgSvrClAns.GetType().ToString();

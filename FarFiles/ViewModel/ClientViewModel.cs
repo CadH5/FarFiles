@@ -310,15 +310,18 @@ public partial class ClientViewModel : BaseViewModel
             LblFileNofN = "waiting for server ...";
             LblByteNofN = "";
 
+            string descr = CopyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR ?
+                " TO SERVER " : "";
             bool accepted = await Shell.Current.DisplayAlert("Start copy?",
-                $"Start copying selected {selecteds.Length} file(s) and/or folder(s) with content(s), " +
+                $"Start copying{descr}selected {selecteds.Length} file(s) and/or folder(s) with content(s), " +
                 (0 == MauiProgram.Settings.Idx0isOverwr1isSkip ? "overwriting" : "skipping") +
                 " existing files?",
                 "OK", "Cancel");
             if (!accepted)
                 return;
 
-            await MauiProgram.Info.MainPageVwModel.CopyFromSvr_msgbxs_Async(
+            await MauiProgram.Info.MainPageVwModel.CopyFromOrToSvrOnClient_msgbxs_Async(
+                        CopyToFromSvrMode,
                         selecteds.Select(i => i.FfData).ToArray(),
                         FuncCopyGetAbortSetLbls);
         }
