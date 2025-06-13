@@ -14,10 +14,12 @@ namespace FarFiles.Model
     public enum StartCode
     {
         ERROR,          // followed by string (errMsg)
+        CDPATH,         // followed by string (relativepath to cd to)
         FOLDER,         // followed by string (relativepath incl name), DateTime (Creation), DataTime (LastWrite)
         FILE,           // followed by string (name), long (size), int (FileAttr), DateTime (Creation), DataTime (LastWrite), compressedparts
         COMPRESSEDPART, // followed by int (numberof bytes), bytes
         INFOTOTALFILES, // followed by int (total numberof files, not folders)
+        IDX0OVERWR1SKIP,// followed by int (override settings value)
     }
 
     public class CopyMgr : IDisposable
@@ -30,28 +32,32 @@ namespace FarFiles.Model
         protected int _remainingLimit = REMAININGLIMIT;
         protected List<byte> _bufSvrMsg = new List<byte>();
         protected List<NavLevel> _navLevels = new List<NavLevel>();
+        protected int _idx0isOverwr1isSkip = 0;
         protected int _seqNr = 0;
-        protected bool _infoTotalNumFilesAddedOnSrc = false;
+        protected bool _startInfoAddedOnSrc = false;
         protected string _currPathOnDest = "";
         protected string _currFileNameOnDest = "";
         protected string _currFileFullPathOnDest = "";
         protected bool _currFileExistedBefore = false;
-        protected long _currFileSizeOnDest;
+        protected long _currFileSizeOnDestOrSrc;
+        protected int _currNumFilesOpenedOnSrc;
         protected long _fileSizeCounter;
         protected FileAttributes _currFileAttrsOnDest;
         protected DateTime _currFileDtCreationOnDest;
         protected DateTime _currFileDtLastWriteOnDest;
         protected Settings _settings;
 
-        public int TotalNumFilesToCopyOnSrc { get; protected set; } = 0;
         public int NumFilesOpenedOnSrc { get; protected set; } = 0;
-        public int ClientInfoTotalNumFilesToCopy { get; protected set; } = 0;
+        public int ClientTotalNumFilesToCopyFromOrTo { get; protected set; } = 0;
         public bool ClientAborted { get; protected set; } = false;
-        public int NumFoldersCreated { get; protected set; } = 0;
-        public int NumFilesCreated { get; protected set; } = 0;
-        public int NumFilesOverwritten { get; protected set; } = 0;
-        public int NumFilesSkipped { get; protected set; } = 0;
-        public int NumDtProblems { get; protected set; } = 0;
+
+        //JEEWEE
+        //public int NumFoldersCreated { get; protected set; } = 0;
+        //public int NumFilesCreated { get; protected set; } = 0;
+        //public int NumFilesOverwritten { get; protected set; } = 0;
+        //public int NumFilesSkipped { get; protected set; } = 0;
+        //public int NumDtProblems { get; protected set; } = 0;
+        public CopyCounters Nums { get; protected set; } = new CopyCounters();
 
         public List<string> ErrMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
 
@@ -60,22 +66,25 @@ namespace FarFiles.Model
         {
             _fileDataService = fileDataService;
             _settings = alternativeSettings ?? MauiProgram.Settings;
+            _idx0isOverwr1isSkip = _settings.Idx0isOverwr1isSkip;   // on server, may be overwritten by value on client
             _remainingLimit = remainingLimit;
         }
 
-        public void StartCopyFromOrToSvrOnSvrOrClient(MsgSvrClCopyRequest copyRequest)
+        public void StartCopyFromOrToSvrOnSvrOrClient(MsgSvrClCopyRequest copyRequest,
+                string[] clientSubPartsIfClientToSvrOrNull = null)
         {
             CloseThings();
-            copyRequest.GetSubPartsAndFolderAndFileNames(out string[] subParts,
+            copyRequest.GetSubPartsAndFolderAndFileNames(out string[] svrSubParts,
                 out string[] folderNamesToCopy, out string[] fileNamesToCopy);
             _seqNr = 0;
-            TotalNumFilesToCopyOnSrc = CalcTotalNumFilesToCopy(subParts,
-                                folderNamesToCopy, fileNamesToCopy);
+            ClientTotalNumFilesToCopyFromOrTo = CalcTotalNumFilesToCopy(
+                    clientSubPartsIfClientToSvrOrNull ?? svrSubParts,
+                    folderNamesToCopy, fileNamesToCopy);
             NumFilesOpenedOnSrc = 0;
-            _infoTotalNumFilesAddedOnSrc = false;
+            _startInfoAddedOnSrc = false;
 
             _navLevels.Clear();
-            _navLevels.Add(new NavLevel(_fileDataService, _settings, subParts,
+            _navLevels.Add(new NavLevel(_fileDataService, _settings, svrSubParts,
                     folderNamesToCopy, fileNamesToCopy));
         }
 
@@ -84,8 +93,10 @@ namespace FarFiles.Model
         /// Returns a MsgSvrClCopyAnswer, MsgSvrClCopyToSvrPart or MsgSvrClErrorAnswer
         /// </summary>
         /// <param name="clientToSvr">if true, returns a MsgSvrClCopyToSvrPart instead of MsgSvrClCopyAnswer</param>
+        /// <param name="funcCopyGetAbortSetLbls">returns true if client user aborted (intended for client TO server)</param>
         /// <returns></returns>
-        public MsgSvrClBase GetNextPartCopyansFromSrc(bool clientToSvr)
+        public MsgSvrClBase GetNextPartCopyansFromSrc(bool clientToSvr,
+                Func<int, int, long, long, bool> funcCopyGetAbortSetLbls = null)
         {
             try
             {
@@ -94,13 +105,40 @@ namespace FarFiles.Model
                 _bufSvrMsg.Clear();
                 int numRemaining = _settings.BufSizeMoreOrLess;
 
+                if (null != funcCopyGetAbortSetLbls)
+                {
+                    if (funcCopyGetAbortSetLbls(_currNumFilesOpenedOnSrc,
+                            ClientTotalNumFilesToCopyFromOrTo,
+                            _fileSizeCounter, _currFileSizeOnDestOrSrc))
+                    {
+                        ClientAbort(true);
+                    }
+                }
+
                 while (numRemaining > 0)
                 {
-                    if (!_infoTotalNumFilesAddedOnSrc)
+                    if (!_startInfoAddedOnSrc)
                     {
+                        // total numbers of files to copy, for ui progress indicators
                         _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.INFOTOTALFILES));
-                        _bufSvrMsg.AddRange(BitConverter.GetBytes(TotalNumFilesToCopyOnSrc));
-                        _infoTotalNumFilesAddedOnSrc = true;
+                        _bufSvrMsg.AddRange(BitConverter.GetBytes(ClientTotalNumFilesToCopyFromOrTo));
+
+                        if (clientToSvr)
+                        {
+                            _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.IDX0OVERWR1SKIP));
+                            _bufSvrMsg.AddRange(BitConverter.GetBytes(_settings.Idx0isOverwr1isSkip));
+                        }
+
+                        // if copying TO server, server must know it's start path in case
+                        // it's not the root and the copy does not start with a folder
+                        if (clientToSvr && currNavLevel.SvrSubParts.Length > 0)
+                        {
+                            _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.CDPATH));
+                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
+                                            currNavLevel.JoinedSubPartsOnSvr));
+                        }
+
+                        _startInfoAddedOnSrc = true;
                     }
 
                     if (null != _reader)
@@ -115,6 +153,7 @@ namespace FarFiles.Model
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((int)compressedBytes.Length));
                             _bufSvrMsg.AddRange(compressedBytes);
                         }
+                        _fileSizeCounter += rdBytes.Length;
 
                         if (_reader.BaseStream.Position >= _reader.BaseStream.Length)
                         {
@@ -137,6 +176,14 @@ namespace FarFiles.Model
                                     _settings.FullPathRoot, _settings.AndroidUriRoot,
                                     pathParts, fileName,
                                     out FileOrFolderData fData);
+                            _currNumFilesOpenedOnSrc++;
+                            _currFileSizeOnDestOrSrc = fData.FileSize;
+                            _fileSizeCounter = 0;
+
+                            MauiProgram.Log.LogLine(
+                                $"source: reader opened: '{_settings.FullPathRoot}', '" +
+                                String.Join('/', pathParts) + $"', '{fileName}'");
+
                             NumFilesOpenedOnSrc++;
 
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.FILE));
@@ -259,6 +306,7 @@ namespace FarFiles.Model
             {
                 short code = BitConverter.ToInt16(data, idxData);
                 idxData += sizeof(short);
+
                 switch (code)
                 {
                     case (short)StartCode.ERROR:
@@ -266,13 +314,20 @@ namespace FarFiles.Model
                         ErrMsgs.Add(errMsg);
                         break;
 
+                    case (short)StartCode.CDPATH:
                     case (short)StartCode.FOLDER:
+                        DateTime dtCreation = DateTime.MinValue;
+                        DateTime dtLastWrite = DateTime.MinValue;
                         string joinedPartsRelPathOnDest = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
-                        string[] partsRelPathOnDest = joinedPartsRelPathOnDest.Split('/'); 
-                        DateTime dtCreation = DateTime.FromBinary(BitConverter.ToInt64(data, idxData));
-                        idxData += sizeof(long);
-                        DateTime dtLastWrite = DateTime.FromBinary(BitConverter.ToInt64(data, idxData));
-                        idxData += sizeof(long);
+                        string[] partsRelPathOnDest = joinedPartsRelPathOnDest.Split('/');
+
+                        if (code == (short)StartCode.FOLDER)
+                        {
+                            dtCreation = DateTime.FromBinary(BitConverter.ToInt64(data, idxData));
+                            idxData += sizeof(long);
+                            dtLastWrite = DateTime.FromBinary(BitConverter.ToInt64(data, idxData));
+                            idxData += sizeof(long);
+                        }
 
 #if ANDROID
                         _currPathOnDest = "JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
@@ -280,12 +335,16 @@ namespace FarFiles.Model
                         _currPathOnDest = FileDataService.PathFromRootAndSubPartsWindows(
                                 _settings.FullPathRoot, partsRelPathOnDest);
 #endif
-                        if (! Directory.Exists(_currPathOnDest))
+
+                        if (code == (short)StartCode.FOLDER)
                         {
-                            Directory.CreateDirectory(_currPathOnDest);
-                            NumDtProblems += _fileDataService.SetDateTimesGeneric(_currPathOnDest,
-                                true, dtCreation, dtLastWrite);
-                            NumFoldersCreated++;
+                            if (!Directory.Exists(_currPathOnDest))
+                            {
+                                Directory.CreateDirectory(_currPathOnDest);
+                                Nums.DtProblems += _fileDataService.SetDateTimesGeneric(_currPathOnDest,
+                                    true, dtCreation, dtLastWrite);
+                                Nums.FoldersCreated++;
+                            }
                         }
                         break;
 
@@ -293,7 +352,7 @@ namespace FarFiles.Model
                         _currFileNameOnDest = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
                         _currFileFullPathOnDest = Path.Combine(
                             _currPathOnDest, _currFileNameOnDest);
-                        _currFileSizeOnDest = BitConverter.ToInt64(data, idxData);
+                        _currFileSizeOnDestOrSrc = BitConverter.ToInt64(data, idxData);
                         idxData += sizeof(long);
                         _currFileAttrsOnDest = (FileAttributes)BitConverter.ToInt32(data, idxData);
                         idxData += sizeof(int);
@@ -302,16 +361,12 @@ namespace FarFiles.Model
                         _currFileDtLastWriteOnDest = DateTime.FromBinary(BitConverter.ToInt64(data, idxData));
                         idxData += sizeof(long);
 
-                        if (_writer != null)
-                        {
-                            _writer.Close();
-                            _writer = null;
-                        }
+                        CloseWriterIfNotNull();
 
                         _currFileExistedBefore = File.Exists(_currFileFullPathOnDest);
-                        if (_currFileExistedBefore && 1 == _settings.Idx0isOverwr1isSkip)
+                        if (_currFileExistedBefore && 1 == _idx0isOverwr1isSkip)
                         {
-                            NumFilesSkipped++;
+                            Nums.FilesSkipped++;
                             // and _writer stays null
                         }
                         else
@@ -320,9 +375,13 @@ namespace FarFiles.Model
                             {
                                 _writer = new BinaryWriter(File.Open(_currFileFullPathOnDest,
                                                     FileMode.Create));
-                                NumFilesCreated++;
+
+                                MauiProgram.Log.LogLine(
+                                    $"dest: writer opened: '{_currFileFullPathOnDest}'");
+
+                                Nums.FilesCreated++;
                                 if (_currFileExistedBefore)
-                                    NumFilesOverwritten++;
+                                    Nums.FilesOverwritten++;
                             }
                             catch (Exception exc)
                             {
@@ -335,11 +394,11 @@ namespace FarFiles.Model
 
                         if (null != funcCopyGetAbortSetLbls)
                         {
-                            if (funcCopyGetAbortSetLbls(NumFilesSkipped + NumFilesCreated,
-                                    ClientInfoTotalNumFilesToCopy,
-                                    0, _currFileSizeOnDest))
+                            if (funcCopyGetAbortSetLbls(Nums.FilesSkipped + Nums.FilesCreated,
+                                    ClientTotalNumFilesToCopyFromOrTo,
+                                    _fileSizeCounter, _currFileSizeOnDestOrSrc))
                             {
-                                ClientAbort();
+                                ClientAbort(false);
                             }
                         }
                         break;
@@ -361,37 +420,41 @@ namespace FarFiles.Model
 
                         if (null != funcCopyGetAbortSetLbls)
                         {
-                            if (funcCopyGetAbortSetLbls(NumFilesSkipped + NumFilesCreated,
-                                    ClientInfoTotalNumFilesToCopy,
-                                    _fileSizeCounter, _currFileSizeOnDest))
+                            if (funcCopyGetAbortSetLbls(Nums.FilesSkipped + Nums.FilesCreated,
+                                    ClientTotalNumFilesToCopyFromOrTo,
+                                    _fileSizeCounter, _currFileSizeOnDestOrSrc))
                             {
-                                ClientAbort();
+                                ClientAbort(false);
                                 break;
                             }
                         }
 
-                        if (_fileSizeCounter >= _currFileSizeOnDest)
+                        if (_fileSizeCounter >= _currFileSizeOnDestOrSrc)
                         {
-                            if (_fileSizeCounter > _currFileSizeOnDest)
+                            if (_fileSizeCounter > _currFileSizeOnDestOrSrc)
                             {
                                 ErrMsgs.Add(
-                                    $"_fileSizeCounter not exactly ends right! _fileSizeCounter={_fileSizeCounter}, _currFileSizeOnDest={_currFileSizeOnDest}");
+                                    $"_fileSizeCounter not exactly ends right! _fileSizeCounter={_fileSizeCounter}, _currFileSizeOnDestOrSrc={_currFileSizeOnDestOrSrc}");
                             }
                             if (_writer != null)    // else: file is skipped or could not be created
                             {
-                                _writer.Close();
-                                _writer = null;
+                                CloseWriterIfNotNull();
 
                                 File.SetAttributes(_currFileFullPathOnDest,
                                                 _currFileAttrsOnDest);
-                                NumDtProblems += _fileDataService.SetDateTimesGeneric(_currFileFullPathOnDest,
+                                Nums.DtProblems += _fileDataService.SetDateTimesGeneric(_currFileFullPathOnDest,
                                     false, _currFileDtCreationOnDest, _currFileDtLastWriteOnDest);
                             }
                         }
                         break;
 
                     case (short)StartCode.INFOTOTALFILES:
-                        ClientInfoTotalNumFilesToCopy = BitConverter.ToInt32(data, idxData);
+                        ClientTotalNumFilesToCopyFromOrTo = BitConverter.ToInt32(data, idxData);
+                        idxData += sizeof(int);
+                        break;
+
+                    case (short)StartCode.IDX0OVERWR1SKIP:
+                        _idx0isOverwr1isSkip = BitConverter.ToInt32(data, idxData);
                         idxData += sizeof(int);
                         break;
 
@@ -406,23 +469,26 @@ namespace FarFiles.Model
                     if (idxData > data.Length)
                         ErrMsgs.Add(
                             $"idxData ({idxData}) does not exactly end on end data ({data.Length}");
-                        return isLast;
+                    return isLast;
                 }
             }
         }
 
 
-        protected void ClientAbort()
+        protected void ClientAbort(bool clientToSvr)
         {
             ClientAborted = true;
+            if (clientToSvr)
+                return;
+
             if (null != _writer)        // so: file was created, not skipped, and is now being written
             {
                 _writer.Close();
                 _writer = null;
                 File.Delete(_currFileFullPathOnDest);     // let no partially created files remain
-                NumFilesCreated--;
+                Nums.FilesCreated--;
                 if (_currFileExistedBefore)
-                    NumFilesOverwritten--;
+                    Nums.FilesOverwritten--;
             }
         }
 
@@ -469,15 +535,48 @@ namespace FarFiles.Model
 
         protected void CloseThings()
         {
+            CloseWriterIfNotNull();
+            CloseReaderIfNotNull();
+        }
+
+
+
+        protected void CloseWriterIfNotNull()
+        {
             if (_writer != null)
             {
                 _writer.Close();
                 _writer = null;
+                Log("CopyMgr: _writer closed");
             }
+        }
+
+        protected void CloseReaderIfNotNull()
+        {
             if (_reader != null)
             {
                 _reader.Close();
                 _reader = null;
+                Log("CopyMgr: _reader closed");
+            }
+        }
+
+
+        protected void Log(string logLine)
+        {
+            MauiProgram.Log.LogLine(logLine);
+        }
+
+
+        public void LogErrMsgsIfAny(string headerLine)
+        {
+            if (ErrMsgs.Count == 0)
+                return;
+
+            MauiProgram.Log.LogLine(headerLine, false);
+            for (int i = 0; i < ErrMsgs.Count; i++)
+            {
+                MauiProgram.Log.LogLine($"{i+1}: {ErrMsgs[i]}");
             }
         }
 
@@ -491,8 +590,8 @@ namespace FarFiles.Model
         }
 
 
-        protected int CalcTotalNumFilesToCopy(string[] subParts,
-                            string[] folderNamesToCopy, string[] fileNamesToCopy)
+        public int CalcTotalNumFilesToCopy(string[] subParts,
+                    string[] folderNamesToCopy, string[] fileNamesToCopy)
         {
             int totalNum = fileNamesToCopy.Length;
             foreach (string folderName in folderNamesToCopy)
@@ -594,5 +693,30 @@ namespace FarFiles.Model
                             _settings.AndroidUriRoot, srcSubParts);
             }
         }
+    }
+
+
+
+    public class CopyCounters
+    {
+        public int FoldersCreated = 0;
+        public int FilesCreated = 0;
+        public int FilesOverwritten = 0;
+        public int FilesSkipped = 0;
+        public int DtProblems = 0;
+
+        public CopyCounters()
+        { }
+
+        public CopyCounters(int numFoldersCreated, int numFilesCreated,
+                int numFilesOverwritten, int numFilesSkipped, int numDtProblems)
+        {
+            FoldersCreated = numFoldersCreated;
+            FilesCreated = numFilesCreated;
+            FilesOverwritten = numFilesOverwritten;
+            FilesSkipped = numFilesSkipped;
+            DtProblems = numDtProblems;
+        }
+
     }
 }

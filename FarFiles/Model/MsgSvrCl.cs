@@ -1,9 +1,13 @@
-﻿using System;
+﻿//JEEWEE
+//using CoreFoundation;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+//JEEWEE
+//using static CoreFoundation.DispatchSource;
 
 namespace FarFiles.Model
 {
@@ -681,8 +685,8 @@ namespace FarFiles.Model
         }
 
 
-        public MsgSvrClCopyAnswer(byte[] bytes)
-            : base(bytes, MsgSvrClType.COPY_ANS)
+        public MsgSvrClCopyAnswer(byte[] bytes, MsgSvrClType? msgTypeOverride = null)
+            : base(bytes, msgTypeOverride ?? MsgSvrClType.COPY_ANS)
         {
         }
 
@@ -714,7 +718,7 @@ namespace FarFiles.Model
             catch (Exception exc)
             {
                 throw new Exception(
-                    $"Error Error getting data from messagefrom message: {exc.Message}");
+                    $"Error getting data from message: {exc.Message}");
             }
         }
     }
@@ -778,7 +782,7 @@ namespace FarFiles.Model
         }
 
         public MsgSvrClCopyToSvrPart(byte[] bytes)
-            : base(bytes)
+            : base(bytes, MsgSvrClType.COPY_TOSVRPART)
         {
             // This has filled the wrong MsgSvrClType COPY_ANS
             CopyTypeIntoBytes(MsgSvrClType.COPY_TOSVRPART, Bytes);
@@ -789,15 +793,21 @@ namespace FarFiles.Model
 
 
 
-    //JEEWEE: NO, PUT MORE INFO HERE, BUSY OR NUM FILES COPIED ETC
     /// <summary>
     /// This is the answer from server upon MsgSvrClCopyToSvrPart; just a confirmation
     /// </summary>
     public class MsgSvrClCopyToSvrConfirmation : MsgSvrClBase
     {
-        public MsgSvrClCopyToSvrConfirmation()
+        public MsgSvrClCopyToSvrConfirmation(CopyCounters nums, int numErrMsgs)
             : base(MsgSvrClType.COPY_TOSVRCONFIRM)
         {
+            var lisBytes = Bytes.ToList();
+            lisBytes.AddRange(BitConverter.GetBytes(nums.FoldersCreated));
+            lisBytes.AddRange(BitConverter.GetBytes(nums.FilesCreated));
+            lisBytes.AddRange(BitConverter.GetBytes(nums.FilesOverwritten));
+            lisBytes.AddRange(BitConverter.GetBytes(nums.FilesSkipped));
+            lisBytes.AddRange(BitConverter.GetBytes(numErrMsgs));
+            Bytes = lisBytes.ToArray();
         }
 
 
@@ -805,6 +815,32 @@ namespace FarFiles.Model
             : base(bytes, MsgSvrClType.COPY_TOSVRCONFIRM)
         {
         }
+
+
+        public void GetNums(out CopyCounters nums, out int numErrMsgs)
+        {
+            try
+            {
+                nums = new CopyCounters();
+
+                int idx = 4;
+                nums.FoldersCreated = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
+                nums.FilesCreated = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
+                nums.FilesOverwritten = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
+                nums.FilesSkipped = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
+                numErrMsgs = BitConverter.ToInt32(Bytes, idx);
+            }
+            catch (Exception exc)
+            {
+                throw new Exception(
+                    $"Error getting numbers from message: {exc.Message}");
+            }
+        }
+
     }
 
 
