@@ -514,7 +514,7 @@ namespace FarFiles.Model
                     AssertEq(wrLog, 0 == iCploop ? 1 : (1 == iCploop ? 5 : 0),
                                 copyMgrSvr.Nums.FilesOverwritten, "Nums.FilesOverwritten");
                     AssertEq(wrLog, 2 == iCploop ? 5 : 0,
-                                copyMgrSvr.Nums.FoldersCreated, "Nums.FilesSkipped");
+                                copyMgrSvr.Nums.FilesSkipped, "Nums.FilesSkipped");
                 }
             }
             catch (Exception exc)

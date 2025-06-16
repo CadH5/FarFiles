@@ -267,8 +267,8 @@ public partial class MainPageViewModel : BaseViewModel
 
         //JWdP 20250507 Introduced "unittests", to be executed from this button if incommented
         //====================================================================================
-        //await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
-        //return;
+        await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
+        return;
         //====================================================================================
 
         //OpenClientJEEWEE();

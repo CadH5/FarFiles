@@ -2,6 +2,7 @@
 using Android.Database;
 using Android.Net;
 using Android.Provider;
+using Android.Webkit;
 using AndroidX.DocumentFile.Provider;
 using FarFiles.Services;
 using System;
@@ -15,38 +16,130 @@ namespace FarFiles.Platforms.Android
     public class AndroidFileAccessHelper
     {
         protected DocumentFile? _uriDir = null;
-        protected NavigationCachePerPath _navCachePerPath = new();
+        protected NavigationDirsCachePerPath _navDirsCachePerPath = new();
 
         public List<DocumentFile> ListDocumentFilesInUriAndSubpath(global::Android.Net.Uri androidUri,
                     string[] dirNamesSubPath, bool forDirs)
         {
             List<DocumentFile> fileOrDirDocusOrNull = new();
 
-            UriAndSubpathCore(androidUri, dirNamesSubPath, forDirs, fileOrDirDocusOrNull, null);
+            UriAndSubpathCore(androidUri, dirNamesSubPath,
+                        forDirs ? CoreMode.FILLLISTDIRS : CoreMode.FILLLISTFILES,
+                        fileOrDirDocusOrNull, null,
+                        out DocumentFile parentDirDocu, out bool pathCreated);
 
             return fileOrDirDocusOrNull;
         }
 
 
         public DocumentFile GetDocumentFileFromUriAndSubpath(global::Android.Net.Uri androidUri,
-                    string[] dirNamesSubPath, bool forDirs, string fileOrFolderName)
+                    string[] dirNamesSubPath, bool forDirs, string fileOrFolderName,
+                    out DocumentFile parentDirDocu)
         {
-            return UriAndSubpathCore(androidUri, dirNamesSubPath, forDirs,
-                        null, fileOrFolderName);
+            return UriAndSubpathCore(androidUri, dirNamesSubPath,
+                        forDirs ? CoreMode.SEARCHDIR : CoreMode.SEARCHFILE,
+                        null, fileOrFolderName,
+                        out parentDirDocu, out bool pathCreated);
         }
 
         public BinaryReader GetBinaryReaderFromUriAndSubpath(global::Android.Net.Uri androidUri,
                     string[] dirNamesSubPath, string fileName)
         {
+            return (BinaryReader)GetBinaryReaderOrWriterFromUriAndSubpath(false,
+                    androidUri, dirNamesSubPath, fileName,
+                    false, out bool fileExistedBeforeDummy);
+            //JEEWEE
+            //try
+            //{
+            //    DocumentFile documentFile = GetDocumentFileFromUriAndSubpath(androidUri,
+            //            dirNamesSubPath, false, fileName);
+            //    var context = global::Android.App.Application.Context;
+            //    var stream = context.ContentResolver.OpenInputStream(documentFile.Uri);
+            //    if (stream == null)
+            //        throw new InvalidOperationException("Cannot create reader stream");
+            //    return new BinaryReader(stream);
+            //}
+            //catch (Exception exc)
+            //{
+            //    throw new InvalidOperationException("Exception trying to read " +
+            //            FileDataService.DispRelPath(dirNamesSubPath, fileName) +
+            //            ": " + exc.Message);
+            //}
+        }
+
+
+        /// <summary>
+        /// Create path including sub paths, if not already existent
+        /// </summary>
+        /// <param name="androidUri"></param>
+        /// <param name="dirNamesSubPathInclCreating"></param>
+        /// <returns>true if created, false if already existent</returns>
+        public bool CreatePathIfNonExistent(global::Android.Net.Uri androidUri,
+                    string[] dirNamesSubPathInclCreating)
+        {
+            UriAndSubpathCore(androidUri, dirNamesSubPathInclCreating,
+                        CoreMode.CREATEPATH, null, "",
+                        out DocumentFile parentDirDocu, out bool pathCreated);
+            return pathCreated;
+        }
+
+
+        /// <summary>
+        /// Returns a BinaryWriter or null if skipWriteFileIfExisting is true and file already existed
+        /// </summary>
+        /// <param name="androidUri"></param>
+        /// <param name="dirNamesSubPath"></param>
+        /// <param name="fileName"></param>
+        /// <param name="skipWriteFileIfExisting"></param>
+        /// <param name="fileExistedBefore"></param>
+        /// <returns></returns>
+        public BinaryWriter GetBinaryWriterFromUriAndSubpath(global::Android.Net.Uri androidUri,
+                    string[] dirNamesSubPath, string fileName,
+                    bool skipWriteFileIfExisting, out bool fileExistedBefore)
+        {
+            return (BinaryWriter)GetBinaryReaderOrWriterFromUriAndSubpath(true,
+                    androidUri, dirNamesSubPath, fileName,
+                    skipWriteFileIfExisting, out fileExistedBefore);
+        }
+
+        public object GetBinaryReaderOrWriterFromUriAndSubpath(bool writer,
+                    global::Android.Net.Uri androidUri,
+                    string[] dirNamesSubPath, string fileName,
+                    bool writeSkipFileIfExisting, out bool writeFileExistedBefore)
+        {
             try
             {
                 DocumentFile documentFile = GetDocumentFileFromUriAndSubpath(androidUri,
-                        dirNamesSubPath, false, fileName);
+                        dirNamesSubPath, false, fileName, out DocumentFile parentDirDocu);
+                writeFileExistedBefore = null != documentFile;
                 var context = global::Android.App.Application.Context;
-                var stream = context.ContentResolver.OpenInputStream(documentFile.Uri);
+                Stream? stream = null;
+                if (writer)
+                {
+                    if (writeFileExistedBefore)
+                    {
+                        if (writeSkipFileIfExisting)
+                            return null;
+                        documentFile.Delete();
+                    }
+                    string mimeType = GetMimeTypeFromExtension(fileName);
+                    documentFile = parentDirDocu.CreateFile(mimeType, fileName);
+                    stream = context.ContentResolver.OpenOutputStream(documentFile.Uri);
+                }
+                else
+                {
+                    if (null != documentFile)
+                        stream = context.ContentResolver.OpenInputStream(
+                                        documentFile.Uri);
+                }
+
                 if (stream == null)
-                    throw new InvalidOperationException("Cannot create reader stream");
-                return new BinaryReader(stream);
+                {
+                    string descr = writer ? "writer" : "reader";
+                    throw new InvalidOperationException(
+                        $"Cannot create {descr} stream");
+                }
+                return writer ? new BinaryWriter(stream) : new BinaryReader(stream);
             }
             catch (Exception exc)
             {
@@ -57,20 +150,32 @@ namespace FarFiles.Platforms.Android
         }
 
 
+        protected enum CoreMode
+        {
+            SEARCHDIR,
+            SEARCHFILE,
+            FILLLISTDIRS,
+            FILLLISTFILES,
+            CREATEPATH,
+        }
+
+
         /// <summary>
-        /// Core for various methods. Returns Android DocumentFile,
-        /// or null if searchFileOrFolderNameOrNull is null or not found 
+        /// Core for various methods. Returns Android DocumentFile if
+        /// mode is searchmode, else returns null
         /// </summary>
         /// <param name="androidUri"></param>
         /// <param name="dirNamesSubPath"></param>
-        /// <param name="forDirs"></param>
+        /// <param name="mode"></param>
         /// <param name="fileOrDirDocusOrNull">if non-null, file or folder DoucumentFile's are added</param>
         /// <param name="searchFileOrFolderNameOrNull">null if only fileOrDirNamesOrNull intended </param>
+        /// <param name="parentDirDocu">if dirNamesSubPath Length 0, results _uriDir</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         protected DocumentFile UriAndSubpathCore(global::Android.Net.Uri androidUri,
-                string[] dirNamesSubPath, bool forDirs,
-                List<DocumentFile> fileOrDirDocusOrNull, string searchFileOrFolderNameOrNull)
+                string[] dirNamesSubPath, CoreMode mode,
+                List<DocumentFile> fileOrDirDocusOrNull, string searchFileOrFolderNameOrNull,
+                out DocumentFile parentDirDocu, out bool pathCreated)
         {
             if (null == _uriDir)
             {
@@ -81,29 +186,61 @@ namespace FarFiles.Platforms.Android
             if (null == _uriDir || !_uriDir.IsDirectory)
                 throw new Exception($"AndroidUri is invalid or not a directory: {androidUri.ToString()}");
 
+            pathCreated = false;
             string joinedPath = "";
-            DocumentFile[] fileOrFolders = _navCachePerPath.GetDocusUpdCache(
+            string parentJoinedPath = "";
+            parentDirDocu = _uriDir;
+            bool forDirs = mode == CoreMode.SEARCHDIR ||
+                        mode == CoreMode.FILLLISTDIRS ||
+                        mode == CoreMode.CREATEPATH;
+
+            DocumentFile[] docusDirs = _navDirsCachePerPath.GetDocusDirsUpdCache(
                         joinedPath, _uriDir);
-            foreach (string dirName in dirNamesSubPath)
+            for (int i = 0; i < dirNamesSubPath.Length; i++)
             {
+                string dirName = dirNamesSubPath[i];
                 joinedPath += (String.IsNullOrEmpty(joinedPath) ? "" : "/") + dirName;
-                DocumentFile subDir = fileOrFolders.Where(f => f.Name == dirName).FirstOrDefault();
-                if (subDir == null)
-                    throw new Exception(
-                        $"ListDocumentFilesInUriAndSubpath: error finding sub path '{joinedPath}'");
-                fileOrFolders = _navCachePerPath.GetDocusUpdCache(joinedPath, subDir);
+                DocumentFile subDirDocu = docusDirs.Where(d => d.Name == dirName).FirstOrDefault();
+                if (subDirDocu == null)
+                {
+                    if (mode == CoreMode.CREATEPATH)
+                    {
+                        subDirDocu = parentDirDocu.CreateDirectory(dirName);
+                        if (null == subDirDocu)
+                            throw new Exception($"Android: could not create path '{joinedPath}'");
+
+                        pathCreated = true;
+                        docusDirs = CopyMgr.AddOneToArray(docusDirs, subDirDocu);
+                        _navDirsCachePerPath.SetDocusDirs(parentJoinedPath, docusDirs);
+                    }
+                    else
+                    {
+                        throw new Exception(
+                            $"UriAndSubpathCore: error finding sub path '{joinedPath}'");
+                    }
+                }
+                parentDirDocu = subDirDocu;
+                parentJoinedPath = joinedPath;
+                if (i < dirNamesSubPath.Length - 1)     // GetDocusDirsUpdCache is expensive
+                    docusDirs = _navDirsCachePerPath.GetDocusDirsUpdCache(joinedPath, subDirDocu);
             }
 
-            if (null != searchFileOrFolderNameOrNull)
+            if (mode == CoreMode.CREATEPATH)
+                return null;
+
+            DocumentFile[] fileOrFolders = parentDirDocu.ListFiles();
+            if (mode == CoreMode.SEARCHDIR || mode == CoreMode.SEARCHFILE)
+            {
                 return fileOrFolders.FirstOrDefault(f =>
                     f.Name == searchFileOrFolderNameOrNull &&
                     f.IsDirectory == forDirs &&
                     f.IsFile != forDirs);   // also f.IsVirtual exists
+            }
 
-            if (null != fileOrDirDocusOrNull)
-                fileOrDirDocusOrNull.AddRange(fileOrFolders.Where(f =>
-                    f.IsDirectory == forDirs &&
-                    f.IsFile != forDirs));   // also f.IsVirtual exists
+            // CoreMode.FILLLISTDIRS || CoreMode.FILLLISTFILES
+            fileOrDirDocusOrNull.AddRange(fileOrFolders.Where(f =>
+                f.IsDirectory == forDirs &&
+                f.IsFile != forDirs));   // also f.IsVirtual exists
 
             return null;
         }
@@ -138,26 +275,57 @@ namespace FarFiles.Platforms.Android
         /// example if "Camera" would have a subdir, and Client wants to goto there, to
         /// not have to get that complete list of DocumentFiles only to find that subdir)
         /// </summary>
-        protected class NavigationCachePerPath
+        protected class NavigationDirsCachePerPath
         {
-            protected Dictionary<string, DocumentFile[]> _docusPerPath = new();
+            protected Dictionary<string, DocumentFile[]> _docusDirsPerPath = new();
 
             /// <summary>
-            /// It must already be sure this key is not yet in the dictionairy
+            /// Get DocumentFile[] of the dirs, from cache or dictionairy
+            /// May take time if there are many DocumentFile's, because ListFiles() then takes much time
             /// </summary>
-            /// <param name="subPartsPath"></param>
-            /// <param name="docus"></param>
+            /// <param name="joinedPath"></param>
+            /// <param name="documentFileParentDir"></param>
 
-            public DocumentFile[] GetDocusUpdCache(string joinedPath,
-                            DocumentFile documentFileDir)
+            public DocumentFile[] GetDocusDirsUpdCache(string joinedPath,
+                            DocumentFile documentFileParentDir)
             {
-                if (_docusPerPath.TryGetValue(joinedPath, out DocumentFile[] docus))
-                    return docus;
+                if (_docusDirsPerPath.TryGetValue(joinedPath, out DocumentFile[] docusDirs))
+                    return docusDirs;
 
-                docus = documentFileDir.ListFiles();
-                _docusPerPath.Add(joinedPath, docus);
-                return docus;
+                docusDirs = documentFileParentDir.ListFiles().Where(d => d.IsDirectory).ToArray();
+                _docusDirsPerPath.Add(joinedPath, docusDirs);
+                return docusDirs;
             }
+
+
+            /// <summary>
+            /// Sets 'docusDir' as value for key 'joinedPath', or add the pair
+            /// </summary>
+            /// <param name="joinedPath"></param>
+            /// <param name="docusDir"></param>
+            public void SetDocusDirs(string joinedPath, DocumentFile[] docusDir)
+            {
+                if (_docusDirsPerPath.ContainsKey(joinedPath))
+                    _docusDirsPerPath[joinedPath] = docusDir;
+                else
+                    _docusDirsPerPath.Add(joinedPath, docusDir);
+            }
+        }
+
+
+        protected string GetMimeTypeFromExtension(string fileName)
+        {
+            // slightly changed ChatGPT code
+            string extension = MimeTypeMap.GetFileExtensionFromUrl(fileName)?.ToLower();
+            if (!string.IsNullOrEmpty(extension))
+            {
+                string mimeType = MimeTypeMap.Singleton.GetMimeTypeFromExtension(
+                                extension);
+                if (!string.IsNullOrEmpty(mimeType))
+                    return mimeType;
+            }
+
+            return "application/octet-stream"; // good default fallback, says ChatGPT
         }
     }
 }

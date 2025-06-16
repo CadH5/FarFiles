@@ -5,6 +5,8 @@ using Microsoft.Maui.Controls.PlatformConfiguration;
 using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Net.Http.Json;
+//JEEWEE
+//using Xamarin.Google.Crypto.Tink.Subtle;
 
 namespace FarFiles.Services;
 
@@ -211,6 +213,61 @@ public class FileDataService
 
 
 
+    /// <summary>
+    /// Returns a BinaryWriter or null if skipWriteFileIfExisting is true and file already existed
+    /// </summary>
+    /// <param name="fullPathTopDir"></param>
+    /// <param name="androidUriRoot"></param>
+    /// <param name="subParts"></param>
+    /// <param name="fileName"></param>
+    /// <param name="skipFileIfExisting"></param>
+    /// <param name="fileExistedBefore"></param>
+    /// <returns></returns>
+    public BinaryWriter OpenBinaryWriterGeneric(
+            string fullPathTopDir, object androidUriRoot,
+            string[] subParts, string fileName,
+            bool skipFileIfExisting,
+            out bool fileExistedBefore)
+    {
+
+#if ANDROID
+        return _androidFileAccessHelper.GetBinaryWriterFromUriAndSubpath(
+                (Android.Net.Uri)androidUriRoot, subParts, fileName,
+                skipFileIfExisting, out fileExistedBefore);
+#else
+        string fullPathFile = Path.Combine(PathFromRootAndSubPartsWindows(
+                        fullPathTopDir, subParts), fileName);
+        fileExistedBefore = File.Exists(fullPathFile);
+        if (fileExistedBefore && skipFileIfExisting)
+            return null;
+        return new BinaryWriter(File.Open(fullPathFile, FileMode.Create));
+#endif
+
+    }
+
+
+
+    public void DeleteFileGeneric(string fullPathTopDir, object androidUriRoot,
+            string[] subParts, string fileName)
+    {
+
+#if ANDROID
+        DocumentFile docu = _androidFileAccessHelper.GetDocumentFileFromUriAndSubpath(
+                    (Android.Net.Uri)androidUriRoot, subParts, false,
+                    fileName, out DocumentFile parentDirDocu);
+        if (docu != null)
+            docu.Delete();
+#else
+        string fullPathFile = Path.Combine(PathFromRootAndSubPartsWindows(
+                        fullPathTopDir, subParts), fileName);
+        File.Delete(fullPathFile);
+#endif
+
+    }
+
+
+
+
 
     public static string PathFromRootAndSubPartsWindows(string fullPathRoot, string[] subParts)
     {
@@ -239,18 +296,19 @@ public class FileDataService
 #endif
 
     public FileOrFolderData NewFileOrFolderDataGeneric(string fullPathTopDir,
-            object androidUriRoot, string[] svrSubParts, string name,
+            object androidUriRoot, string[] subParts, string name,
             bool isDir)
     {
         try
         {
 #if ANDROID
             DocumentFile documentFile = _androidFileAccessHelper.GetDocumentFileFromUriAndSubpath(
-                        (Android.Net.Uri)androidUriRoot, svrSubParts, isDir, name);
+                        (Android.Net.Uri)androidUriRoot, subParts, isDir, name,
+                        out DocumentFile parentDirDocu);
             return NewFileOrFolderDataAndroid(documentFile);
 #else
             string fullPath = Path.Combine(PathFromRootAndSubPartsWindows(
-                        fullPathTopDir, svrSubParts), name);
+                        fullPathTopDir, subParts), name);
             return new FileOrFolderData(name, isDir,
                         isDir ? 0 : new FileInfo(fullPath).Length,
                         File.GetAttributes(fullPath),
@@ -286,17 +344,49 @@ public class FileDataService
 
 
 
+    /// <summary>
+    /// Creates directories if non existent
+    /// </summary>
+    /// <param name="fullPathRoot"></param>
+    /// <param name="subParts"></param>
+    /// <param name="dtCreationWin">ignored on Android or if dir existent</param>
+    /// <param name="dtLastWriteWin">ignored on Android or if dir existent</param>
+    /// <returns>true if created, false if already existed</returns>
+    public bool CreatePathGeneric(string fullPathRoot, object androidUriRoot,
+                    string[] subParts,
+                    DateTime dtCreationWin, DateTime dtLastWriteWin,
+                    out int dtProblems)
+    {
+        dtProblems = 0;
+
+#if ANDROID
+        return _androidFileAccessHelper.CreatePathIfNonExistent(
+                (Android.Net.Uri)androidUriRoot, subParts);
+#else
+        string path = FileDataService.PathFromRootAndSubPartsWindows(
+                fullPathRoot, subParts);
+        if (Directory.Exists(path))
+            return false;
+
+        Directory.CreateDirectory(path);
+        dtProblems = SetDateTimesWindows(path, true, dtCreationWin, dtLastWriteWin);
+        return true;
+#endif
+    }
 
 
-    public int SetDateTimesGeneric(string fullPathDirOrFile, bool isDir,
+
+
+
+#if ANDROID
+    //not possible on Android
+#else
+
+    public int SetDateTimesWindows(string fullPathDirOrFile, bool isDir,
                                 DateTime dtCreation, DateTime dtLastWrite)
     {
         int numErrs = 0;
         DateTime dtNow = DateTime.Now;
-
-#if ANDROID
-//JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#else
 
         if (isDir)
         {
@@ -340,10 +430,10 @@ public class FileDataService
                 File.SetLastWriteTime(fullPathDirOrFile, dtNow);
             }
         }
-#endif
 
         return numErrs;
     }
+#endif
 
 
 

@@ -806,6 +806,7 @@ namespace FarFiles.Model
             lisBytes.AddRange(BitConverter.GetBytes(nums.FilesCreated));
             lisBytes.AddRange(BitConverter.GetBytes(nums.FilesOverwritten));
             lisBytes.AddRange(BitConverter.GetBytes(nums.FilesSkipped));
+            lisBytes.AddRange(BitConverter.GetBytes(nums.DtProblems));
             lisBytes.AddRange(BitConverter.GetBytes(numErrMsgs));
             Bytes = lisBytes.ToArray();
         }
@@ -831,6 +832,8 @@ namespace FarFiles.Model
                 nums.FilesOverwritten = BitConverter.ToInt32(Bytes, idx);
                 idx += sizeof(int);
                 nums.FilesSkipped = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
+                nums.DtProblems = BitConverter.ToInt32(Bytes, idx);
                 idx += sizeof(int);
                 numErrMsgs = BitConverter.ToInt32(Bytes, idx);
             }
