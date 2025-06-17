@@ -4,7 +4,8 @@ namespace FarFiles.Model;
 
 public class FileOrFolderData
 {
-    public Exception ExcThrown { get; set; }
+    //JEEWEE
+    //public Exception ExcThrown { get; set; }
     public string Name { get; set; } = "";
     public FileAttributes Attrs { get; set; }
     public DateTime DtCreation { get; set; }
@@ -38,10 +39,11 @@ public class FileOrFolderData
         DtLastWrite = dt;
     }
 
-    public FileOrFolderData(Exception excThrown)
-    {
-        ExcThrown = excThrown;
-    }
+    //JEEWEE
+    //public FileOrFolderData(Exception excThrown)
+    //{
+    //    ExcThrown = excThrown;
+    //}
 
 
     public string FormatFileSize

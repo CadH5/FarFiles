@@ -163,8 +163,7 @@ public partial class MainPageViewModel : BaseViewModel
             IsBusy = true;
 
 #if ANDROID
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PUT COMMENT (why the heck is this necessary)
-            MauiProgram.SaveSettings();
+            MauiProgram.SaveSettings();     // is necessary
             Settings.AndroidUriRoot = await MauiProgram.AndroidFolderPicker.PickFolderAsync();
             var context = global::Android.App.Application.Context;
 
@@ -267,8 +266,8 @@ public partial class MainPageViewModel : BaseViewModel
 
         //JWdP 20250507 Introduced "unittests", to be executed from this button if incommented
         //====================================================================================
-        await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
-        return;
+        //await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
+        //return;
         //====================================================================================
 
         //OpenClientJEEWEE();
@@ -505,6 +504,8 @@ public partial class MainPageViewModel : BaseViewModel
             var nums = new CopyCounters();
             int numErrMsgsSvr = 0;
             int numErrMsgsClient = 0;
+            string firstErrMsgSvr = "";
+            string firstErrMsgClient = "";
 
             if (copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
             {
@@ -522,8 +523,11 @@ public partial class MainPageViewModel : BaseViewModel
                 byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
                                     msgSvrCl.Bytes);
                 if (byRecieved.Length == 0)
-                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! make CopyMgr abort
+                {
+                    //exception msg was displayed
+                    copyMgr.ClientAbort(copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR);
                     return;
+                }
 
                 MsgSvrClBase msgSvrClRecieved = MsgSvrClBase.CreateFromBytes(byRecieved);
                 if (msgSvrClRecieved is MsgSvrClAbortedConfirmation)
@@ -543,6 +547,7 @@ public partial class MainPageViewModel : BaseViewModel
                         copyMgr.LogErrMsgsIfAny("client ErrMsgs:");
                         nums = copyMgr.Nums;
                         numErrMsgsClient = copyMgr.ErrMsgs.Count;
+                        firstErrMsgClient = copyMgr.FirstErrMsg;
                         break;
                     }
                 }
@@ -556,8 +561,8 @@ public partial class MainPageViewModel : BaseViewModel
                     // copying from client to server
                     if (((MsgSvrClCopyAnswer)msgSvrCl).IsLastPart)
                     {
-                        ((MsgSvrClCopyToSvrConfirmation)msgSvrClRecieved).GetNums(
-                            out nums, out numErrMsgsSvr);
+                        ((MsgSvrClCopyToSvrConfirmation)msgSvrClRecieved).GetNumsAndFirstErrMsg(
+                            out nums, out numErrMsgsSvr, out firstErrMsgSvr);
                         break;
                     }
                     msgSvrCl = copyMgr.GetNextPartCopyansFromSrc(true,
@@ -573,8 +578,11 @@ public partial class MainPageViewModel : BaseViewModel
                 $"Files overwritten: {nums.FilesOverwritten}{nl}" +
                 $"Files skipped: {nums.FilesSkipped}{nl}" +
                 (nums.DtProblems > 0 ? $"Err dates replaced by Now: {nums.DtProblems}{nl}" : "") +
+                (nums.ErrHashesDiff > 0 ? $"Err failed hash checks: {nums.ErrHashesDiff}{nl}" : "") +
                 (numErrMsgsSvr > 0 ? $"ERRORS on server: {numErrMsgsSvr}{nl}" : "") +
+                (numErrMsgsSvr > 0 ? $"  first: '{firstErrMsgSvr}'{nl}" : "") +
                 (numErrMsgsClient > 0 ? $"ERRORS on client: {numErrMsgsClient}{nl}" : "") +
+                (numErrMsgsClient > 0 ? $"  first: '{firstErrMsgClient}'{nl}" : "") +
                 (copyMgr.ClientAborted ? $"ABORTED BY USER{nl}" : ""),
                 "OK");
 
@@ -798,7 +806,7 @@ public partial class MainPageViewModel : BaseViewModel
                 var msgSvrClCpPart = (MsgSvrClCopyToSvrPart)msgSvrCl;
                 bool isLast = _copyMgr.CreateOnDestFromNextPart(msgSvrClCpPart);
                 msgSvrClAns = new MsgSvrClCopyToSvrConfirmation(
-                    _copyMgr.Nums, _copyMgr.ErrMsgs.Count);
+                    _copyMgr.Nums, _copyMgr.ErrMsgs.Count, _copyMgr.FirstErrMsg);
                 if (isLast)
                 {
                     _copyMgr.LogErrMsgsIfAny("server ErrMsgs:");
@@ -853,33 +861,37 @@ public partial class MainPageViewModel : BaseViewModel
     protected MsgSvrClBase HandleFileOrFolderDataArrayOnSvr(out string sendWhatStr)
     {
         MsgSvrClBase msgSvrClAns;
-        var dataWithExc = _fileOrFolderDataArrayOnSvr.Where(d => null != d.ExcThrown)
-                    .FirstOrDefault();
-        if (dataWithExc != null)
-        {
-            _currPathInfoAnswerState = null;
-            msgSvrClAns = new MsgSvrClErrorAnswer(dataWithExc.ExcThrown.Message);
-            sendWhatStr = $"ERRORMSG ({dataWithExc.ExcThrown.Message})";
-        }
-        else
-        {
-            string[] folderNames = _fileOrFolderDataArrayOnSvr.Where(
-                        d => d.IsDir).Select(d => d.Name).ToArray();
-            string[] fileNames = _fileOrFolderDataArrayOnSvr.Where(
-                        d => !d.IsDir).Select(d => d.Name).ToArray();
-            long[] fileSizes = _fileOrFolderDataArrayOnSvr.Where(
-                        d => !d.IsDir).Select(d => d.FileSize).ToArray();
-            _currPathInfoAnswerState = new PathInfoAnswerState(folderNames,
-                        fileNames, fileSizes);
 
-            msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
-					Settings.SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE,
-					_currPathInfoAnswerState,
-                    MauiProgram.Settings.BufSizeMoreOrLess);
-            sendWhatStr = "path info " +
-                    (_currPathInfoAnswerState.EndReached ?
-                    "last part" : $"part {_seqNrPathInfoAns}");
-        }
+        //JEEWEE
+        //var dataWithExc = _fileOrFolderDataArrayOnSvr.Where(d => null != d.ExcThrown)
+        //            .FirstOrDefault();
+        //if (dataWithExc != null)
+        //{
+        //    _currPathInfoAnswerState = null;
+        //    msgSvrClAns = new MsgSvrClErrorAnswer(dataWithExc.ExcThrown.Message);
+        //    sendWhatStr = $"ERRORMSG ({dataWithExc.ExcThrown.Message})";
+        //}
+        //else
+        //{
+
+        string[] folderNames = _fileOrFolderDataArrayOnSvr.Where(
+                    d => d.IsDir).Select(d => d.Name).ToArray();
+        string[] fileNames = _fileOrFolderDataArrayOnSvr.Where(
+                    d => !d.IsDir).Select(d => d.Name).ToArray();
+        long[] fileSizes = _fileOrFolderDataArrayOnSvr.Where(
+                    d => !d.IsDir).Select(d => d.FileSize).ToArray();
+        _currPathInfoAnswerState = new PathInfoAnswerState(folderNames,
+                    fileNames, fileSizes);
+
+        msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
+				Settings.SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE,
+				_currPathInfoAnswerState,
+                MauiProgram.Settings.BufSizeMoreOrLess);
+        sendWhatStr = "path info " +
+                (_currPathInfoAnswerState.EndReached ?
+                "last part" : $"part {_seqNrPathInfoAns}");
+        //JEEWEE
+        //}
 
         return msgSvrClAns;
     }
@@ -888,7 +900,7 @@ public partial class MainPageViewModel : BaseViewModel
     protected string SendWhatStrFromCopyMsgtosend(MsgSvrClBase msgSvrClAns)
     {
         if (msgSvrClAns is MsgSvrClErrorAnswer)
-            return $"ERRORMSG ({((MsgSvrClErrorAnswer)msgSvrClAns).GetErrMsg()})";
+            return $"ERRORMSG ({((MsgSvrClErrorAnswer)msgSvrClAns).GetErrMsgsJoined()})";
 
         if (msgSvrClAns is MsgSvrClCopyAnswer)
             return "copy info: " +

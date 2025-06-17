@@ -11,7 +11,7 @@
     x:DataType="viewmodel:ClientViewModel"
     Loaded="ClientPage_Loaded">
 
-    <!--JEEWEE!!!!!!!!!! SHOULD WE DO THIS? BETTER MAKE A BUTTON RETURN TO FILES, IN MAINPAGE FOR CLIENT-->
+    <!--Next is code to disable the arrow 'go back', above in page, but we don't want that -->
     <!--<Shell.BackButtonBehavior>
         <BackButtonBehavior IsEnabled="False" />
     </Shell.BackButtonBehavior>-->

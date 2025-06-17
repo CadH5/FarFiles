@@ -13,7 +13,9 @@ namespace FarFiles.Model
 {
     public enum StartCode
     {
-        ERROR,          // followed by string (errMsg)
+        //JEEWEE
+        //ERROR,          // followed by string (errMsg)
+        
         CDPATH,         // followed by string (relativepath to cd to)
         FOLDER,         // followed by string (relativepath incl name), DateTime (Creation), DataTime (LastWrite)
         FILE,           // followed by string (name), long (size), int (FileAttr), DateTime (Creation), DataTime (LastWrite), compressedparts
@@ -37,12 +39,14 @@ namespace FarFiles.Model
         protected bool _startInfoAddedOnSrc = false;
         protected string[] _currPartsRelPathOnDest = new string[0];
         protected string _currPathOnDestWin = "";
-        protected string _currFileNameOnDest = "";
+        protected string _currFileNameOnDestOrSrc = "";
         protected string _currFileFullPathOnDestWin = "";
         protected bool _currFileExistedBefore = false;
         protected long _currFileSizeOnDestOrSrc;
         protected int _currNumFilesOpenedOnSrc;
         protected long _fileSizeCounter;
+        protected IncrementalHash _readHasher = null;
+        protected IncrementalHash _writeHasher = null;
         protected FileAttributes _currFileAttrsOnDest;
         protected DateTime _currFileDtCreationOnDest;
         protected DateTime _currFileDtLastWriteOnDest;
@@ -60,7 +64,8 @@ namespace FarFiles.Model
         //public int NumDtProblems { get; protected set; } = 0;
         public CopyCounters Nums { get; protected set; } = new CopyCounters();
 
-        public List<string> ErrMsgs = new List<string>();  //JEEWEE!!!!!!!!!!!!!!!!!!!!!!! do something
+        public List<string> ErrMsgs = new List<string>();
+        public string FirstErrMsg { get => 0 == ErrMsgs.Count ? "" : ErrMsgs.First(); }
 
         public CopyMgr(FileDataService fileDataService, Settings alternativeSettings = null,
                 int remainingLimit = REMAININGLIMIT)
@@ -150,6 +155,7 @@ namespace FarFiles.Model
                         byte[] rdBytes = _reader.ReadBytes(numRemaining + numRemaining / 2);
                         if (rdBytes.Length > 0 || _reader.BaseStream.Length == 0)
                         {
+                            _readHasher.AppendData(rdBytes);
                             byte[] compressedBytes = Compress(rdBytes);
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.COMPRESSEDPART));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((int)compressedBytes.Length));
@@ -159,48 +165,58 @@ namespace FarFiles.Model
 
                         if (_reader.BaseStream.Position >= _reader.BaseStream.Length)
                         {
-                            _reader.Close();
-                            _reader = null;
+                            if (_fileSizeCounter != _currFileSizeOnDestOrSrc)
+                                ErrMsgs.Add(
+                                    $"file '{_currFileNameOnDestOrSrc}': end of stream, but _fileSizeCounter={_fileSizeCounter} and _currFileSizeOnDestOrSrc={_currFileSizeOnDestOrSrc}");
+                            CloseReaderIfNotNull();
+
+                            byte[] finalHash = _readHasher.GetHashAndReset();
+                            _readHasher = null;
+                            string hashHex = BitConverter.ToString(finalHash).ToLowerInvariant();
+                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(hashHex));
                         }
                     }
 
                     else if (currNavLevel.CurrIdxFiles < currNavLevel.FileNames.Length)
                     {
-                        string fileName = "";
+                        _currFileNameOnDestOrSrc = "";
 
                         try
                         {
-                            fileName = currNavLevel.FileNames[currNavLevel.CurrIdxFiles];
+                            _currFileNameOnDestOrSrc = currNavLevel.FileNames[currNavLevel.CurrIdxFiles];
                             string[] pathParts = clientToSvr ?
                                     currNavLevel.ClientSubPartsOrNull :
                                     currNavLevel.SvrSubParts;
                             _reader = _fileDataService.OpenBinaryReaderGeneric(
                                     _settings.FullPathRoot, _settings.AndroidUriRoot,
-                                    pathParts, fileName,
+                                    pathParts, _currFileNameOnDestOrSrc,
                                     out FileOrFolderData fData);
+                            _readHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                             _currNumFilesOpenedOnSrc++;
                             _currFileSizeOnDestOrSrc = fData.FileSize;
                             _fileSizeCounter = 0;
 
                             MauiProgram.Log.LogLine(
                                 $"source: reader opened: '{_settings.FullPathRoot}', '" +
-                                String.Join('/', pathParts) + $"', '{fileName}'");
+                                String.Join('/', pathParts) + $"', '{_currFileNameOnDestOrSrc}'");
 
                             NumFilesOpenedOnSrc++;
 
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.FILE));
-                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(fileName));
+                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(_currFileNameOnDestOrSrc));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.FileSize));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((int)fData.Attrs));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.DtCreation.ToBinary()));
                             _bufSvrMsg.AddRange(BitConverter.GetBytes(fData.DtLastWrite.ToBinary()));
-                            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! HASH?
                         }
                         catch (Exception exc)
                         {
-                            _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
-                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
-                                $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', file '{fileName}': {exc.Message}"));
+                            //JEEWEE
+                            //_bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
+                            //_bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
+                            //    $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', file '{fileName}': {exc.Message}"));
+                            ErrMsgs.Add(
+                                $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', file '{_currFileNameOnDestOrSrc}': {exc.Message}");
                         }
                         currNavLevel.CurrIdxFiles++;
                     }
@@ -221,7 +237,6 @@ namespace FarFiles.Model
 
                             var fData = _fileDataService.NewFileOrFolderDataGeneric(_settings.FullPathRoot,
                                         _settings.AndroidUriRoot, subPartsSrc, folderName, true);
-                            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! fData may contain only exception, what then?
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.FOLDER));
 
                             var newNavLevel = new NavLevel(currNavLevel, folderName, clientToSvr);
@@ -242,10 +257,14 @@ namespace FarFiles.Model
                         }
                         catch (Exception exc)
                         {
-                            _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
-                            //JEEWEE!!!!!!!!!!!!!!!!!! IS THIS CORRECT?
-                            _bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
-                                $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', folder '{folderName}': {exc.Message}"));
+                            //JEEWEE
+                            //_bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
+                            //_bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
+                            //    $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', folder '{folderName}': {exc.Message}"));
+
+                            ErrMsgs.Add(
+                                $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', folder '{folderName}': {exc.Message}");
+
                             if (navlvAdded)
                                 _navLevels.RemoveAt(_navLevels.Count - 1);
                         }
@@ -292,9 +311,6 @@ namespace FarFiles.Model
         {
             msgSvrClAnswer.GetSeqnrAndIslastAndData(out int seqNr, out bool isLast,
                                 out byte[] data);
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NOT YET ANDROID
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! CHECK ON _seqNr
-            //AND HASH, AND FILESIZE
 
             if (seqNr == 0)
             {
@@ -312,10 +328,11 @@ namespace FarFiles.Model
 
                 switch (code)
                 {
-                    case (short)StartCode.ERROR:
-                        string errMsg = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
-                        ErrMsgs.Add(errMsg);
-                        break;
+                    //JEEWEE
+                    //case (short)StartCode.ERROR:
+                    //    string errMsg = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
+                    //    ErrMsgs.Add(errMsg);
+                    //    break;
 
                     case (short)StartCode.CDPATH:
                     case (short)StartCode.FOLDER:
@@ -363,9 +380,9 @@ namespace FarFiles.Model
                         break;
 
                     case (short)StartCode.FILE:
-                        _currFileNameOnDest = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
+                        _currFileNameOnDestOrSrc = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
                         _currFileFullPathOnDestWin = Path.Combine(
-                            _currPathOnDestWin, _currFileNameOnDest);
+                            _currPathOnDestWin, _currFileNameOnDestOrSrc);
                         _currFileSizeOnDestOrSrc = BitConverter.ToInt64(data, idxData);
                         idxData += sizeof(long);
                         _currFileAttrsOnDest = (FileAttributes)BitConverter.ToInt32(data, idxData);
@@ -377,7 +394,7 @@ namespace FarFiles.Model
 
                         CloseWriterIfNotNull();
 
-                        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ANDROID
+                        //JEEWEE ANDROID
                         //_currFileExistedBefore = File.Exists(_currFileFullPathOnDestWin);
                         //if (_currFileExistedBefore && 1 == _idx0isOverwr1isSkip)
                         //{
@@ -390,7 +407,7 @@ namespace FarFiles.Model
                         {
                             _writer = _fileDataService.OpenBinaryWriterGeneric(
                                         _settings.FullPathRoot, _settings.AndroidUriRoot,
-                                        _currPartsRelPathOnDest, _currFileNameOnDest,
+                                        _currPartsRelPathOnDest, _currFileNameOnDestOrSrc,
                                         1 == _idx0isOverwr1isSkip,
                                         out _currFileExistedBefore);
 
@@ -401,6 +418,7 @@ namespace FarFiles.Model
                                 Nums.FilesCreated++;
                                 if (_currFileExistedBefore)
                                     Nums.FilesOverwritten++;
+                                _writeHasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                             }
                             else
                             {
@@ -439,6 +457,7 @@ namespace FarFiles.Model
                         else
                         {
                             _writer.Write(decompressed);
+                            _writeHasher.AppendData(decompressed);
                         }
                         _fileSizeCounter += decompressed.Length;
 
@@ -460,9 +479,24 @@ namespace FarFiles.Model
                                 ErrMsgs.Add(
                                     $"_fileSizeCounter not exactly ends right! _fileSizeCounter={_fileSizeCounter}, _currFileSizeOnDestOrSrc={_currFileSizeOnDestOrSrc}");
                             }
+
+                            // hash: was added, also if we skip the file, so it must
+                            // anyway be read, but we ignore the check if we skipped
+                            string hashHexExpected = MsgSvrClBase.StrPlusLenFromBytes(
+                                        data, ref idxData);
+
                             if (_writer != null)    // else: file is skipped or could not be created
                             {
                                 CloseWriterIfNotNull();
+
+                                byte[] finalHash = _writeHasher.GetHashAndReset();
+                                _writeHasher = null;
+                                string hashHex = BitConverter.ToString(finalHash).ToLowerInvariant();
+                                if (hashHexExpected != hashHex)
+                                {
+                                    Nums.ErrHashesDiff++;
+                                    ErrMsgs.Add($"File '{_currFileNameOnDestOrSrc}': hash check failed");
+                                }
 
 #if ANDROID
                                 // not possible to set Attributes or LastModified on Android
@@ -503,7 +537,7 @@ namespace FarFiles.Model
         }
 
 
-        protected void ClientAbort(bool clientToSvr)
+        public void ClientAbort(bool clientToSvr)
         {
             ClientAborted = true;
             if (clientToSvr)
@@ -517,7 +551,7 @@ namespace FarFiles.Model
                 // no partially created files should remain
                 _fileDataService.DeleteFileGeneric(
                             _settings.FullPathRoot, _settings.AndroidUriRoot,
-                            _currPartsRelPathOnDest, _currFileNameOnDest);
+                            _currPartsRelPathOnDest, _currFileNameOnDestOrSrc);
                 Nums.FilesCreated--;
                 if (_currFileExistedBefore)
                     Nums.FilesOverwritten--;
@@ -655,9 +689,10 @@ namespace FarFiles.Model
             public int CurrIdxFolders { get; set; } = 0;
 
 
-            public string PathOnSvrWindows { get => _settings.PathFromRootAndSubPartsWindows(
-                        SvrSubParts);
-            }
+            //JEEWEE
+            //public string PathOnSvrWindows { get => _settings.PathFromRootAndSubPartsWindows(
+            //            SvrSubParts);
+            //}
 
             public string JoinedSvrSubPartsVisibleToClient { get => String.Join("/", SvrSubParts,
                     IdxStartClientpathInSvrSubParts,
@@ -668,7 +703,7 @@ namespace FarFiles.Model
                 get => String.Join("/", SvrSubParts);
             }
 
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SEEMS UNUSED
+            //JEEWEE SEEMS UNUSED
             //public string[] SvrSubPartsVisibleToClient
             //{
             //    get
@@ -746,18 +781,21 @@ namespace FarFiles.Model
         public int FilesOverwritten = 0;
         public int FilesSkipped = 0;
         public int DtProblems = 0;
+        public int ErrHashesDiff = 0;
 
         public CopyCounters()
         { }
 
         public CopyCounters(int numFoldersCreated, int numFilesCreated,
-                int numFilesOverwritten, int numFilesSkipped, int numDtProblems)
+                int numFilesOverwritten, int numFilesSkipped, int numDtProblems,
+                int errHashesDiff)
         {
             FoldersCreated = numFoldersCreated;
             FilesCreated = numFilesCreated;
             FilesOverwritten = numFilesOverwritten;
             FilesSkipped = numFilesSkipped;
             DtProblems = numDtProblems;
+            ErrHashesDiff = errHashesDiff;
         }
 
     }

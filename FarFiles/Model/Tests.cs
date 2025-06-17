@@ -53,8 +53,17 @@ namespace FarFiles.Model
                 msgSvrCl = new MsgSvrClErrorAnswer(errMsg);
                 AssertEq(wrLog, MsgSvrClType.ERROR, msgSvrCl.Type,
                         "MsgSvrClErrorAnswer.Type");
-                AssertEq(wrLog, errMsg, ((MsgSvrClErrorAnswer)msgSvrCl).GetErrMsg(),
+                AssertEq(wrLog, errMsg, ((MsgSvrClErrorAnswer)msgSvrCl).GetErrMsgsJoined(),
                         "MsgSvrClErrorAnswer errmsg");
+
+                msgSvrCl = new MsgSvrClErrorAnswer(new string[] { errMsg, errMsg });
+                AssertEq(wrLog, new string[] { errMsg, errMsg },
+                        ((MsgSvrClErrorAnswer)msgSvrCl).GetErrMsgs(),
+                        "MsgSvrClErrorAnswer errmsgs");
+                AssertEq(wrLog, $"{errMsg}{System.Environment.NewLine}{errMsg}",
+                        ((MsgSvrClErrorAnswer)msgSvrCl).GetErrMsgsJoined(),
+                        "MsgSvrClErrorAnswer errmsgs");
+
 
                 // MsgSvrClStringSend
                 string strToSend = "str to send";
@@ -304,17 +313,19 @@ namespace FarFiles.Model
 
                 // MsgSvrClCopyToSvrConfirmation
                 msgSvrCl = new MsgSvrClCopyToSvrConfirmation(
-                            new CopyCounters(1, 2, 3, 4, 5), 6);
+                            new CopyCounters(1, 2, 3, 4, 5, 6), 7, "firstErrMsg");
                 AssertEq(wrLog, MsgSvrClType.COPY_TOSVRCONFIRM, msgSvrCl.Type,
                         "MsgSvrClCopyToSvrConfirmation.Type");
-                ((MsgSvrClCopyToSvrConfirmation)msgSvrCl).GetNums(out CopyCounters nums,
-                            out int numErrMsgs);
+                ((MsgSvrClCopyToSvrConfirmation)msgSvrCl).GetNumsAndFirstErrMsg(
+                            out CopyCounters nums, out int numErrMsgs, out string firstErrMsg);
                 AssertEq(wrLog, 1, nums.FoldersCreated, "nums.FoldersCreated");
                 AssertEq(wrLog, 2, nums.FilesCreated, "nums.FilesCreated");
                 AssertEq(wrLog, 3, nums.FilesOverwritten, "nums.FilesOverwritten");
                 AssertEq(wrLog, 4, nums.FilesSkipped, "nums.FilesSkipped");
                 AssertEq(wrLog, 5, nums.DtProblems, "nums.DtProblems");
-                AssertEq(wrLog, 6, numErrMsgs, "numErrMsgs");
+                AssertEq(wrLog, 6, nums.ErrHashesDiff, "nums.ErrHashesDiff");
+                AssertEq(wrLog, 7, numErrMsgs, "numErrMsgs");
+                AssertEq(wrLog, "firstErrMsg", firstErrMsg, "1st errMsg");
             }
             catch (Exception exc)
             {
@@ -672,7 +683,7 @@ namespace FarFiles.Model
 
         protected void LogExc(StreamWriter wrLog, string descrExc, Exception exc)
         {
-            wrLog.WriteLine($"** EXCEPTON: {descrExc}: {MauiProgram.ExcMsgWithInnerMsgs(exc)}");
+            wrLog.WriteLine($"** EXCEPTION: {descrExc}: {MauiProgram.ExcMsgWithInnerMsgs(exc)}");
             _numExceptions++;
         }
 

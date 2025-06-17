@@ -36,9 +36,12 @@ namespace FarFiles.Model
         public int BufSizeMoreOrLess { get; set; } = 20000;
         public bool UseSvrLocalIPClient { get; set; } = false;
 
+#if ANDROID
+#else
         public string PathFromRootAndSubPartsWindows(string[] subParts)
         {
             return FileDataService.PathFromRootAndSubPartsWindows(FullPathRoot, subParts);
         }
+#endif
     }
 }

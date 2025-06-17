@@ -32,6 +32,7 @@ namespace FarFiles.Model
 
     public class MsgSvrClBase
     {
+        public const int MAXNUMARR_TOAVOIDMEMERR = 1000000;
         public byte[] Bytes;
 
         public MsgSvrClType Type
@@ -72,7 +73,7 @@ namespace FarFiles.Model
             if (foundType != expectedType)
             {
                 if (foundType == MsgSvrClType.ERROR)
-                    throw new Exception(new MsgSvrClErrorAnswer(bytes).GetErrMsg());
+                    throw new Exception(new MsgSvrClErrorAnswer(bytes).GetErrMsgsJoined());
 
                 throw new Exception($"Expected message type: {expectedType}, got: {foundType}");
             }
@@ -147,7 +148,7 @@ namespace FarFiles.Model
             if (this.GetType() != expectedType)
             {
                 if (this is MsgSvrClErrorAnswer)
-                    throw new Exception(((MsgSvrClErrorAnswer)this).GetErrMsg());
+                    throw new Exception(((MsgSvrClErrorAnswer)this).GetErrMsgsJoined());
 
                 throw new Exception(
                     $"Expected message: {expectedType}, got: {this.GetType()}");
@@ -270,8 +271,12 @@ namespace FarFiles.Model
         public string[] GetStringsAtIndex(ref int idx)
         {
             int numStrs = BitConverter.ToInt32(Bytes, idx);
-            var retStrs = new string[numStrs];
             idx += sizeof(int);
+            if (numStrs < 0 || numStrs > MAXNUMARR_TOAVOIDMEMERR)
+                throw new Exception("GetStringsAtIndex: " +
+                    $"invalid in bytes: found num strings {numStrs}");
+
+            var retStrs = new string[numStrs];
             for (int i = 0; i < numStrs; i++)
             {
                 retStrs[i] = StrPlusLenFromBytes(Bytes, ref idx);
@@ -289,6 +294,9 @@ namespace FarFiles.Model
         {
             int num = BitConverter.ToInt32(Bytes, idx);
             idx += sizeof(int);
+            if (num < 0 || num > MAXNUMARR_TOAVOIDMEMERR)
+                throw new Exception($"GetFileNamesAndSizesAtIndex: " +
+                    $"invalid in bytes: found num {num} for arrays");
 
             fileSizes = new long[num];
             var fileNames = new string[num];
@@ -321,11 +329,19 @@ namespace FarFiles.Model
     /// </summary>
     public class MsgSvrClErrorAnswer : MsgSvrClBase
     {
-        public MsgSvrClErrorAnswer(string errMsg)
+        public MsgSvrClErrorAnswer(string[] errMsgs)
             : base(MsgSvrClType.ERROR)
         {
-            AddBytes(StrPlusLenToBytes(errMsg));
+            var lisBytes = Bytes.ToList();
+            AddNumAndStringsToLisBytes(lisBytes, errMsgs);
+            Bytes = lisBytes.ToArray();
         }
+
+        public MsgSvrClErrorAnswer(string errMsg)
+            : this(new string[] {errMsg})
+        {
+        }
+
 
         public MsgSvrClErrorAnswer(byte[] bytes)
             : base(bytes, MsgSvrClType.ERROR)
@@ -333,9 +349,19 @@ namespace FarFiles.Model
         }
 
 
-        public string GetErrMsg()
+        public string[] GetErrMsgs()
         {
-            return StrPlusLenFromBytes((byte[])Bytes, 4);
+            int idx = 4;
+            return GetStringsAtIndex(ref idx);
+        }
+
+        /// <summary>
+        /// Get all errmsgs joined by System.Environment.NewLine
+        /// </summary>
+        /// <returns></returns>
+        public string GetErrMsgsJoined()
+        {
+            return String.Join(System.Environment.NewLine, GetErrMsgs());
         }
     }
 
@@ -798,7 +824,8 @@ namespace FarFiles.Model
     /// </summary>
     public class MsgSvrClCopyToSvrConfirmation : MsgSvrClBase
     {
-        public MsgSvrClCopyToSvrConfirmation(CopyCounters nums, int numErrMsgs)
+        public MsgSvrClCopyToSvrConfirmation(CopyCounters nums, int numErrMsgs,
+            string firstErrMsg)
             : base(MsgSvrClType.COPY_TOSVRCONFIRM)
         {
             var lisBytes = Bytes.ToList();
@@ -807,7 +834,9 @@ namespace FarFiles.Model
             lisBytes.AddRange(BitConverter.GetBytes(nums.FilesOverwritten));
             lisBytes.AddRange(BitConverter.GetBytes(nums.FilesSkipped));
             lisBytes.AddRange(BitConverter.GetBytes(nums.DtProblems));
+            lisBytes.AddRange(BitConverter.GetBytes(nums.ErrHashesDiff));
             lisBytes.AddRange(BitConverter.GetBytes(numErrMsgs));
+            lisBytes.AddRange(StrPlusLenToBytes(firstErrMsg));
             Bytes = lisBytes.ToArray();
         }
 
@@ -818,7 +847,8 @@ namespace FarFiles.Model
         }
 
 
-        public void GetNums(out CopyCounters nums, out int numErrMsgs)
+        public void GetNumsAndFirstErrMsg(out CopyCounters nums,
+                    out int numErrMsgs, out string firstErrMsg)
         {
             try
             {
@@ -835,7 +865,11 @@ namespace FarFiles.Model
                 idx += sizeof(int);
                 nums.DtProblems = BitConverter.ToInt32(Bytes, idx);
                 idx += sizeof(int);
+                nums.ErrHashesDiff = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
                 numErrMsgs = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
+                firstErrMsg = StrPlusLenFromBytes(Bytes, ref idx);
             }
             catch (Exception exc)
             {
@@ -843,7 +877,6 @@ namespace FarFiles.Model
                     $"Error getting numbers from message: {exc.Message}");
             }
         }
-
     }
 
 

@@ -35,26 +35,29 @@ public class FileDataService
     {
         List<Model.FileOrFolderData> dataList = new();
 
-        try
-        {
-            DocumentFile[] docusSubdirs = _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
-                        androidUriRoot, dirNamesSubPath, true).ToArray();
-            DocumentFile[] docusFiles = _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
-                        androidUriRoot, dirNamesSubPath, false).ToArray();
+        //JEEWEE
+        //try
+        //{
+        DocumentFile[] docusSubdirs = _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
+                    androidUriRoot, dirNamesSubPath, true).ToArray();
+        DocumentFile[] docusFiles = _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
+                    androidUriRoot, dirNamesSubPath, false).ToArray();
 
-            for (int i = 0; i < 2; i++)
+        for (int i = 0; i < 2; i++)
+        {
+            DocumentFile[] docus = (i == 0 ? docusSubdirs : docusFiles);
+            foreach (DocumentFile docu in docus)
             {
-                DocumentFile[] docus = (i == 0 ? docusSubdirs : docusFiles);
-                foreach (DocumentFile docu in docus)
-                {
-                    dataList.Add(NewFileOrFolderDataAndroid(docu));
-                }
+                dataList.Add(NewFileOrFolderDataAndroid(docu));
             }
         }
-        catch (Exception exc)
-        {
-            return new FileOrFolderData[] { new FileOrFolderData(exc) };
-        }
+
+        //JEEWEE
+        //}
+        //catch (Exception exc)
+        //{
+        //    return new FileOrFolderData[] { new FileOrFolderData(exc) };
+        //}
 
         return dataList.ToArray();
     }
@@ -68,27 +71,31 @@ public class FileDataService
     {
         List<Model.FileOrFolderData> dataList = new();
 
-        try
-        {
-            string[] fullPathSubdirs = Directory.GetDirectories(fullRootPathDir);
-            string[] fullPathFiles = Directory.GetFiles(fullRootPathDir, "*", SearchOption.TopDirectoryOnly);
-            string[] dummySubPathParts = new string[0];
+        //JEEWEE
+        //try
+        //{
 
-            for (int i = 0; i < 2; i++)
+        string[] fullPathSubdirs = Directory.GetDirectories(fullRootPathDir);
+        string[] fullPathFiles = Directory.GetFiles(fullRootPathDir, "*", SearchOption.TopDirectoryOnly);
+        string[] dummySubPathParts = new string[0];
+
+        for (int i = 0; i < 2; i++)
+        {
+            string[] fullPaths = (i == 0 ? fullPathSubdirs : fullPathFiles);
+            foreach (string fullPath in fullPaths)
             {
-                string[] fullPaths = (i == 0 ? fullPathSubdirs : fullPathFiles);
-                foreach (string fullPath in fullPaths)
-                {
-                    dataList.Add(NewFileOrFolderDataGeneric(Path.GetDirectoryName(fullPath),
-                            null, dummySubPathParts, Path.GetFileName(fullPath),
-                            i == 0));
-                }
+                dataList.Add(NewFileOrFolderDataGeneric(Path.GetDirectoryName(fullPath),
+                        null, dummySubPathParts, Path.GetFileName(fullPath),
+                        i == 0));
             }
         }
-        catch (Exception exc)
-        {
-            return new FileOrFolderData[] { new FileOrFolderData(exc) };
-        }
+
+        //JEEWEE
+        //}
+        //catch (Exception exc)
+        //{
+        //    return new FileOrFolderData[] { new FileOrFolderData(exc) };
+        //}
 
         return dataList.ToArray();
     }
@@ -269,18 +276,16 @@ public class FileDataService
 
 
 
+#if ANDROID
+#else
     public static string PathFromRootAndSubPartsWindows(string fullPathRoot, string[] subParts)
     {
-#if ANDROID
-        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        return "JEEWEE";
-#else
         string path = fullPathRoot;
         foreach (string subPathPart in subParts)
             path = Path.Combine(path, subPathPart);
         return path;
-#endif
     }
+#endif
 
 
 #if ANDROID
@@ -299,26 +304,28 @@ public class FileDataService
             object androidUriRoot, string[] subParts, string name,
             bool isDir)
     {
-        try
-        {
+        //JEEWEE
+        //try
+        //{
 #if ANDROID
-            DocumentFile documentFile = _androidFileAccessHelper.GetDocumentFileFromUriAndSubpath(
-                        (Android.Net.Uri)androidUriRoot, subParts, isDir, name,
-                        out DocumentFile parentDirDocu);
-            return NewFileOrFolderDataAndroid(documentFile);
+        DocumentFile documentFile = _androidFileAccessHelper.GetDocumentFileFromUriAndSubpath(
+                    (Android.Net.Uri)androidUriRoot, subParts, isDir, name,
+                    out DocumentFile parentDirDocu);
+        return NewFileOrFolderDataAndroid(documentFile);
 #else
-            string fullPath = Path.Combine(PathFromRootAndSubPartsWindows(
-                        fullPathTopDir, subParts), name);
-            return new FileOrFolderData(name, isDir,
-                        isDir ? 0 : new FileInfo(fullPath).Length,
-                        File.GetAttributes(fullPath),
-                        File.GetCreationTime(fullPath), File.GetLastWriteTime(fullPath));
+        string fullPath = Path.Combine(PathFromRootAndSubPartsWindows(
+                    fullPathTopDir, subParts), name);
+        return new FileOrFolderData(name, isDir,
+                    isDir ? 0 : new FileInfo(fullPath).Length,
+                    File.GetAttributes(fullPath),
+                    File.GetCreationTime(fullPath), File.GetLastWriteTime(fullPath));
 #endif
-        }
-        catch (Exception exc)
-        {
-            return new FileOrFolderData(exc);
-        }
+        //JEEWEE
+        //}
+        //catch (Exception exc)
+        //{
+        //    return new FileOrFolderData(exc);
+        //}
     }
 
 
