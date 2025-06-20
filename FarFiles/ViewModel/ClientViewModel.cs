@@ -120,6 +120,7 @@ public partial class ClientViewModel : BaseViewModel
     {
         Title = "Far Away Files Access";
         _fileDataService = fileDataService;
+        MauiProgram.Info.ClientPageVwModel = this;
 
         UpdateCollView();
     }
@@ -136,6 +137,8 @@ public partial class ClientViewModel : BaseViewModel
             FfColl.Add(new FfCollViewItem(fo));
         foreach (FileOrFolderData fi in MauiProgram.Info.CurrSvrFiles)
             FfColl.Add(new FfCollViewItem(fi));
+
+        ContentPageRef.ClrAll(FfColl);
 
         //JEEWEE
         //ContentPageRef?.DoWeird(FfColl);        // otherwise sometimes items in new contents seem selected
@@ -188,13 +191,57 @@ public partial class ClientViewModel : BaseViewModel
     }
 
     [RelayCommand]
+    async Task Swap()
+    {
+        bool accepted = await Shell.Current.DisplayAlert("Really swap?",
+            $"Really switch to server mode if server agrees?",
+            "OK", "Cancel");
+        try
+        {
+            if (!await MauiProgram.Info.MainPageVwModel.SndFromClientRecieveSwapReq_msgbxs_Async())
+                return;
+
+            MauiProgram.Info.MainPageVwModel.SwapSvrClient();
+
+            // Close ClientPage
+            await Shell.Current.GoToAsync("..");
+
+            await MauiProgram.Info.MainPageVwModel.DoListenLoopAsSvrAsync();
+        }
+        catch (Exception exc)
+        {
+            await Shell.Current.DisplayAlert("Error",
+                MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
+        }
+    }
+
+
+    [RelayCommand]
     async Task CopyToFromSvr()
     {
-        CopyToFromSvrMode = CopyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
-                CpClientToFromMode.CLIENTTOSVR : CpClientToFromMode.CLIENTFROMSVR;
-        await GotoDirCoreAsync();
-        MoreButtonsMode = false;
-        UpdateCollView();
+        if (IsBusy)
+            return;
+
+        try
+        {
+            IsBusyPlus = true;
+            CopyToFromSvrMode = CopyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
+                    CpClientToFromMode.CLIENTTOSVR : CpClientToFromMode.CLIENTFROMSVR;
+            await GotoDirCoreAsync();
+            MoreButtonsMode = false;
+        }
+        catch (Exception exc)
+        {
+            //JEEWEE
+            //Debug.WriteLine($"Unable to goto dir: {exc.Message}");
+            await Shell.Current.DisplayAlert("Error!", exc.Message, "OK");
+        }
+        finally
+        {
+            IsBusyPlus = false;
+            UpdateCollView();
+            ContentPageRef.UpdatePage();
+        }
     }
 
 
@@ -232,7 +279,8 @@ public partial class ClientViewModel : BaseViewModel
         }
         catch (Exception exc)
         {
-            Debug.WriteLine($"Unable to goto dir: {exc.Message}");
+            //JEEWEE
+            //Debug.WriteLine($"Unable to goto dir: {exc.Message}");
             await Shell.Current.DisplayAlert("Error!", exc.Message, "OK");
         }
         finally
@@ -240,6 +288,7 @@ public partial class ClientViewModel : BaseViewModel
             IsBusyPlus = false;
             IsProgressing = false;
             UpdateCollView();
+            ContentPageRef.UpdatePage();
         }
     }
 

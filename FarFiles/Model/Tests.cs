@@ -326,6 +326,21 @@ namespace FarFiles.Model
                 AssertEq(wrLog, 6, nums.ErrHashesDiff, "nums.ErrHashesDiff");
                 AssertEq(wrLog, 7, numErrMsgs, "numErrMsgs");
                 AssertEq(wrLog, "firstErrMsg", firstErrMsg, "1st errMsg");
+
+                // MsgSvrClSwapRequest
+                msgSvrCl = new MsgSvrClSwapRequest();
+                AssertEq(wrLog, MsgSvrClType.SWAP_REQ, msgSvrCl.Type,
+                        "MsgSvrClSwapRequest.Type");
+
+                // MsgSvrClSwapReqReceivedConfirm
+                msgSvrCl = new MsgSvrClSwapReqReceivedConfirm();
+                AssertEq(wrLog, MsgSvrClType.SWAPREQ_CONFIRM, msgSvrCl.Type,
+                        "MsgSvrClSwapReqReceivedConfirm.Type");
+
+                // MsgSvrClSwapRejectedBySvr
+                msgSvrCl = new MsgSvrClSwapRejectedBySvr();
+                AssertEq(wrLog, MsgSvrClType.SWAPREQ_REJECTED, msgSvrCl.Type,
+                        "MsgSvrClSwapRejectedBySvr.Type");
             }
             catch (Exception exc)
             {

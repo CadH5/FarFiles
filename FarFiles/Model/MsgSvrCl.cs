@@ -28,6 +28,9 @@ namespace FarFiles.Model
         ABORTED_CONFIRM,
         COPY_TOSVRPART,
         COPY_TOSVRCONFIRM,
+        SWAP_REQ,
+        SWAPREQ_CONFIRM,
+        SWAPREQ_REJECTED,
     }
 
     public class MsgSvrClBase
@@ -130,6 +133,15 @@ namespace FarFiles.Model
 
                 case MsgSvrClType.COPY_TOSVRCONFIRM:
                     return new MsgSvrClCopyToSvrConfirmation(bytes);
+
+                case MsgSvrClType.SWAP_REQ:
+                    return new MsgSvrClSwapRequest(bytes);
+
+                case MsgSvrClType.SWAPREQ_CONFIRM:
+                    return new MsgSvrClSwapReqReceivedConfirm(bytes);
+
+                case MsgSvrClType.SWAPREQ_REJECTED:
+                    return new MsgSvrClSwapRejectedBySvr(bytes);
 
                 default:
                     throw new Exception(
@@ -882,7 +894,60 @@ namespace FarFiles.Model
 
 
 
+    /// <summary>
+    /// request from client to swap client/server mode
+    /// </summary>
+    public class MsgSvrClSwapRequest : MsgSvrClBase
+    {
+        public MsgSvrClSwapRequest()
+            : base(MsgSvrClType.SWAP_REQ)
+        {
+        }
 
+
+        public MsgSvrClSwapRequest(byte[] bytes)
+            : base(bytes, MsgSvrClType.SWAP_REQ)
+        {
+        }
+    }
+
+
+
+    /// <summary>
+    /// confirmation from server that swap requst was received (not yet agreed)
+    /// </summary>
+    public class MsgSvrClSwapReqReceivedConfirm : MsgSvrClBase
+    {
+        public MsgSvrClSwapReqReceivedConfirm()
+            : base(MsgSvrClType.SWAPREQ_CONFIRM)
+        {
+        }
+
+
+        public MsgSvrClSwapReqReceivedConfirm(byte[] bytes)
+            : base(bytes, MsgSvrClType.SWAPREQ_CONFIRM)
+        {
+        }
+    }
+
+
+
+    /// <summary>
+    /// message from server that user rejected swap request
+    /// </summary>
+    public class MsgSvrClSwapRejectedBySvr : MsgSvrClBase
+    {
+        public MsgSvrClSwapRejectedBySvr()
+            : base(MsgSvrClType.SWAPREQ_REJECTED)
+        {
+        }
+
+
+        public MsgSvrClSwapRejectedBySvr(byte[] bytes)
+            : base(bytes, MsgSvrClType.SWAPREQ_REJECTED)
+        {
+        }
+    }
 
 }
 

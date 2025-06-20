@@ -128,7 +128,8 @@ public partial class ClientPage : ContentPage
         UpdatePage();
     }
 
-    protected void UpdatePage()
+
+    public void UpdatePage()
     {
         int numSelected = FfCollView.SelectedItems.Count;
         bool can = !_isBusy && !_moreButtons;

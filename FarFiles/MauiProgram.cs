@@ -83,6 +83,7 @@ public static class MauiProgram
 
     private async static void OnCloseThings()
     {
+        MauiProgram.Info.AppIsShuttingDown = true;
         SaveSettings();
 
         try

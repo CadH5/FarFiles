@@ -54,11 +54,15 @@
                          Margin="0,5,0,0"
                          IsVisible="{Binding MoreButtonsMode}">
                 <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
-                        IsVisible="{Binding IsSvrWritable}"
-                        Text="{Binding TxtBtnCopyToFromSvr}" Command="{Binding CopyToFromSvrCommand}"
-                            Style="{StaticResource ButtonOutline}"
-                            x:Name="BtnCopyToFromSvr"></Button>
-            <Button HorizontalOptions="Start" Margin="5,2,0,2" WidthRequest="200"
+                            Text="Swap server/client" Command="{Binding SwapCommand}"
+                                Style="{StaticResource ButtonOutline}"
+                                x:Name="BtnSwap"></Button>
+                <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
+                            IsVisible="{Binding IsSvrWritable}"
+                            Text="{Binding TxtBtnCopyToFromSvr}" Command="{Binding CopyToFromSvrCommand}"
+                                Style="{StaticResource ButtonOutline}"
+                                x:Name="BtnCopyToFromSvr"></Button>
+                <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
                             Text="select all files" Command="{Binding SelectAllCommand}"
                                 Style="{StaticResource ButtonOutline}"></Button>
                 <StackLayout Orientation="Horizontal"

@@ -14,6 +14,7 @@ namespace FarFiles.Model
     public class Info
     {
         public MainPageViewModel MainPageVwModel { get; set; }
+        public ClientViewModel ClientPageVwModel { get; set; }
         public int UdpSvrPort { get; set; } = -1;   // -1=not set, 0=client, > 0 = svrport from Stunserver
 
         public string PublicIpSvrRegistered { get; set; } = "";
@@ -23,6 +24,7 @@ namespace FarFiles.Model
         public bool IsSvrWritableReportedToClient { get; set; } = false;
         public CpClientToFromMode CpClientToFromMode { get; set; } = CpClientToFromMode.CLIENTFROMSVR;
         public bool Connected { get; set; } = false;
+        public bool AppIsShuttingDown { get; set; } = false;
         public int NumAnswersSent { get; set; } = 0;
         public List<string> SvrPathParts { get; set; } = new List<string>();
         public List<string> LocalPathPartsCl { get; set; } = new List<string>();
