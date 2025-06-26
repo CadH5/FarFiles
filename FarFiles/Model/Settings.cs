@@ -36,6 +36,13 @@ namespace FarFiles.Model
         public int BufSizeMoreOrLess { get; set; } = 20000;
         public bool UseSvrLocalIPClient { get; set; } = false;
 
+        /// <summary>
+        /// ConnectionGuid: determined by Client, first time when not yet determined.
+        /// Once server receives a guid, in this session it won't accept another one, to avoid intruders.
+        /// If client app is restarted and the server is still active, it can reconnect because the clientguid is persistent.
+        /// </summary>
+        public Guid ConnClientGuid { get; set; } = Guid.Empty;
+
 #if ANDROID
 #else
         public string PathFromRootAndSubPartsWindows(string[] subParts)

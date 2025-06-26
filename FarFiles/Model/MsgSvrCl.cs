@@ -14,6 +14,7 @@ namespace FarFiles.Model
     public enum MsgSvrClType
     {
         ERROR,
+        DISCONN_INFO,
         STRING_SEND,
         STRING_ANS,
         PATHINFO_REQ,
@@ -91,6 +92,9 @@ namespace FarFiles.Model
             {
                 case MsgSvrClType.ERROR:
                     return new MsgSvrClErrorAnswer(bytes);
+
+                case MsgSvrClType.DISCONN_INFO:
+                    return new MsgSvrClDisconnInfo(bytes);
 
                 case MsgSvrClType.STRING_SEND:
                     return new MsgSvrClStringSend(bytes);
@@ -384,6 +388,28 @@ namespace FarFiles.Model
 
 
     /// <summary>
+    /// Info that other end disconnected
+    /// </summary>
+    public class MsgSvrClDisconnInfo : MsgSvrClBase
+    {
+        public MsgSvrClDisconnInfo()
+            : base(MsgSvrClType.DISCONN_INFO)
+        {
+        }
+
+
+        public MsgSvrClDisconnInfo(byte[] bytes)
+            : base(bytes, MsgSvrClType.DISCONN_INFO)
+        {
+        }
+    }
+
+
+
+
+
+
+    /// <summary>
     /// MsgSvrClStringSend
     /// </summary>
     public class MsgSvrClStringSend : MsgSvrClBase
@@ -428,14 +454,16 @@ namespace FarFiles.Model
 
     /// <summary>
     /// MsgSvrClPathInfoRequest
+    /// Always first message by which client tries to connect to server.
     /// JEEWEE! Client must send msg to server when it disconnects.
     /// Server must refuse if it is already connected
     /// </summary>
     public class MsgSvrClPathInfoRequest : MsgSvrClBase
     {
-        public MsgSvrClPathInfoRequest(IEnumerable<string> svrSubpathParts) : base(MsgSvrClType.PATHINFO_REQ)
+        public MsgSvrClPathInfoRequest(Guid connClientGuid, IEnumerable<string> svrSubpathParts) : base(MsgSvrClType.PATHINFO_REQ)
         {
             var lisBytes = Bytes.ToList();
+            lisBytes.AddRange(connClientGuid.ToByteArray());
             AddNumAndStringsToLisBytes(lisBytes, svrSubpathParts);
             Bytes = lisBytes.ToArray();
         }
@@ -445,17 +473,21 @@ namespace FarFiles.Model
         {
         }
 
-        public string[] GetSvrSubParts()
+        public string[] GetConnclientguidAndSvrSubParts(out Guid connClientGuid)
         {
             try
             {
                 int idx = 4;
+                var guidBytes = new byte[16];   // sizeof(Guid) seems impossible
+                Array.Copy(Bytes, idx, guidBytes, 0, 16);
+                idx += 16;
+                connClientGuid = new Guid(guidBytes);
                 return GetStringsAtIndex(ref idx);
             }
             catch (Exception exc)
             {
                 throw new Exception(
-                    $"Error interpreting serverPathParts from message: {exc.Message}");
+                    $"Error interpreting connClientGuid or serverPathParts from message: {exc.Message}");
             }
         }
     }

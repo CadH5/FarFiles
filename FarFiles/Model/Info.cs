@@ -15,7 +15,12 @@ namespace FarFiles.Model
     {
         public MainPageViewModel MainPageVwModel { get; set; }
         public ClientViewModel ClientPageVwModel { get; set; }
-        public int UdpSvrPort { get; set; } = -1;   // -1=not set, 0=client, > 0 = svrport from Stunserver
+
+        /// <summary>
+        /// UdpSvrPort: -1=not set, 0=client, > 0 = svrport from Stunserver;
+        /// if svr/client swap, then client has the > 0 port instead of the server
+        /// </summary>
+        public int UdpSvrPort { get; set; } = -1;
 
         public string PublicIpSvrRegistered { get; set; } = "";
         public string PublicUdpPortSvrRegistered { get; set; } = "";
@@ -30,6 +35,12 @@ namespace FarFiles.Model
         public List<string> LocalPathPartsCl { get; set; } = new List<string>();
         public FileOrFolderData[] CurrSvrFolders { get; set; } = new FileOrFolderData[0];
         public FileOrFolderData[] CurrSvrFiles { get; set; } = new FileOrFolderData[0];
+
+        /// <summary>
+        /// SvrReceivedClientGuid: once server has received the client guid, it remembers it
+        /// (Info is not persistent), and if it receives message from other device, it rejects
+        /// </summary>
+        public Guid SvrReceivedClientGuid { get; set; } = Guid.Empty;
 
 
         public void DisconnectOnClient()

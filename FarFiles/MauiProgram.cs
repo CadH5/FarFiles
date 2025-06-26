@@ -24,7 +24,7 @@ public static class MauiProgram
 
     public static MauiApp CreateMauiApp()
 	{
-        LoadSettings();
+        LoadSettings_donotforgettoaddnewsetting();
 
 		var builder = MauiApp.CreateBuilder();
 		builder
@@ -84,11 +84,11 @@ public static class MauiProgram
     private async static void OnCloseThings()
     {
         MauiProgram.Info.AppIsShuttingDown = true;
-        SaveSettings();
+        SaveSettings_donotforgettoaddnewsetting();
 
         try
         {
-            if (Settings.ModeIsServer)           // server
+            if (MauiProgram.Info.UdpSvrPort > 0)           // originally the server, but svr/client may have swapped
             {
                 var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
                     "UNREGISTER", MauiProgram.Info.UdpSvrPort, StrLocalIP, true));
@@ -96,7 +96,7 @@ public static class MauiProgram
                 // Wait max 1 second — no deadlock risk
                 unregisterTask.Wait(TimeSpan.FromSeconds(1));
  
-                // (Note: if UNREGISTER fails somehow, the after a day the registration
+                // (Note: if UNREGISTER fails somehow, then after a day the registration
                 // also becomes invalid; see PHP).
             }
 
@@ -164,7 +164,7 @@ public static class MauiProgram
 
 
 
-    private static void LoadSettings()
+    private static void LoadSettings_donotforgettoaddnewsetting()
     {
 #if ANDROID
         string androidUriRootAsStr = Preferences.Get("AndroidUriRoot", "");
@@ -180,8 +180,16 @@ public static class MauiProgram
         Settings.TimeoutSecsClient = Preferences.Get("TimeoutSecsClient", Settings.TimeoutSecsClient);
         Settings.BufSizeMoreOrLess = Preferences.Get("BufSizeMoreOrLess", Settings.BufSizeMoreOrLess);
         Settings.UseSvrLocalIPClient = Preferences.Get("UseSvrLocalIPClient", Settings.UseSvrLocalIPClient);
+        try
+        {
+            Settings.ConnClientGuid = Guid.Parse(Preferences.Get("ConnClientGuid", Settings.ConnClientGuid.ToString()));
+        }
+        catch
+        {
+            Settings.ConnClientGuid = Guid.Empty;
+        }
     }
-    public static void SaveSettings()
+    public static void SaveSettings_donotforgettoaddnewsetting()
     {
 #if ANDROID
         // JWdP 20250518 note: you are here already when on the Android phone the button
@@ -199,5 +207,6 @@ public static class MauiProgram
         Preferences.Set("TimeoutSecsClient", Settings.TimeoutSecsClient);
         Preferences.Set("BufSizeMoreOrLess", Settings.BufSizeMoreOrLess);
         Preferences.Set("UseSvrLocalIPClient", Settings.UseSvrLocalIPClient);
+        Preferences.Set("ConnClientGuid", Settings.ConnClientGuid.ToString());
     }
 }

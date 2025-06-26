@@ -165,7 +165,7 @@ public partial class MainPageViewModel : BaseViewModel
             IsBusy = true;
 
 #if ANDROID
-            MauiProgram.SaveSettings();     // is necessary
+            MauiProgram.SaveSettings_donotforgettoaddnewsetting();     // is necessary
             Settings.AndroidUriRoot = await MauiProgram.AndroidFolderPicker.PickFolderAsync();
             var context = global::Android.App.Application.Context;
 
@@ -176,7 +176,7 @@ public partial class MainPageViewModel : BaseViewModel
                 Android.Content.ActivityFlags.GrantReadUriPermission |
                 Android.Content.ActivityFlags.GrantWriteUriPermission);
 
-            MauiProgram.SaveSettings();
+            MauiProgram.SaveSettings_donotforgettoaddnewsetting();
             OnPropertyChanged("FullPathRoot");
 
 #else
@@ -256,6 +256,16 @@ public partial class MainPageViewModel : BaseViewModel
 
     public void OnCloseThings()
     {
+        if (MauiProgram.Info.Connected)
+        {
+            UdpWrapper udpWr = _udpClient ?? _udpServer;
+            if (null != udpWr)
+            {
+                var msgSvrCl = new MsgSvrClDisconnInfo();
+                Task.Run(() => udpWr.SendAsync(msgSvrCl.Bytes, msgSvrCl.Bytes.Length))
+                    .Wait(TimeSpan.FromSeconds(1));
+            }
+        }
         _copyMgr?.Dispose();
         _udpServer?.Dispose();
         _udpServer = null;
@@ -296,6 +306,13 @@ public partial class MainPageViewModel : BaseViewModel
             IsBusy = true;
 
             string msg = "";
+
+            // if ConnClientGuid is not yet in settings, determine it for this device.
+            if (Guid.Empty == MauiProgram.Settings.ConnClientGuid)
+            {
+                MauiProgram.Settings.ConnClientGuid = Guid.NewGuid();
+                MauiProgram.SaveSettings_donotforgettoaddnewsetting();
+            }
 
             int udpSvrPort = 0;
             if (MauiProgram.Settings.ModeIsServer)
@@ -377,11 +394,12 @@ public partial class MainPageViewModel : BaseViewModel
 
 
     /// <summary>
-    /// Starts a listen-and-answer-loop as server; stay in loop unless a swap request
-    /// from client was received and accepted, or the swap request that was just made
-    /// as a client (and we swapped to Server) was rejected and we now swapped back to Client
+    /// Starts a listen-and-answer-loop as server; stay in loop unless something
+    /// weird happens, or a swap request from client was received and accepted,
+    /// or the swap request that was just made as a client (and we swapped to Server)
+    /// was rejected and we now swapped back to Client
     /// </summary>
-    /// <returns></returns>
+    /// <returns>true if we must go on as a client, false if something weird ended the loop</returns>
     public async Task DoListenLoopAsSvrAsync()
     {
         IsBusy = true;
@@ -429,7 +447,8 @@ public partial class MainPageViewModel : BaseViewModel
     {
         MsgSvrClBase msgSvrClToSend;
         
-        msgSvrClToSend = new MsgSvrClPathInfoRequest(MauiProgram.Info.SvrPathParts);
+        msgSvrClToSend = new MsgSvrClPathInfoRequest(MauiProgram.Settings.ConnClientGuid,
+                                MauiProgram.Info.SvrPathParts);
 
         var lisFolders = new List<string>();
         var lisFiles = new List<string>();
@@ -442,19 +461,29 @@ public partial class MainPageViewModel : BaseViewModel
         while (true)
         {
             int seqNr;
-            Log($"client: sending to server: {msgSvrClToSend.GetType()}");
-            byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
-                                msgSvrClToSend.Bytes);
-            LblInfo1 = "";
-            if (byRecieved.Length == 0)
-            {
-                DisconnectAndResetOnClient();
-                return false;
-            }
-            LblInfo2 = "receiving path info from server ...";
 
-            MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
-            Log($"client: received from server: {msgSvrClAnswer.GetType()}");
+            //JEEWEE
+            //Log($"client: sending to server: {msgSvrClToSend.GetType()}");
+            //byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
+            //                    msgSvrClToSend.Bytes);
+            //LblInfo1 = "";
+            //if (byRecieved.Length == 0)
+            //{
+            //    DisconnectAndResetOnClient();
+            //    return false;
+            //}
+            //LblInfo2 = "receiving path info from server ...";
+
+            //MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
+            //Log($"client: received from server: {msgSvrClAnswer.GetType()}");
+            //if (await OthersideIsDisconnected_msgbox_Async(msgSvrClAnswer))
+            //    break;
+
+            LblInfo2 = "receiving path info from server ...";
+            MsgSvrClBase msgSvrClAnswer = await SndFromClientRecieve_msgbxs_Async(
+                                msgSvrClToSend);
+            if (msgSvrClAnswer == null)
+                break;
             if (msgSvrClAnswer is MsgSvrClAbortedConfirmation)
                 break;
 
@@ -469,7 +498,6 @@ public partial class MainPageViewModel : BaseViewModel
             else
             {
                 msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
-                Log($"client: received bytes: {byRecieved.Length}, MsgSvrClPathInfoAnswer");
 
                 ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizes(
                         out seqNr, out bool isSvrWritable, out bool isLast, out string[] folderNames, out string[] fileNames, out long[] fileSizes);
@@ -527,22 +555,32 @@ public partial class MainPageViewModel : BaseViewModel
 
         msgSvrClToSend = new MsgSvrClSwapRequest();
 
-        LblInfo1 = "sending swap request to server ...";
-        Log($"client: sending to server: {msgSvrClToSend.GetType()}");
-        byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
-                            msgSvrClToSend.Bytes);
-        LblInfo1 = "";
-        if (byRecieved.Length == 0)
-        {
-            DisconnectAndResetOnClient();
+        //JEEWEE
+        //LblInfo1 = "sending swap request to server ...";
+        //Log($"client: sending to server: {msgSvrClToSend.GetType()}");
+        //byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
+        //                    msgSvrClToSend.Bytes);
+        //LblInfo1 = "";
+        //if (byRecieved.Length == 0)
+        //{
+        //    DisconnectAndResetOnClient();
+        //    return false;
+        //}
+
+        MsgSvrClBase msgSvrClAnswer = await SndFromClientRecieve_msgbxs_Async(
+                            msgSvrClToSend);
+        if (msgSvrClAnswer == null)
             return false;
-        }
+
         LblInfo2 = "receiving recieve confirmation from server ...";
 
         // should recieve MsgSvrClSwapReqReceivedConfirm; on server now
         // appears a dialog to see whether they agree
-        MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
-        Log($"client: received from server: {msgSvrClAnswer.GetType()}");
+
+        //JEEWEE
+        //MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
+        //Log($"client: received from server: {msgSvrClAnswer.GetType()}");
+
         LblInfo2 = "received recieve confirmation from server";
 
         return true;
@@ -621,23 +659,32 @@ public partial class MainPageViewModel : BaseViewModel
 
             while (true)
             {
-                byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
-                                    msgSvrCl.Bytes);
-                if (byRecieved.Length == 0)
+                //JEEWEE
+                //byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
+                //                    msgSvrCl.Bytes);
+                //if (byRecieved.Length == 0)
+                //{
+                //    //exception msg was displayed
+                //    copyMgr.ClientAbort(copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR);
+                //    return;
+                //}
+
+                //MsgSvrClBase msgSvrClRecieved = MsgSvrClBase.CreateFromBytes(byRecieved);
+
+                MsgSvrClBase msgSvrClRecieved = await SndFromClientRecieve_msgbxs_Async(
+                                msgSvrCl);
+                if (null == msgSvrClRecieved)
                 {
                     //exception msg was displayed
                     copyMgr.ClientAbort(copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR);
                     return;
                 }
-
-                MsgSvrClBase msgSvrClRecieved = MsgSvrClBase.CreateFromBytes(byRecieved);
                 if (msgSvrClRecieved is MsgSvrClAbortedConfirmation)
                     break;
 
                 Type expectedType = copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
                     typeof(MsgSvrClCopyAnswer) : typeof(MsgSvrClCopyToSvrConfirmation);
                 msgSvrClRecieved.CheckExpectedTypeMaybeThrow(expectedType);
-                Log($"client: received bytes: {byRecieved.Length}, {expectedType}");
 
                 if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
                 {
@@ -725,17 +772,60 @@ public partial class MainPageViewModel : BaseViewModel
 
 
 
+    //JEEWEE
+    ///// <summary>
+    ///// Sends bytes to server and receives bytes. If exception, displays alert and returns [0] bytes
+    ///// </summary>
+    ///// <param name="sendBytes"></param>
+    ///// <returns></returns>
+    //protected async Task<byte[]> SndFromClientRecieve_msgbxs_Async(byte[] sendBytes)
+    //{
+    //    try
+    //    {
+    //        int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
+
+    //        Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
+
+    //        UdpReceiveResult response = await _udpClient.ReceiveAsync(
+    //                MauiProgram.Settings.TimeoutSecsClient);
+
+    //        Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
+
+    //        return response.Buffer;
+    //    }
+    //    catch (OperationCanceledException)
+    //    {
+    //        string errMsg = $"Response from server timed out";
+    //        await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+    //    }
+    //    catch (Exception exc)
+    //    {
+    //        Log("client: exception; LblInfo1=" + LblInfo1);
+    //        Log("client: exception; LblInfo2=" + LblInfo2);
+    //        string errMsg = $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
+    //        await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+    //    }
+
+    //    return new byte[0];
+    //}
+
+
+
     /// <summary>
-    /// Sends bytes to server and receives bytes. If exception, displays alert and returns [0] bytes
+    /// Sends bytes to server and receives bytes. If exception, or other side disconnected,
+    /// displays alert and returns null
     /// </summary>
-    /// <param name="sendBytes"></param>
+    /// <param name="sendMsgSvrCl"></param>
     /// <returns></returns>
-    protected async Task<byte[]> SndFromClientRecieve_msgbxs_Async(byte[] sendBytes)
+    protected async Task<MsgSvrClBase> SndFromClientRecieve_msgbxs_Async(
+                MsgSvrClBase sendMsgSvrCl)
     {
         try
         {
-            int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
-
+            LblInfo1 = "";
+            LblInfo2 = "";
+            Log($"client: sending to server: {sendMsgSvrCl.GetType()}");
+            int iResult = await _udpClient.SendAsync(sendMsgSvrCl.Bytes, sendMsgSvrCl.Bytes.Length);
             Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
 
             UdpReceiveResult response = await _udpClient.ReceiveAsync(
@@ -743,7 +833,18 @@ public partial class MainPageViewModel : BaseViewModel
 
             Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
 
-            return response.Buffer;
+            if (response.Buffer.Length == 0)
+            {
+                throw new Exception($"Answer from server seems empty for unknown reason");
+            }
+
+            MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response.Buffer);
+            Log($"client: received from server: {msgSvrClAnswer.GetType()}");
+            
+            if (await OthersideIsDisconnected_msgbox_Async(msgSvrClAnswer))
+                return null;
+
+            return msgSvrClAnswer;
         }
         catch (OperationCanceledException)
         {
@@ -756,10 +857,15 @@ public partial class MainPageViewModel : BaseViewModel
             Log("client: exception; LblInfo2=" + LblInfo2);
             string errMsg = $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
             await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+            DisconnectAndResetOnClient();
         }
 
-        return new byte[0];
+        return null;
     }
+
+
+
+
 
 
 
@@ -786,14 +892,18 @@ public partial class MainPageViewModel : BaseViewModel
             }
             catch (OperationCanceledException)
             {
-                return MauiProgram.Info.AppIsShuttingDown;
+                return MauiProgram.Info.AppIsShuttingDown;  // true to break loop, false to listen another minute
             }
 
-            if (_rememberClientRemoteEnd)
+            // Client can restart, and connect another time; in that case its IPEndPoint changes.
+            // If _udpServer.IPEndPoint is null, client/server were swapped and then the
+            // receiver's IPEndPoint must NOT be used
+            if (_rememberClientRemoteEnd || _udpServer.IPEndPoint != null)
             {
                 _udpServer.SetClientRemoteEnd(received.RemoteEndPoint);
                 _rememberClientRemoteEnd = false;
             }
+
             msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
             
             MsgSvrClBase msgSvrClAns = null;
@@ -801,6 +911,11 @@ public partial class MainPageViewModel : BaseViewModel
             string sendWhatStr = "";
 
             // React on different types of messages:
+            if (await OthersideIsDisconnected_msgbox_Async(msgSvrCl))
+            {
+                return false;       // stay in loop
+            }
+
             if (msgSvrCl is MsgSvrClStringSend)
             {
                 string receivedTxt = ((MsgSvrClStringSend)msgSvrCl).GetString();
@@ -812,32 +927,48 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 _seqNrPathInfoAns = 0;
 
-                string[] svrSubParts = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
+                string[] svrSubParts = ((MsgSvrClPathInfoRequest)msgSvrCl).GetConnclientguidAndSvrSubParts(
+                    out Guid connClientGuid);
+
+                if (Guid.Empty == MauiProgram.Info.SvrReceivedClientGuid)
+                {
+                    MauiProgram.Info.SvrReceivedClientGuid = connClientGuid;
+                }
 
                 LblInfo1 = "received: path info request, relpath='" +
-                        String.Join("/", svrSubParts) + "'";
-#if ANDROID
-                if (null != _threadAndroidPathInfo &&
-                        _threadAndroidPathInfo.ThreadState == System.Threading.ThreadState.Running)
+                            String.Join("/", svrSubParts) + "'";
+
+                if (connClientGuid != MauiProgram.Info.SvrReceivedClientGuid)
                 {
                     msgSvrClAns = new MsgSvrClErrorAnswer(
-                        $"Server: path info request: not yet possible because of aborted previous request");
-                    sendWhatStr = "ERRORMSG (previous aborted thread still active)";
+                        $"Server: already connected to different client");
+                    sendWhatStr = "ERRORMSG (request from different client)";
                 }
                 else
                 {
-                    _threadAndroidPathInfo = new Thread(() => GetFileOrFolderDataArray(
-                                svrSubParts));
-                    _threadAndroidPathInfo.Start();
-                    msgSvrClAns = new MsgSvrClPathInfoAndroidBusy(_seqNrPathInfoAns++);
-                }
+
+#if ANDROID
+                    if (null != _threadAndroidPathInfo &&
+                            _threadAndroidPathInfo.ThreadState == System.Threading.ThreadState.Running)
+                    {
+                        msgSvrClAns = new MsgSvrClErrorAnswer(
+                            $"Server: path info request: not yet possible because of aborted previous request");
+                        sendWhatStr = "ERRORMSG (previous aborted thread still active)";
+                    }
+                    else
+                    {
+                        _threadAndroidPathInfo = new Thread(() => GetFileOrFolderDataArray(
+                                    svrSubParts));
+                        _threadAndroidPathInfo.Start();
+                        msgSvrClAns = new MsgSvrClPathInfoAndroidBusy(_seqNrPathInfoAns++);
+                    }
 
 #else
-                // on Windows there is no performance trouble
-                GetFileOrFolderDataArray(svrSubParts);
-                msgSvrClAns = HandleFileOrFolderDataArrayOnSvr(out sendWhatStr);
+                    // on Windows there is no performance trouble
+                    GetFileOrFolderDataArray(svrSubParts);
+                    msgSvrClAns = HandleFileOrFolderDataArrayOnSvr(out sendWhatStr);
 #endif
-
+                }
             }
             else if (msgSvrCl is MsgSvrClPathInfoAndroidStillBusyInq)
             {
@@ -965,9 +1096,6 @@ public partial class MainPageViewModel : BaseViewModel
 
             LblInfo2 = $"sending {sendWhatStr} ...";
             Log($"server: going to send bytes: {msgSvrClAns.Bytes.Length}, {msgSvrClAns.GetType()}");
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            //await _udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
-            //            received.RemoteEndPoint);
             await _udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
             LblInfo2 = $"sent: {sendWhatStr}";
 
@@ -987,9 +1115,6 @@ public partial class MainPageViewModel : BaseViewModel
                 // rejected: send message to the client that now also is server, so that it
                 // switches back to client
                 msgSvrClAns = new MsgSvrClSwapRejectedBySvr();
-                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                //await _udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length,
-                //            received.RemoteEndPoint);
                 await _udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
             }
         }
@@ -1004,8 +1129,6 @@ public partial class MainPageViewModel : BaseViewModel
                 await Shell.Current.DisplayAlert("Server: error receiving message or sending answer",
                             MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
             }
-
-            return true;
         }
 
         return false;
@@ -1190,6 +1313,24 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+    /// <summary>
+    /// Returns true if msgSvrCl is MsgSvrClDisconnInfo, else false
+    /// If true, displays alert
+    /// </summary>
+    /// <param name="msgSvrCl"></param>
+    /// <returns></returns>
+    protected async Task<bool> OthersideIsDisconnected_msgbox_Async(MsgSvrClBase msgSvrCl)
+    {
+        if (!(msgSvrCl is MsgSvrClDisconnInfo))
+            return false;
+
+        string logLine = MauiProgram.Settings.ModeIsServer ?
+                "Client has disconnected (might be restarted and reconnected)" :
+                "Server has disconnected";
+        Log(logLine);
+        await Shell.Current.DisplayAlert("Disconnected", logLine, "OK");
+        return true;
+    }
 
 
     protected static string GetJsonProp(string strJson, string propName)
@@ -1212,6 +1353,7 @@ public partial class MainPageViewModel : BaseViewModel
     {
         protected UdpClient _udpClient;       // also for server
         protected IPEndPoint _ipEndPoint = null;
+        public IPEndPoint IPEndPoint { get => _ipEndPoint; }
 
         public UdpWrapper(UdpClient udpClient)
         {

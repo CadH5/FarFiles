@@ -57,7 +57,7 @@ public partial class ClientViewModel : BaseViewModel
             _moreButtonsMode = value;
             IsBusy = value;         // to disable/enable CollectionView
             OnPropertyChanged();
-            ContentPageRef.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode,
+            ContentPageRef?.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode,
                     CopyToFromSvrMode);
         }
     }
@@ -69,7 +69,7 @@ public partial class ClientViewModel : BaseViewModel
         {
             IsBusy = value;
             OnPropertyChanged();
-            ContentPageRef.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode,
+            ContentPageRef?.SetValuesForUpdpgDoUpd(IsBusy, MoreButtonsMode,
                     CopyToFromSvrMode);
         }
     }
@@ -138,7 +138,7 @@ public partial class ClientViewModel : BaseViewModel
         foreach (FileOrFolderData fi in MauiProgram.Info.CurrSvrFiles)
             FfColl.Add(new FfCollViewItem(fi));
 
-        ContentPageRef.ClrAll(FfColl);
+        ContentPageRef?.ClrAll(FfColl);
 
         //JEEWEE
         //ContentPageRef?.DoWeird(FfColl);        // otherwise sometimes items in new contents seem selected
@@ -172,21 +172,21 @@ public partial class ClientViewModel : BaseViewModel
     [RelayCommand]
     void ClrAll()
     {
-        ContentPageRef.ClrAll(FfColl);
+        ContentPageRef?.ClrAll(FfColl);
     }
 
 
     [RelayCommand]
     void SelectAll()
     {
-        ContentPageRef.SelectAll(FfColl);
+        ContentPageRef?.SelectAll(FfColl);
         MoreButtonsMode = false;
     }
 
     [RelayCommand]
     void SelectFltr()
     {
-        ContentPageRef.SelectFltr(FfColl, TxtSelectFltr);
+        ContentPageRef?.SelectFltr(FfColl, TxtSelectFltr);
         MoreButtonsMode = false;
     }
 
@@ -240,7 +240,7 @@ public partial class ClientViewModel : BaseViewModel
         {
             IsBusyPlus = false;
             UpdateCollView();
-            ContentPageRef.UpdatePage();
+            ContentPageRef?.UpdatePage();
         }
     }
 
@@ -249,6 +249,8 @@ public partial class ClientViewModel : BaseViewModel
     async Task GotoDirAsync()
     {
         if (IsBusy)
+            return;
+        if (null == ContentPageRef)
             return;
 
         try
@@ -288,7 +290,7 @@ public partial class ClientViewModel : BaseViewModel
             IsBusyPlus = false;
             IsProgressing = false;
             UpdateCollView();
-            ContentPageRef.UpdatePage();
+            ContentPageRef?.UpdatePage();
         }
     }
 
@@ -343,6 +345,8 @@ public partial class ClientViewModel : BaseViewModel
     async Task CopyAsync()
     {
         if (IsBusy)
+            return;
+        if (null == ContentPageRef)
             return;
 
         try

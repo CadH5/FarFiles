@@ -65,6 +65,11 @@ namespace FarFiles.Model
                         "MsgSvrClErrorAnswer errmsgs");
 
 
+                // MsgSvrClDisconnInfo
+                msgSvrCl = new MsgSvrClDisconnInfo();
+                AssertEq(wrLog, MsgSvrClType.DISCONN_INFO, msgSvrCl.Type,
+                        "MsgSvrClDisconnInfo.Type");
+
                 // MsgSvrClStringSend
                 string strToSend = "str to send";
                 msgSvrCl = new MsgSvrClStringSend(strToSend);
@@ -84,18 +89,25 @@ namespace FarFiles.Model
                 // MsgSvrClPathInfoRequest
                 string[] svrPathPartsIn = new string[] { "" };
                 string[] svrPathPartsOut;
-                msgSvrCl = new MsgSvrClPathInfoRequest(svrPathPartsIn);
+                Guid guidIn = new Guid();
+                msgSvrCl = new MsgSvrClPathInfoRequest(guidIn, svrPathPartsIn);
                 AssertEq(wrLog, MsgSvrClType.PATHINFO_REQ, msgSvrCl.Type,
                         "MsgSvrClPathInfoRequest.Type");
-                svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
+                svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetConnclientguidAndSvrSubParts(
+                        out Guid guidOut);
                 AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
                         "MsgSvrClPathInfoRequest svrPathParts");
+                AssertEq(wrLog, guidIn, guidOut,
+                        "MsgSvrClPathInfoRequest guid");
 
                 svrPathPartsIn = new string[] { "aaa", "bb" };
-                msgSvrCl = new MsgSvrClPathInfoRequest(svrPathPartsIn);
-                svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetSvrSubParts();
+                msgSvrCl = new MsgSvrClPathInfoRequest(guidIn, svrPathPartsIn);
+                svrPathPartsOut = ((MsgSvrClPathInfoRequest)msgSvrCl).GetConnclientguidAndSvrSubParts(
+                        out guidOut);
                 AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
                         "MsgSvrClPathInfoRequest svrPathParts");
+                AssertEq(wrLog, guidIn, guidOut,
+                        "MsgSvrClPathInfoRequest guid");
 
                 // MsgSvrClPathInfoNextpartRequest
                 msgSvrCl = new MsgSvrClPathInfoNextpartRequest();
