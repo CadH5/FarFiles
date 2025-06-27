@@ -48,23 +48,6 @@ namespace FarFiles.Platforms.Android
             return (BinaryReader)GetBinaryReaderOrWriterFromUriAndSubpath(false,
                     androidUri, dirNamesSubPath, fileName,
                     false, out bool fileExistedBeforeDummy);
-            //JEEWEE
-            //try
-            //{
-            //    DocumentFile documentFile = GetDocumentFileFromUriAndSubpath(androidUri,
-            //            dirNamesSubPath, false, fileName);
-            //    var context = global::Android.App.Application.Context;
-            //    var stream = context.ContentResolver.OpenInputStream(documentFile.Uri);
-            //    if (stream == null)
-            //        throw new InvalidOperationException("Cannot create reader stream");
-            //    return new BinaryReader(stream);
-            //}
-            //catch (Exception exc)
-            //{
-            //    throw new InvalidOperationException("Exception trying to read " +
-            //            FileDataService.DispRelPath(dirNamesSubPath, fileName) +
-            //            ": " + exc.Message);
-            //}
         }
 
 

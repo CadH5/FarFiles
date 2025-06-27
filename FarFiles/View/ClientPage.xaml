@@ -22,12 +22,6 @@
         ColumnSpacing="5"
         RowDefinitions="30,30,30,30,Auto,60,10,Auto,*"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
-        <!--JEEWEE-->
-        <!--RowSpacing="5"-->
-        <!--<RefreshView
-            Grid.ColumnSpan="2"
-            IsRefreshing="{Binding IsRefreshing}"
-            Command="{Binding GetFilesCommand}">-->
 
             <Label Grid.Row="0" Text="{Binding TxtLocalRoot}" />
             <Label Grid.Row="1" Text="{Binding TxtSvrPath}" />
@@ -104,8 +98,8 @@
                             Style="{StaticResource ButtonOutline}"
                             x:Name="BtnAbort"></Button>
             </StackLayout>
-        
-            <CollectionView x:Name="FfCollView"
+
+        <CollectionView x:Name="FfCollView"
                         Grid.Row="8"
                         ItemsSource="{Binding FfColl}"
                         SelectionMode="Multiple"
@@ -114,46 +108,43 @@
                         IsEnabled="{Binding IsNotBusy}"
                         VerticalScrollBarVisibility="Always">
 
-                    <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="viewmodel:FfCollViewItem">
-                        <!--<Grid Padding="10" ColumnSpacing="10">-->
-                        <Grid Padding="3" x:Name="ItemGrid">
-                            <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="60" />
-                                    <!-- Image -->
-                                    <ColumnDefinition Width="*" />
-                                    <!-- Main Text -->
-                                    <ColumnDefinition Width="100" />
-                                    <!-- Right Text -->
-                            </Grid.ColumnDefinitions>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="viewmodel:FfCollViewItem">
+                    <!--<Grid Padding="10" ColumnSpacing="10">-->
+                    <Grid Padding="3" x:Name="ItemGrid">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="60" />
+                            <!-- Image -->
+                            <ColumnDefinition Width="*" />
+                            <!-- Main Text -->
+                            <ColumnDefinition Width="100" />
+                            <!-- Right Text -->
+                        </Grid.ColumnDefinitions>
 
-                            <Grid.Triggers>
-                                <DataTrigger TargetType="Grid" Binding="{Binding IsSelected}" Value="True">
-                                    <Setter Property="BackgroundColor" Value="#88FF88" />
-                                </DataTrigger>
-                            </Grid.Triggers>
+                        <Grid.Triggers>
+                            <DataTrigger TargetType="Grid" Binding="{Binding IsSelected}" Value="True">
+                                <Setter Property="BackgroundColor" Value="#88FF88" />
+                            </DataTrigger>
+                        </Grid.Triggers>
 
-                            <Image Source="{Binding FfData.ImageSrc}" 
+                        <Image Source="{Binding FfData.ImageSrc}" 
                                     WidthRequest="30" HeightRequest="20"
                                     Grid.Column="0" />
 
-                            <Label Text="{Binding FfData.Name}" 
+                        <Label Text="{Binding FfData.Name}" 
                                     VerticalOptions="Center"
                                     Grid.Column="1" />
 
-                            <!--FontSize="16"-->
+                        <!--FontSize="16"-->
 
-                            <Label Text="{Binding FfData.FormatFileSize}" 
+                        <Label Text="{Binding FfData.FormatFileSize}" 
                                        VerticalOptions="Center"
                                         Grid.Column="2" />
-                            <!--HorizontalOptions="End"-->
-                        </Grid>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-
-        
-        <!--</RefreshView>-->
+                        <!--HorizontalOptions="End"-->
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
 
         <ActivityIndicator
             Grid.RowSpan="2"

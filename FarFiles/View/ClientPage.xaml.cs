@@ -1,6 +1,4 @@
-﻿//JEEWEE
-//using static ObjCRuntime.Dlfcn;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Reflection.Metadata;
 
 namespace FarFiles;

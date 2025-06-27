@@ -1,13 +1,9 @@
-﻿//JEEWEE
-//using CoreFoundation;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-//JEEWEE
-//using static CoreFoundation.DispatchSource;
 
 namespace FarFiles.Model
 {
@@ -265,16 +261,6 @@ namespace FarFiles.Model
 
         public static string StrPlusLenFromBytes(byte[] bytes, ref int index)
         {
-
-            //JEEWEE
-        //    string ret = StrPlusLenFromBytes(bytes, index);
-        //    index += 4 + ret.Length;
-        //    return ret;
-        //}
-
-        //public static string StrPlusLenFromBytes(byte[] bytes, int indexStart = 0)
-        //{
-
             int lenHdr = sizeof(int) + 1;
             if (bytes.Length - index < lenHdr)
                 throw new Exception(
@@ -495,7 +481,6 @@ namespace FarFiles.Model
     /// <summary>
     /// MsgSvrClPathInfoRequest
     /// Always first message by which client tries to connect to server.
-    /// JEEWEE! Client must send msg to server when it disconnects.
     /// Server must refuse if it is already connected
     /// </summary>
     public class MsgSvrClPathInfoRequest : MsgSvrClBase

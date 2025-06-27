@@ -139,9 +139,6 @@ public partial class ClientViewModel : BaseViewModel
             FfColl.Add(new FfCollViewItem(fi));
 
         ContentPageRef?.ClrAll(FfColl);
-
-        //JEEWEE
-        //ContentPageRef?.DoWeird(FfColl);        // otherwise sometimes items in new contents seem selected
     }
 
 
@@ -232,8 +229,6 @@ public partial class ClientViewModel : BaseViewModel
         }
         catch (Exception exc)
         {
-            //JEEWEE
-            //Debug.WriteLine($"Unable to goto dir: {exc.Message}");
             await Shell.Current.DisplayAlert("Error!", exc.Message, "OK");
         }
         finally
@@ -281,8 +276,6 @@ public partial class ClientViewModel : BaseViewModel
         }
         catch (Exception exc)
         {
-            //JEEWEE
-            //Debug.WriteLine($"Unable to goto dir: {exc.Message}");
             await Shell.Current.DisplayAlert("Error!", exc.Message, "OK");
         }
         finally

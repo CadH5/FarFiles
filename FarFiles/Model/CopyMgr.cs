@@ -13,9 +13,6 @@ namespace FarFiles.Model
 {
     public enum StartCode
     {
-        //JEEWEE
-        //ERROR,          // followed by string (errMsg)
-        
         CDPATH,         // followed by string (relativepath to cd to)
         FOLDER,         // followed by string (relativepath incl name), DateTime (Creation), DataTime (LastWrite)
         FILE,           // followed by string (name), long (size), int (FileAttr), DateTime (Creation), DataTime (LastWrite), compressedparts
@@ -56,12 +53,6 @@ namespace FarFiles.Model
         public int ClientTotalNumFilesToCopyFromOrTo { get; protected set; } = 0;
         public bool ClientAborted { get; protected set; } = false;
 
-        //JEEWEE
-        //public int NumFoldersCreated { get; protected set; } = 0;
-        //public int NumFilesCreated { get; protected set; } = 0;
-        //public int NumFilesOverwritten { get; protected set; } = 0;
-        //public int NumFilesSkipped { get; protected set; } = 0;
-        //public int NumDtProblems { get; protected set; } = 0;
         public CopyCounters Nums { get; protected set; } = new CopyCounters();
 
         public List<string> ErrMsgs = new List<string>();
@@ -211,10 +202,6 @@ namespace FarFiles.Model
                         }
                         catch (Exception exc)
                         {
-                            //JEEWEE
-                            //_bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
-                            //_bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
-                            //    $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', file '{fileName}': {exc.Message}"));
                             ErrMsgs.Add(
                                 $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', file '{_currFileNameOnDestOrSrc}': {exc.Message}");
                         }
@@ -257,11 +244,6 @@ namespace FarFiles.Model
                         }
                         catch (Exception exc)
                         {
-                            //JEEWEE
-                            //_bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.ERROR));
-                            //_bufSvrMsg.AddRange(MsgSvrClBase.StrPlusLenToBytes(
-                            //    $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', folder '{folderName}': {exc.Message}"));
-
                             ErrMsgs.Add(
                                 $"Error with copy, relpath: '{currNavLevel.JoinedSvrSubPartsVisibleToClient}', folder '{folderName}': {exc.Message}");
 
@@ -328,12 +310,6 @@ namespace FarFiles.Model
 
                 switch (code)
                 {
-                    //JEEWEE
-                    //case (short)StartCode.ERROR:
-                    //    string errMsg = MsgSvrClBase.StrPlusLenFromBytes(data, ref idxData);
-                    //    ErrMsgs.Add(errMsg);
-                    //    break;
-
                     case (short)StartCode.CDPATH:
                     case (short)StartCode.FOLDER:
                         DateTime dtCreation = DateTime.MinValue;
@@ -367,15 +343,6 @@ namespace FarFiles.Model
                                 Nums.FoldersCreated++;
                             }
                             Nums.DtProblems += dtCreatedProblems;
-
-                            //JEEWEE
-                            //if (!Directory.Exists(_currPathOnDestWin))
-                            //{
-                            //    Directory.CreateDirectory(_currPathOnDestWin);
-                            //    Nums.DtProblems += _fileDataService.SetDateTimesWindows(_currPathOnDestWin,
-                            //        true, dtCreation, dtLastWrite);
-                            //    Nums.FoldersCreated++;
-                            //}
                         }
                         break;
 
@@ -394,15 +361,6 @@ namespace FarFiles.Model
 
                         CloseWriterIfNotNull();
 
-                        //JEEWEE ANDROID
-                        //_currFileExistedBefore = File.Exists(_currFileFullPathOnDestWin);
-                        //if (_currFileExistedBefore && 1 == _idx0isOverwr1isSkip)
-                        //{
-                        //    Nums.FilesSkipped++;
-                        //    // and _writer stays null
-                        //}
-                        //else
-                        //{
                         try
                         {
                             _writer = _fileDataService.OpenBinaryWriterGeneric(
@@ -689,11 +647,6 @@ namespace FarFiles.Model
             public int CurrIdxFolders { get; set; } = 0;
 
 
-            //JEEWEE
-            //public string PathOnSvrWindows { get => _settings.PathFromRootAndSubPartsWindows(
-            //            SvrSubParts);
-            //}
-
             public string JoinedSvrSubPartsVisibleToClient { get => String.Join("/", SvrSubParts,
                     IdxStartClientpathInSvrSubParts,
                     SvrSubParts.Length - IdxStartClientpathInSvrSubParts); }
@@ -702,19 +655,6 @@ namespace FarFiles.Model
             {
                 get => String.Join("/", SvrSubParts);
             }
-
-            //JEEWEE SEEMS UNUSED
-            //public string[] SvrSubPartsVisibleToClient
-            //{
-            //    get
-            //    {
-            //        int len = SvrSubParts.Length - IdxStartClientpathInSvrSubParts;
-            //        var retArr = new string[len];
-            //        Array.Copy(SvrSubParts, IdxStartClientpathInSvrSubParts, retArr, 0, len);
-            //        return retArr;
-            //    }
-            //}
-
 
 
 

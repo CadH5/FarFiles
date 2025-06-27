@@ -5,8 +5,6 @@ using Microsoft.Maui.Controls.PlatformConfiguration;
 using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Net.Http.Json;
-//JEEWEE
-//using Xamarin.Google.Crypto.Tink.Subtle;
 
 namespace FarFiles.Services;
 
@@ -35,9 +33,6 @@ public class FileDataService
     {
         List<Model.FileOrFolderData> dataList = new();
 
-        //JEEWEE
-        //try
-        //{
         DocumentFile[] docusSubdirs = _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
                     androidUriRoot, dirNamesSubPath, true).ToArray();
         DocumentFile[] docusFiles = _androidFileAccessHelper.ListDocumentFilesInUriAndSubpath(
@@ -52,13 +47,6 @@ public class FileDataService
             }
         }
 
-        //JEEWEE
-        //}
-        //catch (Exception exc)
-        //{
-        //    return new FileOrFolderData[] { new FileOrFolderData(exc) };
-        //}
-
         return dataList.ToArray();
     }
 
@@ -70,10 +58,6 @@ public class FileDataService
     public FileOrFolderData[] GetFilesAndFoldersDataWindows(string fullRootPathDir)
     {
         List<Model.FileOrFolderData> dataList = new();
-
-        //JEEWEE
-        //try
-        //{
 
         string[] fullPathSubdirs = Directory.GetDirectories(fullRootPathDir);
         string[] fullPathFiles = Directory.GetFiles(fullRootPathDir, "*", SearchOption.TopDirectoryOnly);
@@ -89,13 +73,6 @@ public class FileDataService
                         i == 0));
             }
         }
-
-        //JEEWEE
-        //}
-        //catch (Exception exc)
-        //{
-        //    return new FileOrFolderData[] { new FileOrFolderData(exc) };
-        //}
 
         return dataList.ToArray();
     }
@@ -304,9 +281,6 @@ public class FileDataService
             object androidUriRoot, string[] subParts, string name,
             bool isDir)
     {
-        //JEEWEE
-        //try
-        //{
 #if ANDROID
         DocumentFile documentFile = _androidFileAccessHelper.GetDocumentFileFromUriAndSubpath(
                     (Android.Net.Uri)androidUriRoot, subParts, isDir, name,
@@ -320,12 +294,6 @@ public class FileDataService
                     File.GetAttributes(fullPath),
                     File.GetCreationTime(fullPath), File.GetLastWriteTime(fullPath));
 #endif
-        //JEEWEE
-        //}
-        //catch (Exception exc)
-        //{
-        //    return new FileOrFolderData(exc);
-        //}
     }
 
 

@@ -183,11 +183,6 @@ public partial class MainPageViewModel : BaseViewModel
             var folderPickerResult = await FolderPicker.PickAsync("");
             if (!folderPickerResult.IsSuccessful)
             {
-                //JEEWEE
-                //{
-                //    throw new Exception($"FolderPicker not successful or cancelled");
-                //}
-
                 return;         // almost certainly not an error; user cancelled
             }
 
@@ -462,23 +457,6 @@ public partial class MainPageViewModel : BaseViewModel
         {
             int seqNr;
 
-            //JEEWEE
-            //Log($"client: sending to server: {msgSvrClToSend.GetType()}");
-            //byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
-            //                    msgSvrClToSend.Bytes);
-            //LblInfo1 = "";
-            //if (byRecieved.Length == 0)
-            //{
-            //    DisconnectAndResetOnClient();
-            //    return false;
-            //}
-            //LblInfo2 = "receiving path info from server ...";
-
-            //MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
-            //Log($"client: received from server: {msgSvrClAnswer.GetType()}");
-            //if (await OthersideIsDisconnected_msgbox_Async(msgSvrClAnswer))
-            //    break;
-
             LblInfo2 = "receiving path info from server ...";
             MsgSvrClBase msgSvrClAnswer = await SndFromClientRecieve_msgbxs_Async(
                                 msgSvrClToSend);
@@ -555,18 +533,6 @@ public partial class MainPageViewModel : BaseViewModel
 
         msgSvrClToSend = new MsgSvrClSwapRequest();
 
-        //JEEWEE
-        //LblInfo1 = "sending swap request to server ...";
-        //Log($"client: sending to server: {msgSvrClToSend.GetType()}");
-        //byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
-        //                    msgSvrClToSend.Bytes);
-        //LblInfo1 = "";
-        //if (byRecieved.Length == 0)
-        //{
-        //    DisconnectAndResetOnClient();
-        //    return false;
-        //}
-
         MsgSvrClBase msgSvrClAnswer = await SndFromClientRecieve_msgbxs_Async(
                             msgSvrClToSend);
         if (msgSvrClAnswer == null)
@@ -576,10 +542,6 @@ public partial class MainPageViewModel : BaseViewModel
 
         // should recieve MsgSvrClSwapReqReceivedConfirm; on server now
         // appears a dialog to see whether they agree
-
-        //JEEWEE
-        //MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(byRecieved);
-        //Log($"client: received from server: {msgSvrClAnswer.GetType()}");
 
         LblInfo2 = "received recieve confirmation from server";
 
@@ -659,18 +621,6 @@ public partial class MainPageViewModel : BaseViewModel
 
             while (true)
             {
-                //JEEWEE
-                //byte[] byRecieved = await SndFromClientRecieve_msgbxs_Async(
-                //                    msgSvrCl.Bytes);
-                //if (byRecieved.Length == 0)
-                //{
-                //    //exception msg was displayed
-                //    copyMgr.ClientAbort(copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR);
-                //    return;
-                //}
-
-                //MsgSvrClBase msgSvrClRecieved = MsgSvrClBase.CreateFromBytes(byRecieved);
-
                 MsgSvrClBase msgSvrClRecieved = await SndFromClientRecieve_msgbxs_Async(
                                 msgSvrCl);
                 if (null == msgSvrClRecieved)
@@ -769,45 +719,6 @@ public partial class MainPageViewModel : BaseViewModel
     {
         await Shell.Current.GoToAsync(nameof(AdvancedPage), true);
     }
-
-
-
-    //JEEWEE
-    ///// <summary>
-    ///// Sends bytes to server and receives bytes. If exception, displays alert and returns [0] bytes
-    ///// </summary>
-    ///// <param name="sendBytes"></param>
-    ///// <returns></returns>
-    //protected async Task<byte[]> SndFromClientRecieve_msgbxs_Async(byte[] sendBytes)
-    //{
-    //    try
-    //    {
-    //        int iResult = await _udpClient.SendAsync(sendBytes, sendBytes.Length);
-
-    //        Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
-
-    //        UdpReceiveResult response = await _udpClient.ReceiveAsync(
-    //                MauiProgram.Settings.TimeoutSecsClient);
-
-    //        Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
-
-    //        return response.Buffer;
-    //    }
-    //    catch (OperationCanceledException)
-    //    {
-    //        string errMsg = $"Response from server timed out";
-    //        await Shell.Current.DisplayAlert("Error", errMsg, "OK");
-    //    }
-    //    catch (Exception exc)
-    //    {
-    //        Log("client: exception; LblInfo1=" + LblInfo1);
-    //        Log("client: exception; LblInfo2=" + LblInfo2);
-    //        string errMsg = $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
-    //        await Shell.Current.DisplayAlert("Error", errMsg, "OK");
-    //    }
-
-    //    return new byte[0];
-    //}
 
 
 
@@ -1147,18 +1058,6 @@ public partial class MainPageViewModel : BaseViewModel
     {
         MsgSvrClBase msgSvrClAns;
 
-        //JEEWEE
-        //var dataWithExc = _fileOrFolderDataArrayOnSvr.Where(d => null != d.ExcThrown)
-        //            .FirstOrDefault();
-        //if (dataWithExc != null)
-        //{
-        //    _currPathInfoAnswerState = null;
-        //    msgSvrClAns = new MsgSvrClErrorAnswer(dataWithExc.ExcThrown.Message);
-        //    sendWhatStr = $"ERRORMSG ({dataWithExc.ExcThrown.Message})";
-        //}
-        //else
-        //{
-
         string[] folderNames = _fileOrFolderDataArrayOnSvr.Where(
                     d => d.IsDir).Select(d => d.Name).ToArray();
         string[] fileNames = _fileOrFolderDataArrayOnSvr.Where(
@@ -1175,9 +1074,6 @@ public partial class MainPageViewModel : BaseViewModel
         sendWhatStr = "path info " +
                 (_currPathInfoAnswerState.EndReached ?
                 "last part" : $"part {_seqNrPathInfoAns}");
-        //JEEWEE
-        //}
-
         return msgSvrClAns;
     }
 
