@@ -221,20 +221,42 @@ namespace FarFiles.Model
 
 
         /// <summary>
-        /// Convert str to bytes: first 4 bytes: length; then char by char
-        /// (so does not do unicode)
+        /// Convert str to bytes: first 4 bytes: length; then indication 1 or 2;
+        /// then 1-byte-char by 1-byte-char; But if there are chars > 255: char by char
         /// </summary>
         /// <param name="str"></param>
         /// <returns></returns>
         public static byte[] StrPlusLenToBytes(string str)
         {
-            var retArr = new byte[4 + str.Length];
-            Array.Copy(BitConverter.GetBytes(str.Length), 0, retArr, 0, 4);
-            int i = 4;
+            var retArr = new byte[sizeof(int) + 1 + str.Length];
+            Array.Copy(BitConverter.GetBytes(str.Length), 0, retArr, 0, sizeof(int));
+            int idxIndicationCharSize = sizeof(int);
+            byte indicationCharSize = 1;         // 1 byte per char
+            retArr[idxIndicationCharSize] = indicationCharSize;
+            int i = idxIndicationCharSize + 1;
             foreach (char c in str)
             {
                 uint uC = (uint)c;
-                retArr[i++] = uC > 255 ? (byte)'.' : (byte)uC;
+                if (uC > 255)
+                {
+                    indicationCharSize = 2;
+                    break;
+                }
+                retArr[i++] = (byte)uC;
+            }
+
+            if (indicationCharSize == 1)
+                return retArr;
+
+            // indicationCharSize is 2: there are UTF-16 chars in the string.
+            retArr = new byte[sizeof(int) + 1 + 2*str.Length];
+            Array.Copy(BitConverter.GetBytes(str.Length), 0, retArr, 0, sizeof(int));
+            retArr[idxIndicationCharSize] = indicationCharSize;     // is 2 here
+            i = idxIndicationCharSize + 1;
+            foreach (char c in str)
+            {
+                Array.Copy(BitConverter.GetBytes(c), 0, retArr, i, sizeof(char));
+                i += sizeof(char);
             }
 
             return retArr;
@@ -243,27 +265,44 @@ namespace FarFiles.Model
 
         public static string StrPlusLenFromBytes(byte[] bytes, ref int index)
         {
-            string ret = StrPlusLenFromBytes(bytes, index);
-            index += 4 + ret.Length;
-            return ret;
-        }
 
-        public static string StrPlusLenFromBytes(byte[] bytes, int indexStart = 0)
-        {
-            if (bytes.Length - indexStart < 4)
+            //JEEWEE
+        //    string ret = StrPlusLenFromBytes(bytes, index);
+        //    index += 4 + ret.Length;
+        //    return ret;
+        //}
+
+        //public static string StrPlusLenFromBytes(byte[] bytes, int indexStart = 0)
+        //{
+
+            int lenHdr = sizeof(int) + 1;
+            if (bytes.Length - index < lenHdr)
                 throw new Exception(
-                    $"PROGRAMMERS: StrPlusLenFromBytes: Length ({bytes.Length}) less than 4 bytes");
+                    $"PROGRAMMERS: StrPlusLenFromBytes: Length ({bytes.Length}) less than {lenHdr} bytes");
 
-            int strLen = BitConverter.ToInt32(bytes, indexStart);
-            int till = indexStart + 4 + strLen;
+            int strLen = BitConverter.ToInt32(bytes, index);
+            index += sizeof(int);
+            byte indicationCharSize = bytes[index++];
+
+            int till = index + strLen * indicationCharSize;     // supposing sizeof(char) == 2 forever
             if (bytes.Length < till)
                 throw new Exception(
                     $"PROGRAMMERS: StrPlusLenFromBytes: Length ({bytes.Length}) less than {till} bytes");
 
             string retStr = "";
-            for (int i = 4 + indexStart; i < till; i++)
+            if (indicationCharSize == 1)
             {
-                retStr += (char)bytes[i];
+                for (; index < till; index++)
+                {
+                    retStr += (char)bytes[index];
+                }
+            }
+            else if (indicationCharSize == 2)
+            {
+                for (; index < till; index += sizeof(char))
+                {
+                    retStr += BitConverter.ToChar(bytes, index);
+                }
             }
 
             return retStr;
@@ -428,7 +467,8 @@ namespace FarFiles.Model
 
         public string GetString()
         {
-            return StrPlusLenFromBytes((byte[])Bytes, 4);
+            int index = 4;
+            return StrPlusLenFromBytes((byte[])Bytes, ref index);
         }
     }
 

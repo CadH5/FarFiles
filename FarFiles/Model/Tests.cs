@@ -81,6 +81,11 @@ namespace FarFiles.Model
                 AssertEq(wrLog, "", ((MsgSvrClStringSend)msgSvrCl).GetString(),
                         "MsgSvrClStringSend empty string to send");
 
+                strToSend += (char)3000 + "end";
+                msgSvrCl = new MsgSvrClStringSend(strToSend);
+                AssertEq(wrLog, strToSend, ((MsgSvrClStringSend)msgSvrCl).GetString(),
+                        "MsgSvrClStringSend string UTF-16");
+
                 // MsgSvrClStringAnswer
                 msgSvrCl = new MsgSvrClStringAnswer();
                 AssertEq(wrLog, MsgSvrClType.STRING_ANS, msgSvrCl.Type,
