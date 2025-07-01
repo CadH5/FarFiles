@@ -1197,9 +1197,11 @@ public partial class MainPageViewModel : BaseViewModel
 
 
 
-    protected static string GetLocalIP()
+    protected static string GetLocalIP_OLD()
     {
-        // 20250309 ChatGPT composed me this:
+        // 20250309 ChatGPT composed me this, but later on (20250630) I found that there multiple
+        // addresses result, of which FirstOrDefault() is an arbitrary one. Therefor, many times
+        // a Local IP connection didn't work. Use GetLocalIP() .
         return NetworkInterface.GetAllNetworkInterfaces()
             .Where(n => n.OperationalStatus == OperationalStatus.Up) // Only active network interfaces
             .SelectMany(n => n.GetIPProperties().UnicastAddresses)
@@ -1207,6 +1209,20 @@ public partial class MainPageViewModel : BaseViewModel
             .Select(a => a.Address.ToString())
             .FirstOrDefault() ?? "";
     }
+
+
+    protected static string GetLocalIP()
+    {
+        // 20250630 ChatGPT composed me this:
+        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        socket.Connect("192.168.1.1", 65530); // must be a local IPdoesn't actually send packets
+        if (socket.LocalEndPoint is IPEndPoint endPoint)
+        {
+            return endPoint.Address.ToString();
+        }
+        return "";
+    }
+
 
 
     /// <summary>
