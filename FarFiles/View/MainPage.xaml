@@ -79,7 +79,7 @@
               ColumnDefinitions="30,Auto">
 
             <!--Border is measure to avoid CheckBox hardly visible in Android (dark theme):-->
-            <Border Padding="5"
+            <Border Padding="1"
                    BackgroundColor="#00FFDD">
                 <CheckBox IsChecked="{Binding UseSvrLocalIPClient}"
                           WidthRequest="30"
