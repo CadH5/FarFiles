@@ -296,6 +296,7 @@ public partial class MainPageViewModel : BaseViewModel
             return;
         }
 
+        string descrTrying = "";
         try
         {
             IsBusy = true;
@@ -312,6 +313,7 @@ public partial class MainPageViewModel : BaseViewModel
             int udpSvrPort = 0;
             if (MauiProgram.Settings.ModeIsServer)
             {
+                descrTrying = " obtaining udp port from stun server";
                 // server: get udp port from Stun server
                 var udpIEndPoint = await GetUdpSvrIEndPointFromStun(Settings);
                 if (null == udpIEndPoint)
@@ -321,8 +323,11 @@ public partial class MainPageViewModel : BaseViewModel
                     throw new Exception("Wrong data from Stun Server");
             }
 
+            descrTrying = " obtaining local IP";
             MauiProgram.Info.UdpSvrPort = udpSvrPort;
             MauiProgram.StrLocalIP = GetLocalIP();
+
+            descrTrying = " registering in central server";
             msg = await MauiProgram.PostToCentralServerAsync("REGISTER",
                 udpSvrPort,        // if 0 then this is client
                 MauiProgram.StrLocalIP);
@@ -336,12 +341,12 @@ public partial class MainPageViewModel : BaseViewModel
                 throw new Exception(errMsg);
             }
 
-            MauiProgram.Info.Connected = true;
             IsBusy = true;
 
             if (MauiProgram.Settings.ModeIsServer)
             {
                 // server: do conversation: in loop: listen for client msgs and response
+                descrTrying = " listening for client contact";
                 LblInfo1 = $"Connected; listening for client contact ...";
                 try
                 {
@@ -359,24 +364,29 @@ public partial class MainPageViewModel : BaseViewModel
 
                 // if we are here, then now the server/client were swapped, and now
                 // we are client
+                descrTrying = " starting to act as a client";
                 await RetrieveServerPathInfoOnClientAndOpenClientPageAsync();
             }
             else
             {
                 // client: connect to server
+                descrTrying = " connecting to server";
                 errMsg = ConnectServerFromClient();
                 if ("" != errMsg)
                 {
                     throw new Exception(errMsg);
                 }
 
+                descrTrying = " starting to act as a client";
                 _rememberClientRemoteEnd = false;   // also after swap: do not remember RemoteEndPoint
                 await RetrieveServerPathInfoOnClientAndOpenClientPageAsync();
             }
+
+            MauiProgram.Info.Connected = true;
         }
         catch (Exception exc)
         {
-            await Shell.Current.DisplayAlert("Error",
+            await Shell.Current.DisplayAlert("Error" + descrTrying,
                 MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
             LblInfo1 = "Error occurred";
             LblInfo2 = "";

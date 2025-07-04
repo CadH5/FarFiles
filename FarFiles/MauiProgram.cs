@@ -107,6 +107,13 @@ public static class MauiProgram
     {
         using (var client = new HttpClient())
         {
+            //JEEWEE
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+            client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+            client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
+            client.DefaultRequestHeaders.ConnectionClose = false;
+
             var url = "https://www.cadh5.com/farfiles/farfiles.php";
 
             var requestData = new { Cmd = strCmd, ConnectKey = Settings.ConnectKey,
