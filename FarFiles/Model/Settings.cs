@@ -34,7 +34,7 @@ namespace FarFiles.Model
         public int TimeoutSecsClient { get; set; } = 20;
 
         public int BufSizeMoreOrLess { get; set; } = 20000;
-        public bool UseSvrLocalIPClient { get; set; } = false;
+        public bool UseSvrLocalIP { get; set; } = false;
 
         /// <summary>
         /// ConnectionGuid: determined by Client, first time when not yet determined.

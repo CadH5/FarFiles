@@ -85,18 +85,20 @@ public partial class MainPageViewModel : BaseViewModel
 
     public bool IsChkLocalIPVisible
     {
-        get => IsBtnConnectVisible && ! MauiProgram.Settings.ModeIsServer;
+        //JEEWEE
+        //get => IsBtnConnectVisible && ! MauiProgram.Settings.ModeIsServer;
+        get => IsBtnConnectVisible;
     }
 
 
-    public bool UseSvrLocalIPClient
+    public bool UseSvrLocalIP
     {
-        get => Settings.UseSvrLocalIPClient;
+        get => Settings.UseSvrLocalIP;
         set
         {
-            if (Settings.UseSvrLocalIPClient != value)
+            if (Settings.UseSvrLocalIP != value)
             {
-                Settings.UseSvrLocalIPClient = value;
+                Settings.UseSvrLocalIP = value;
                 OnPropertyChanged();
             }
         }
@@ -301,8 +303,6 @@ public partial class MainPageViewModel : BaseViewModel
         {
             IsBusy = true;
 
-            string msg = "";
-
             // if ConnClientGuid is not yet in settings, determine it for this device.
             if (Guid.Empty == MauiProgram.Settings.ConnClientGuid)
             {
@@ -310,52 +310,65 @@ public partial class MainPageViewModel : BaseViewModel
                 MauiProgram.SaveSettings_donotforgettoaddnewsetting();
             }
 
-            int udpSvrPort = 0;
-            if (MauiProgram.Settings.ModeIsServer)
-            {
-                descrTrying = " obtaining udp port from stun server";
-                // server: get udp port from Stun server
-                var udpIEndPoint = await GetUdpSvrIEndPointFromStun(Settings);
-                if (null == udpIEndPoint)
-                    throw new Exception("Error getting data from Stun Server");
-                udpSvrPort = udpIEndPoint.Port;
-                if (udpSvrPort <= 0)
-                    throw new Exception("Wrong data from Stun Server");
-            }
+            // Sometimes, later on, we need to know how this instance was connected first time, before any swap
+            MauiProgram.Info.FirstModeIsServer = MauiProgram.Settings.ModeIsServer;
 
+            int udpPort = 0;
+            //JEEWEE
+            //if (MauiProgram.Settings.ModeIsServer)
+            //{
+            descrTrying = " obtaining udp port from stun server";
+            // server and client: get udp port from Stun server
+            var udpIEndPoint = await GetUdpSvrIEndPointFromStun(Settings);
+            if (null == udpIEndPoint)
+                throw new Exception("Unknown error getting data from Stun Server");
+            udpPort = udpIEndPoint.Port;
+            if (udpPort <= 0)
+                throw new Exception("Wrong data from Stun Server");
+            //JEEWEE
+            //}
+
+            MauiProgram.Info.UdpPort = udpPort;
             descrTrying = " obtaining local IP";
-            MauiProgram.Info.UdpSvrPort = udpSvrPort;
-            MauiProgram.StrLocalIP = GetLocalIP();
+            MauiProgram.Info.StrLocalIP = GetLocalIP();
 
             descrTrying = " registering in central server";
-            msg = await MauiProgram.PostToCentralServerAsync("REGISTER",
-                udpSvrPort,        // if 0 then this is client
-                MauiProgram.StrLocalIP);
+            string response = await MauiProgram.PostToCentralServerAsync("REGISTER");
 
-            string errMsg = GetJsonProp(msg, "errMsg");
-            if (String.IsNullOrEmpty(errMsg))
-                errMsg = IpDataToInfo(GetJsonProp(msg, "ipData"));
-
-            if ("" != errMsg)
-            {
-                throw new Exception(errMsg);
-            }
+            CentralSvrRespToInfoData(response);
 
             IsBusy = true;
 
             if (MauiProgram.Settings.ModeIsServer)
             {
+                // Polling is not necessary for localip
+                if (!MauiProgram.Settings.UseSvrLocalIP)
+                {
+                    // server: in loop: poll central server untill client connects
+                    descrTrying = " consulting client connection in central server";
+                    await PollCentralServerAsSvrUntilClientConnectsAsync();
+
+                    // Client has connected
+                }
+
                 // server: do conversation: in loop: listen for client msgs and response
                 descrTrying = " listening for client contact";
-                LblInfo1 = $"Connected; listening for client contact ...";
+                LblInfo1 = $"Listening for client contact ...";
                 try
                 {
-                    _udpServer = new UdpWrapper(new UdpClient(udpSvrPort));
+                    _udpServer = new UdpWrapper(new UdpClient(udpPort));
                 }
                 catch
                 {
                     _udpServer = null;
                     throw;
+                }
+
+                if (!MauiProgram.Settings.UseSvrLocalIP)
+                {
+                    // send client a dummy message("NAT hole punching")
+                    descrTrying = " NAT hole punching";
+                    await DoHolePunchingAsync(_udpServer);
                 }
 
                 await DoListenLoopAsSvrAsync();
@@ -371,7 +384,7 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 // client: connect to server
                 descrTrying = " connecting to server";
-                errMsg = ConnectServerFromClient();
+                string errMsg = await ConnectServerFromClientAsync();
                 if ("" != errMsg)
                 {
                     throw new Exception(errMsg);
@@ -396,6 +409,43 @@ public partial class MainPageViewModel : BaseViewModel
             IsBusy = false;
         }
     }
+
+
+
+    /// <summary>
+    /// Gets Json prop 'ipData' from response and sets it into Info props
+    /// Throws exception if there is an errMsg
+    /// </summary>
+    /// <param name="respFromCentralSvr"></param>
+    /// <exception cref="Exception"></exception>
+    protected void CentralSvrRespToInfoData(string respFromCentralSvr)
+    {
+        string errMsg = GetJsonProp(respFromCentralSvr, "errMsg");
+        if ("" == errMsg)
+            errMsg = IpDataToInfo(GetJsonProp(respFromCentralSvr, "ipData"));
+
+        if ("" != errMsg)
+        {
+            throw new Exception(errMsg);
+        }
+    }
+
+
+    public async Task PollCentralServerAsSvrUntilClientConnectsAsync()
+    {
+        int nTimes = 1;
+        int sleepMilliSecs = 5000;
+        while (true)
+        {
+            LblInfo1 = $"Inquiring if client connected ({nTimes++}) ...";
+            string response = await MauiProgram.PostToCentralServerAsync("GETDATA");
+            CentralSvrRespToInfoData(response);
+            if (MauiProgram.Info.UdpPortOtherside > 0)
+                return;
+            Thread.Sleep(sleepMilliSecs);
+        }
+    }
+
 
 
     /// <summary>
@@ -743,27 +793,35 @@ public partial class MainPageViewModel : BaseViewModel
     {
         try
         {
-            LblInfo1 = "";
-            LblInfo2 = "";
-            Log($"client: sending to server: {sendMsgSvrCl.GetType()}");
-            int iResult = await _udpClient.SendAsync(sendMsgSvrCl.Bytes, sendMsgSvrCl.Bytes.Length);
-            Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
-
-            UdpReceiveResult response = await _udpClient.ReceiveAsync(
-                    MauiProgram.Settings.TimeoutSecsClient);
-
-            Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
-
-            if (response.Buffer.Length == 0)
+            MsgSvrClBase msgSvrClAnswer;
+            while (true)
             {
-                throw new Exception($"Answer from server seems empty for unknown reason");
-            }
+                LblInfo1 = "";
+                LblInfo2 = "";
+                Log($"client: sending to server: {sendMsgSvrCl.GetType()}");
+                int iResult = await _udpClient.SendAsync(sendMsgSvrCl.Bytes, sendMsgSvrCl.Bytes.Length);
+                Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
 
-            MsgSvrClBase msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response.Buffer);
-            Log($"client: received from server: {msgSvrClAnswer.GetType()}");
-            
-            if (await OthersideIsDisconnected_msgbox_Async(msgSvrClAnswer))
-                return null;
+                UdpReceiveResult response = await _udpClient.ReceiveAsync(
+                        MauiProgram.Settings.TimeoutSecsClient);
+
+                Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
+
+                if (response.Buffer.Length == 0)
+                {
+                    throw new Exception($"Answer from server seems empty for unknown reason");
+                }
+
+                msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response.Buffer);
+                Log($"client: received from server: type '{msgSvrClAnswer?.GetType()}'");
+                if (null == msgSvrClAnswer)     // message should be ignored
+                    continue;
+
+                if (await OthersideIsDisconnected_msgbox_Async(msgSvrClAnswer))
+                    return null;
+
+                break;
+            }
 
             return msgSvrClAnswer;
         }
@@ -826,7 +884,11 @@ public partial class MainPageViewModel : BaseViewModel
             }
 
             msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
-            
+            if (null == msgSvrCl)   // message should be ignored
+            {
+                return false;       // stay in loop
+            }
+
             MsgSvrClBase msgSvrClAns = null;
 
             string sendWhatStr = "";
@@ -1114,37 +1176,77 @@ public partial class MainPageViewModel : BaseViewModel
     protected string IpDataToInfo(string ipData)
     {
         string[] parts = ipData.Split(',');
-        if (parts.Length < 3)
-            return "Internal error (ipData 2)";
+        if (parts.Length < 5)
+            return $"Internal error (ipData len {parts.Length})";
 
-        MauiProgram.Info.PublicIpSvrRegistered = parts[0];
-        MauiProgram.Info.PublicUdpPortSvrRegistered = parts[1];
-        MauiProgram.Info.LocalIpSvrRegistered = parts[2];
+        if (MauiProgram.Info.FirstModeIsServer)
+        {
+            MauiProgram.Info.StrPublicIp = parts[0];
+            MauiProgram.Info.UdpPort = Convert.ToInt32(parts[1]);
+            MauiProgram.Info.StrPublicIpOtherside = parts[3];
+            MauiProgram.Info.UdpPortOtherside = Convert.ToInt32(parts[4]);
+        }
+        else
+        {
+            MauiProgram.Info.StrPublicIp = parts[3];
+            MauiProgram.Info.UdpPort = Convert.ToInt32(parts[4]);
+            MauiProgram.Info.StrPublicIpOtherside = parts[0];
+            MauiProgram.Info.UdpPortOtherside = Convert.ToInt32(parts[1]);
+        }
+        MauiProgram.Info.StrLocalIPSvr = parts[2];
+
         return "";
     }
+
+
+    public static IPEndPoint IPEndPointFromIPAsStrPlusPort(string ipAddress, int port)
+    {
+        return new IPEndPoint(
+                    new IPAddress(ipAddress.Split('.')
+                        .Select(p => Convert.ToByte(p))
+                        .ToArray()),
+                    port);
+    }
+
 
 
     /// <summary>
     /// Returns "" if success and errMsg if error
     /// </summary>
     /// <returns></returns>
-    protected string ConnectServerFromClient()
+    protected async Task<string> ConnectServerFromClientAsync()
     {
         try
         {
-            string ipAddress = UseSvrLocalIPClient ?
-                    MauiProgram.Info.LocalIpSvrRegistered :
-                    MauiProgram.Info.PublicIpSvrRegistered;
-            _udpClient = new UdpWrapper(new UdpClient(
-                    new IPEndPoint(IPAddress.Any, 0))); // Let the OS pick the local address
-            _udpClient.ConnectToServerFromClient(new IPEndPoint(
-                    new IPAddress(ipAddress.Split('.')
-                        .Select(p => Convert.ToByte(p))
-                        .ToArray()),
-                    Convert.ToInt32(
-                        MauiProgram.Info.PublicUdpPortSvrRegistered)));
-            LblInfo2 = "Trying to connect to server" + (UseSvrLocalIPClient ? " (localIP)" : "");
-            MauiProgram.Info.IpSvrThatClientConnectedTo = ipAddress;
+            string ipAddressSvr = UseSvrLocalIP ?
+                    MauiProgram.Info.StrLocalIPSvr :
+                    MauiProgram.Info.StrPublicIpOtherside;
+            if (UseSvrLocalIP)
+            {
+                _udpClient = new UdpWrapper(new UdpClient(
+                        new IPEndPoint(IPAddress.Any, 0))); // Let the OS pick the local address
+            }
+            else
+            {
+                _udpClient = new UdpWrapper(new UdpClient(
+                        new IPEndPoint(IPAddress.Any, Convert.ToInt32(
+                        MauiProgram.Info.UdpPort))));
+            }
+
+            if (!MauiProgram.Settings.UseSvrLocalIP)
+            {
+                // cannot send packages to an arbitrary host while connected
+                //JEEWEE
+                // await dummy message from server
+                await DoHolePunchingAsync(_udpClient);
+            }
+
+            _udpClient.ConnectToServerFromClient(IPEndPointFromIPAsStrPlusPort(ipAddressSvr, Convert.ToInt32(
+                        MauiProgram.Info.UdpPortOtherside)));
+
+            LblInfo2 = "Trying to connect to server" + (UseSvrLocalIP ? " (localIP)" : "");
+            MauiProgram.Info.IpSvrThatClientConnectedTo = ipAddressSvr  ;
+
             return "";
         }
         catch (Exception exc)
@@ -1155,6 +1257,28 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+
+    protected async Task DoHolePunchingAsync(UdpWrapper udpWrapper)
+    {
+        byte[] dummyMessage = Encoding.UTF8.GetBytes("punch");
+        for (int i = 0; i < 25; i++)
+        {
+            await udpWrapper.SendAsync(dummyMessage, dummyMessage.Length,
+                    IPEndPointFromIPAsStrPlusPort(MauiProgram.Info.StrPublicIpOtherside,
+                            MauiProgram.Info.UdpPortOtherside));
+            try
+            {
+                await udpWrapper.ReceiveAsync(1);
+                // contact!
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+        string descrOtherSide = MauiProgram.Settings.ModeIsServer ? "client" : "server";
+        throw new Exception($"Unable to connect with {descrOtherSide}");
+    }
 
     protected async Task<string> TestStunUdpConnection()
     {
@@ -1255,6 +1379,12 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+    /// <summary>
+    /// returns value of found propName, "" if value empty or prop not found
+    /// </summary>
+    /// <param name="strJson"></param>
+    /// <param name="propName"></param>
+    /// <returns></returns>
     protected static string GetJsonProp(string strJson, string propName)
     {
         string search = $"\"{propName}\":\"";
@@ -1274,8 +1404,8 @@ public partial class MainPageViewModel : BaseViewModel
     protected class UdpWrapper : IDisposable
     {
         protected UdpClient _udpClient;       // also for server
-        protected IPEndPoint _ipEndPoint = null;
-        public IPEndPoint IPEndPoint { get => _ipEndPoint; }
+        protected IPEndPoint _ipEndPointClient = null;
+        public IPEndPoint IPEndPoint { get => _ipEndPointClient; }
 
         public UdpWrapper(UdpClient udpClient)
         {
@@ -1293,10 +1423,10 @@ public partial class MainPageViewModel : BaseViewModel
         /// Must be done only the first time that server recieves data from client.
         /// Also after swap: must not be overwritten
         /// </summary>
-        /// <param name="iPEndPoint"></param>
-        public void SetClientRemoteEnd(IPEndPoint iPEndPoint)
+        /// <param name="ipEndPointClient"></param>
+        public void SetClientRemoteEnd(IPEndPoint ipEndPointClient)
         {
-            _ipEndPoint = iPEndPoint;
+            _ipEndPointClient = ipEndPointClient;
         }
 
 
@@ -1316,13 +1446,25 @@ public partial class MainPageViewModel : BaseViewModel
         }
 
 
-        public async Task<int> SendAsync(byte[] bytes, int numBytesToSend)
+        public async Task<int> SendAsync(byte[] bytes, int numBytesToSend, IPEndPoint ipEndPointOverride = null)
         {
-            if (null != _ipEndPoint)
+            IPEndPoint ipEndPoint = ipEndPointOverride ?? _ipEndPointClient;
+            if (null != ipEndPoint)
                 return await _udpClient.SendAsync(bytes, numBytesToSend,
-                        _ipEndPoint);
+                        ipEndPoint);
 
             return await _udpClient.SendAsync(bytes, numBytesToSend);
+        }
+
+
+        public int Send(byte[] bytes, int numBytesToSend, IPEndPoint ipEndPointOverride = null)
+        {
+            IPEndPoint ipEndPoint = ipEndPointOverride ?? _ipEndPointClient;
+            if (null != ipEndPoint)
+                return _udpClient.Send(bytes, numBytesToSend,
+                        ipEndPoint);
+
+            return _udpClient.Send(bytes, numBytesToSend);
         }
 
 

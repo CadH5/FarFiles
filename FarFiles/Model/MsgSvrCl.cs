@@ -9,6 +9,7 @@ namespace FarFiles.Model
 {
     public enum MsgSvrClType
     {
+        UNMATCHED_SIGNATURE,
         ERROR,
         DISCONN_INFO,
         STRING_SEND,
@@ -32,21 +33,18 @@ namespace FarFiles.Model
 
     public class MsgSvrClBase
     {
+        public const int FARFILESMSG_SIGNATURE = 12344321;
         public const int MAXNUMARR_TOAVOIDMEMERR = 1000000;
         public byte[] Bytes;
+
+        // after signature and type:
+        protected const int STARTINDEX_INDIVIDUAL = sizeof(int) + sizeof(int);
 
         public MsgSvrClType Type
         {
             get
             {
-                try
-                {
-                    return (MsgSvrClType)BitConverter.ToInt32(Bytes);
-                }
-                catch
-                {
-                    return MsgSvrClType.ERROR;
-                }
+                return TypeFromBytes(Bytes);
             }
         }
 
@@ -57,7 +55,9 @@ namespace FarFiles.Model
         /// <param name="type"></param>
         protected MsgSvrClBase(MsgSvrClType type)
         {
-            Bytes = BitConverter.GetBytes((int)type);
+            var bytes = BitConverter.GetBytes(FARFILESMSG_SIGNATURE).ToList();
+            bytes.AddRange(BitConverter.GetBytes((int)type));
+            Bytes = bytes.ToArray();
         }
 
 
@@ -69,6 +69,8 @@ namespace FarFiles.Model
         /// <exception cref="Exception"></exception>
         protected MsgSvrClBase(byte[] bytes, MsgSvrClType expectedType)
         {
+            //JEEWEE: I THINK MsgSvrClType.UNMATCHED_SIGNATURE SHOULD NOT HAPPEN HERE
+
             MsgSvrClType foundType = TypeFromBytes(bytes);
             if (foundType != expectedType)
             {
@@ -81,11 +83,20 @@ namespace FarFiles.Model
         }
 
 
+        /// <summary>
+        /// Returns null if type is UNMATCHED_SIGNATURE (message should be ignored), else a MsgSvrClBase instance
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public static MsgSvrClBase CreateFromBytes(byte[] bytes)
         {
             MsgSvrClType type = TypeFromBytes(bytes);
             switch (type)
             {
+                case MsgSvrClType.UNMATCHED_SIGNATURE:
+                    return null;
+
                 case MsgSvrClType.ERROR:
                     return new MsgSvrClErrorAnswer(bytes);
 
@@ -177,7 +188,8 @@ namespace FarFiles.Model
 
 
         /// <summary>
-        /// Tries to get int from first 4 bytes, and cast to MsgSvrClType
+        /// Tries to get int from first 4 bytes after the 4 signature bytes, and cast to MsgSvrClType
+        /// If exception, returns UNMATCHED_SIGNATURE and message should be ignored (can happen as the updconnection is open)
         /// </summary>
         /// <param name="bytes"></param>
         /// <returns></returns>
@@ -187,14 +199,20 @@ namespace FarFiles.Model
             int iType = -1;
             try
             {
-                iType = BitConverter.ToInt32(bytes, 0);
+                iType = BitConverter.ToInt32(bytes, sizeof(int));   // type comes after the (int) signature
                 return (MsgSvrClType)iType;
             }
-            catch (Exception exc)
+            //JEEWEE
+            //catch (Exception exc)
+            //{
+            //    throw new Exception($"Received invalid FarFiles message" +
+            //        (iType == -1 ? "" : $" starting with int {iType}") +
+            //        ": " + exc.Message);
+            //}
+
+            catch
             {
-                throw new Exception($"Received invalid FarFiles message" +
-                    (iType == -1 ? "" : $" starting with int {iType}") +
-                    ": " + exc.Message);
+                return MsgSvrClType.UNMATCHED_SIGNATURE;
             }
         }
 
@@ -202,15 +220,16 @@ namespace FarFiles.Model
 
 
         /// <summary>
-        /// Tries to copy MsgSvrClType into first 4 bytes; bytes must have already length >= 4
+        /// Tries to copy MsgSvrClType into second 4 bytes (after signature); bytes must have already length >= 8
         /// </summary>
         /// <param name="bytes"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         public static void CopyTypeIntoBytes(MsgSvrClType type, byte[] bytes)
         {
+            int startIndexDest = sizeof(int);   // after signature
             Array.Copy(BitConverter.GetBytes((int)type),
-                            0, bytes, 0, sizeof(int));
+                            0, bytes, startIndexDest, sizeof(int));
         }
 
 
@@ -392,7 +411,7 @@ namespace FarFiles.Model
 
         public string[] GetErrMsgs()
         {
-            int idx = 4;
+            int idx = STARTINDEX_INDIVIDUAL;
             return GetStringsAtIndex(ref idx);
         }
 
@@ -453,7 +472,7 @@ namespace FarFiles.Model
 
         public string GetString()
         {
-            int index = 4;
+            int index = STARTINDEX_INDIVIDUAL;
             return StrPlusLenFromBytes((byte[])Bytes, ref index);
         }
     }
@@ -502,7 +521,7 @@ namespace FarFiles.Model
         {
             try
             {
-                int idx = 4;
+                int idx = STARTINDEX_INDIVIDUAL;
                 var guidBytes = new byte[16];   // sizeof(Guid) seems impossible
                 Array.Copy(Bytes, idx, guidBytes, 0, 16);
                 idx += 16;
@@ -549,7 +568,7 @@ namespace FarFiles.Model
         public int SeqNr
         {
             get =>
-                BitConverter.ToInt32(Bytes, 4);
+                BitConverter.ToInt32(Bytes, STARTINDEX_INDIVIDUAL);
         }
 
         public MsgSvrClPathInfoAnswer(int seqNr, bool svrIsWritable, PathInfoAnswerState pathInfoAnswerState,
@@ -623,7 +642,7 @@ namespace FarFiles.Model
         {
             try
             {
-                int idx = 4;
+                int idx = STARTINDEX_INDIVIDUAL;
 
                 seqNr = BitConverter.ToInt32(Bytes, idx);
                 idx += sizeof(int);
@@ -667,7 +686,7 @@ namespace FarFiles.Model
         {
             try
             {
-                int idx = 4;
+                int idx = STARTINDEX_INDIVIDUAL;
                 seqNr = BitConverter.ToInt32(Bytes, idx);
             }
             catch (Exception exc)
@@ -729,7 +748,7 @@ namespace FarFiles.Model
         {
             try
             {
-                int idx = 4;
+                int idx = STARTINDEX_INDIVIDUAL;
                 svrSubParts = GetStringsAtIndex(ref idx);
                 folderNames = GetStringsAtIndex(ref idx);
                 fileNames = GetStringsAtIndex(ref idx);
@@ -789,19 +808,19 @@ namespace FarFiles.Model
         public int SeqNr
         {
             get =>
-                BitConverter.ToInt32(Bytes, 4);
+                BitConverter.ToInt32(Bytes, STARTINDEX_INDIVIDUAL);
         }
         public bool IsLastPart
         {
             get =>
-                BitConverter.ToBoolean(Bytes, 4 + sizeof(int));
+                BitConverter.ToBoolean(Bytes, STARTINDEX_INDIVIDUAL + sizeof(int));
         }
 
         public void GetSeqnrAndIslastAndData(out int seqNr, out bool isLast, out byte[] data)
         {
             try
             {
-                int idx = 4;
+                int idx = STARTINDEX_INDIVIDUAL;
                 seqNr = BitConverter.ToInt32(Bytes, idx);
                 idx += sizeof(int);
                 isLast = BitConverter.ToBoolean(Bytes, idx);
@@ -923,7 +942,7 @@ namespace FarFiles.Model
             {
                 nums = new CopyCounters();
 
-                int idx = 4;
+                int idx = STARTINDEX_INDIVIDUAL;
                 nums.FoldersCreated = BitConverter.ToInt32(Bytes, idx);
                 idx += sizeof(int);
                 nums.FilesCreated = BitConverter.ToInt32(Bytes, idx);

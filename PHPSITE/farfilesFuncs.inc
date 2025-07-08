@@ -2,14 +2,20 @@
 
 const UNREGISTERED_CONNKEY = "-";
 
-function DoData($cmd, $connectKey, $udpSvrPort, $localIP, &$ipData)
+function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, &$ipData)
 {
-    if ($cmd !== "REGISTER" && $cmd !== "UNREGISTER")
+    if ($cmd !== "REGISTER" && $cmd !== "UNREGISTER" && $cmd !== "GETDATA")
         return "Internal server error (GETDATA(CMD))";
 
     $ipData = "";
     $errMsg = "";
-    $isForSvr = $udpSvrPort !== 0;
+    //JEEWEE
+    //$isForSvr = $udpPort !== 0;
+    $ipPubl = $_SERVER['REMOTE_ADDR'];
+    // for some reason, if I use localhost and xampp, $_SERVER['REMOTE_ADDR'] results in "::1"
+    if (strlen($ipPubl) > 2 && substr($ipPubl, 0, 2) === "::") {
+        $ipPubl = "0.0.0.0";
+    }
     $connectKeyUPC = strtoupper($connectKey);
     $strDataFile = "./farfilesdata.dat";
     $strDataFileTempCleanup = "./farfilesdata_tempCleanup.tmp";
@@ -48,17 +54,35 @@ function DoData($cmd, $connectKey, $udpSvrPort, $localIP, &$ipData)
 
                         // this connectKey exists in file and is not unregistered
                         $ipData = $oneData->ToIpData();
-                        if ($isForSvr) {
+
+                        if ($cmd === "GETDATA") {
+                            break;
+                        }
+                        if ($isSvr0Client1 === 0) {
                             if ($cmd === "UNREGISTER") {
                                 $oneData->nIsRegistered = 0;
                                 fseek($fpData, $prevPos, SEEK_SET);
                                 WriteOneData($fpData, $oneData);
                                 $bUnregistered = TRUE;
-                            } else {        // REGISTER
+                            } else {        // "REGISTER"
                                 $errMsg = "ConnectKey already occupied for server";
                             }
                         } else {
                             // for client; found
+                            if ($oneData->nUdpClientPort !== 0)
+                            {
+                                $errMsg = "Client already registered";
+                            }
+                            else
+                            {
+                                $oneData->nUdpClientPort = $udpPort;
+                                $oneData->nIpClientAsInt = StrIpToInt($ipPubl);
+                                fseek($fpData, $prevPos, SEEK_SET);
+                                WriteOneData($fpData, $oneData);
+
+                                // refill output $ipData
+                                $ipData = $oneData->ToIpData();
+                            }
                         }
 
                         break;
@@ -68,13 +92,10 @@ function DoData($cmd, $connectKey, $udpSvrPort, $localIP, &$ipData)
             }
         }
 
-        if ("" === $errMsg && $isForSvr && $cmd === "REGISTER") {
-            // for some reaon, if I use localhost and xampp, $_SERVER['REMOTE_ADDR'] results in "::1"
-            $ipSvrPubl = $_SERVER['REMOTE_ADDR'];
-            if (strlen($ipSvrPubl) > 2 && substr($ipSvrPubl, 0, 2) === "::") {
-                $ipSvrPubl = "0.0.0.0";
-            }
-            $ipData =  $ipSvrPubl . "," . sprintf("%d", $udpSvrPort) . ",". $localIP;
+        if ("" === $errMsg && $isSvr0Client1 === 0 && $cmd === "REGISTER") {
+            $ipSvrPubl = $ipPubl;
+            $ipData =  $ipSvrPubl . "," . sprintf("%d", $udpPort) . "," . $localIP . "," .
+                    "0.0.0.0" . "," . "0";     // client public ip and udpport (not yet registered)
             $oneData = new FfBinConnData();
             $oneData->nIsRegistered = 1;
             $oneData->strConnKey = $connectKey;
@@ -97,7 +118,7 @@ function DoData($cmd, $connectKey, $udpSvrPort, $localIP, &$ipData)
             $errMsg = CleanupDataFile($strDataFile, $strDataFileTempCleanup);
         }
 
-        if ("" === $errMsg && !$isForSvr && "" === $ipData)
+        if ("" === $errMsg && $cmd !== "GETDATA" && $isSvr0Client1 !== 0 && "" === $ipData)
             $errMsg = "No server found with this ConnectKey";
     }
 
@@ -195,7 +216,21 @@ function EchoDataFile($strDataFile)
         $oneData->EchoThis();
         echo "<br>";
     }
+    fclose($fpData);
 }
+
+function WriteDataFileAsTxt($strDataFile, $strDumpTxtFile)
+{
+    $i = 0;
+    $fpData = @fopen($strDataFile, "rb");
+    $fpTxt = @fopen($strDumpTxtFile, "w");
+    while (($oneData = ReadOneData($fpData)) !== FALSE) {
+        $i++;
+        $oneData->DumpThis($fpTxt, $i);
+    }
+    fclose($fpData);
+}
+
 
 
 
@@ -490,6 +525,8 @@ function WriteOneData($fpData, FfBinConnData $oneData)
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nIpSvrAsInt);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nUdpSvrPort);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nLocalIpSvrAsInt);
+    ELib_FileBinWriteInt_Encr($fpData, $oneData->nIpClientAsInt);
+    ELib_FileBinWriteInt_Encr($fpData, $oneData->nUdpClientPort);
     ELib_FileBinWrite($fpData, DateTimeToBytes($oneData->dtThisCreated), 8);
 }
 
@@ -507,6 +544,8 @@ function ReadOneData($fpData)
     $retData->nIpSvrAsInt = ELib_FileBinReadInt_Decr($fpData);
     $retData->nUdpSvrPort = ELib_FileBinReadInt_Decr($fpData);
     $retData->nLocalIpSvrAsInt = ELib_FileBinReadInt_Decr($fpData);
+    $retData->nIpClientAsInt = ELib_FileBinReadInt_Decr($fpData);
+    $retData->nUdpClientPort = ELib_FileBinReadInt_Decr($fpData);
     $retData->dtThisCreated = BytesToDateTime(ELib_FileBinRead($fpData, 8));
     return $retData;
 }
@@ -517,10 +556,10 @@ class FfBinConnData
     public $nIsRegistered = 0;
     public $strConnKey = "";
     public $nIpSvrAsInt;
-
-
     public $nUdpSvrPort = 0;
     public $nLocalIpSvrAsInt = 0;
+    public $nIpClientAsInt;
+    public $nUdpClientPort = 0;
     public $dtThisCreated;
 
     public function __construct() {
@@ -529,8 +568,11 @@ class FfBinConnData
 
     public function ToIpData()
     {
-        return GetStrIpFromInt($this->nIpSvrAsInt) . "," . sprintf("%d", $this->nUdpSvrPort) . "," .
-            GetStrIpFromInt($this->nLocalIpSvrAsInt);
+        return GetStrIpFromInt($this->nIpSvrAsInt) . "," .
+            sprintf("%d", $this->nUdpSvrPort) . "," .
+            GetStrIpFromInt($this->nLocalIpSvrAsInt) . "," .
+            GetStrIpFromInt($this->nIpClientAsInt) . "," .
+            sprintf("%d", $this->nUdpClientPort);
     }
 
     public function SetThingsFromIpData($ipData)
@@ -539,6 +581,8 @@ class FfBinConnData
         $this->nIpSvrAsInt = StrIpToInt($arrParts[0]);
         $this->nUdpSvrPort = intval($arrParts[1]);
         $this->nLocalIpSvrAsInt = StrIpToInt($arrParts[2]);
+        $this->nIpClientAsInt = StrIpToInt($arrParts[3]);
+        $this->nUdpClientPort = intval($arrParts[4]);
     }
 
     public function EchoThis()
@@ -548,9 +592,29 @@ class FfBinConnData
         echo "nIpSvrAsInt=$this->nIpSvrAsInt<br>";
         echo "nUdpSvrPort=$this->nUdpSvrPort<br>";
         echo "nLocalIpSvrAsInt=$this->nLocalIpSvrAsInt<br>";
+        echo "nIpClientAsInt=$this->nIpClientAsInt<br>";
+        echo "nUdpClientPort=$this->nUdpClientPort<br>";
         $diffWithNow = $this->dtThisCreated->diff(new DateTime());
         echo "dtThisCreated={$this->dtThisCreated->format('Y-m-d H:i:s.u')}" .
             ", days: {$diffWithNow->days}, minutes: {$diffWithNow->i}<br>";
+    }
+
+
+    public function DumpThis($fpTxt, $i = 0)
+    {
+        $diffWithNow = $this->dtThisCreated->diff(new DateTime());
+        if (0 !== $i)
+            fprintf($fpTxt, "%d ", $i);
+        fprintf($fpTxt, "%d ", $this->nIsRegistered);
+        fprintf($fpTxt, GetStrIpFromInt($this->nIpSvrAsInt) . " ");
+        fprintf($fpTxt, "%7d ", $this->nUdpSvrPort);
+        fprintf($fpTxt, GetStrIpFromInt($this->nLocalIpSvrAsInt) . " ");
+        fprintf($fpTxt, GetStrIpFromInt($this->nIpClientAsInt) . " ");
+        fprintf($fpTxt, "%7d ", $this->nUdpClientPort);
+        fprintf($fpTxt, $this->dtThisCreated->format('Y-m-d H:i:s.u') . " ");
+        fprintf($fpTxt, "%4d ", $diffWithNow->days);
+        fprintf($fpTxt, $this->strConnKey);
+        fprintf($fpTxt, "\n");
     }
 }
 

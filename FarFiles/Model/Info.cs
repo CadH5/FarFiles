@@ -17,14 +17,19 @@ namespace FarFiles.Model
         public ClientViewModel ClientPageVwModel { get; set; }
 
         /// <summary>
-        /// UdpSvrPort: -1=not set, 0=client, > 0 = svrport from Stunserver;
-        /// if svr/client swap, then client has the > 0 port instead of the server
+        /// FirstModeIsServer: this was the ModeIsServer at connectiontime; swap svr/cl does not change this variable
         /// </summary>
-        public int UdpSvrPort { get; set; } = -1;
+        public bool FirstModeIsServer { get; set; }
 
-        public string PublicIpSvrRegistered { get; set; } = "";
-        public string PublicUdpPortSvrRegistered { get; set; } = "";
-        public string LocalIpSvrRegistered { get; set; } = "";
+        /// <summary>
+        /// UdpPort: -1=not set, 0 should not happen, > 0 = udpport from Stunserver;
+        /// </summary>
+        public int UdpPort { get; set; } = -1;
+        public int UdpPortOtherside { get; set; } = -1;
+        public string StrLocalIP { get; set; } = "";
+        public string StrLocalIPSvr { get; set; } = "";     // server does not need to know localip of client
+        public string StrPublicIp { get; set; } = "";
+        public string StrPublicIpOtherside { get; set; } = "";
         public string IpSvrThatClientConnectedTo { get; set; } = "";
         public bool IsSvrWritableReportedToClient { get; set; } = false;
         public CpClientToFromMode CpClientToFromMode { get; set; } = CpClientToFromMode.CLIENTFROMSVR;
@@ -45,7 +50,7 @@ namespace FarFiles.Model
 
         public void DisconnectOnClient()
         {
-            UdpSvrPort = -1;
+            UdpPort = -1;
             IpSvrThatClientConnectedTo = "";
             Connected = false;
             SvrPathParts.Clear();

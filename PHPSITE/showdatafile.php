@@ -7,7 +7,9 @@ session_start();
 <body>
 
 <?php
-EchoDataFile("./farfilesdata.dat");
+WriteDataFileAsTxt("./farfilesdata.dat", "./farfilesdata_dump.txt");
+$dtNow = new DateTime();
+echo "written, " . $dtNow->format("Y-m-d H:i:s.u") . "<br>";
 ?>
 </body>
 </html>

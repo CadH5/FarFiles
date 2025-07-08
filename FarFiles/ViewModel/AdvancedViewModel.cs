@@ -8,12 +8,14 @@ public partial class AdvancedViewModel : BaseViewModel
     public string Info
     {
         get =>
-            (MauiProgram.Info.UdpSvrPort <= 0 ? "" :
-                $"UdpSvrPort: {MauiProgram.Info.UdpSvrPort}{nl}") +
-            $"PublicIpSvrRegistered: {MauiProgram.Info.PublicIpSvrRegistered}{nl}" +
-            $"PublicUdpPortSvrRegistered: {MauiProgram.Info.PublicUdpPortSvrRegistered}{nl}" +
-            $"LocalIpSvrRegistered: {MauiProgram.Info.LocalIpSvrRegistered}{nl}" +
-            $"IpSvrThatClientConnectedTo: {MauiProgram.Info.IpSvrThatClientConnectedTo}{nl}" +
+            $"UdpPort: {MauiProgram.Info.UdpPort}{nl}" +
+            $"UdpPort other side: {MauiProgram.Info.UdpPortOtherside}{nl}" +
+            $"Public IP: {MauiProgram.Info.StrPublicIp}{nl}" +
+            $"Public IP other side: {MauiProgram.Info.StrPublicIpOtherside}{nl}" +
+            $"Local IP: {MauiProgram.Info.StrLocalIP}{nl}" +
+            $"Local IP server: {MauiProgram.Info.StrLocalIPSvr}{nl}" +
+            (MauiProgram.Settings.ModeIsServer ? "" :
+            $"IP Svr That Client Connected To: {MauiProgram.Info.IpSvrThatClientConnectedTo}{nl}") +
             $"Connected: {MauiProgram.Info.Connected}";
     }
 

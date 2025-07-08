@@ -11,7 +11,6 @@ namespace FarFiles;
 
 public static class MauiProgram
 {
-    public static string StrLocalIP { get; set; } = "";
     public static Settings Settings { get; set; } = new Settings();
     public static Info Info { get; set; } = new Info();
     public static Log Log { get; set; } = new Log();
@@ -81,10 +80,10 @@ public static class MauiProgram
 
         try
         {
-            if (MauiProgram.Info.UdpSvrPort > 0)           // originally the server, but svr/client may have swapped
+            if (MauiProgram.Info.FirstModeIsServer)           // originally the server, but svr/client may have swapped
             {
                 var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
-                    "UNREGISTER", MauiProgram.Info.UdpSvrPort, StrLocalIP, true));
+                    "UNREGISTER", true));
 
                 // Wait max 1 second — no deadlock risk
                 unregisterTask.Wait(TimeSpan.FromSeconds(1));
@@ -102,12 +101,11 @@ public static class MauiProgram
 
 
 
-    public static async Task<string> PostToCentralServerAsync(string strCmd,
-            int udpSvrPort, string strLocalIP, bool closing = false)
+    public static async Task<string> PostToCentralServerAsync(string strCmd, bool closing = false)
     {
         using (var client = new HttpClient())
         {
-            //JEEWEE
+            //some measures, suggested by ChatGPT, to avoid landing at a page for robot visitors, we want a Json response:
             client.DefaultRequestHeaders.UserAgent.ParseAdd(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
             client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
@@ -117,7 +115,9 @@ public static class MauiProgram
             var url = "https://www.cadh5.com/farfiles/farfiles.php";
 
             var requestData = new { Cmd = strCmd, ConnectKey = Settings.ConnectKey,
-                UdpSvrPort = udpSvrPort, LocalIP = strLocalIP };
+                UdpPort = MauiProgram.Info.UdpPort, LocalIP = MauiProgram.Info.StrLocalIP,
+                IsSvr0Client1 = MauiProgram.Info.FirstModeIsServer ? 0 : 1
+            };
 
             var json = JsonSerializer.Serialize(requestData);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -143,7 +143,16 @@ public static class MauiProgram
                 HttpResponseMessage response = await client.PostAsync(url, content);
                 response.EnsureSuccessStatusCode();
 
-                return await response.Content.ReadAsStringAsync();
+                string retStr = await response.Content.ReadAsStringAsync();
+                retStr = retStr.Trim();
+
+                if (!retStr.StartsWith('{'))
+                {
+                    string start = retStr.Length <= 30 ? retStr : retStr.Substring(30) + " ...";
+                    throw new Exception($"Respomse from central server: not Json format ('{start}')");
+                }
+
+                return retStr;
             }
         }
     }
@@ -179,7 +188,7 @@ public static class MauiProgram
         Settings.StunPort = Preferences.Get("StunPort", Settings.StunPort);
         Settings.TimeoutSecsClient = Preferences.Get("TimeoutSecsClient", Settings.TimeoutSecsClient);
         Settings.BufSizeMoreOrLess = Preferences.Get("BufSizeMoreOrLess", Settings.BufSizeMoreOrLess);
-        Settings.UseSvrLocalIPClient = Preferences.Get("UseSvrLocalIPClient", Settings.UseSvrLocalIPClient);
+        Settings.UseSvrLocalIP = Preferences.Get("UseSvrLocalIP", Settings.UseSvrLocalIP);
         try
         {
             Settings.ConnClientGuid = Guid.Parse(Preferences.Get("ConnClientGuid", Settings.ConnClientGuid.ToString()));
@@ -206,7 +215,7 @@ public static class MauiProgram
         Preferences.Set("StunPort", Settings.StunPort);
         Preferences.Set("TimeoutSecsClient", Settings.TimeoutSecsClient);
         Preferences.Set("BufSizeMoreOrLess", Settings.BufSizeMoreOrLess);
-        Preferences.Set("UseSvrLocalIPClient", Settings.UseSvrLocalIPClient);
+        Preferences.Set("UseSvrLocalIP", Settings.UseSvrLocalIP);
         Preferences.Set("ConnClientGuid", Settings.ConnClientGuid.ToString());
     }
 }

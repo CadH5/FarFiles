@@ -16,7 +16,7 @@ echo "Test GetStrIpFromInt($ipInt): '" . GetStrIpFromInt($ipInt) . "'<br>";
 echo "<br>";
 
 echo "Test wrong cmd:<br>";
-echo "  resp='" . DoData("WRONGCMD", "Key", 1234, "10.10.10.10", $ipData) . "'<br>";
+echo "  resp='" . DoData("WRONGCMD", "Key", 1234, "10.10.10.10", 0, $ipData) . "'<br>";
 echo "  ipData='" . $ipData . "'<br>";
 echo "<br>";
 
@@ -27,27 +27,37 @@ if (file_exists($strDataFile)) {
 
 echo "Test delete, first server REGISTER:<br>";
 ELib_FileDelete($strDataFile);
-echo "  resp='" . DoData("REGISTER", "Key", 1234, "10.10.10.10", $ipData) . "'<br>";
+echo "  resp='" . DoData("REGISTER", "Key", 1234, "10.10.10.10", 0, $ipData) . "'<br>";
 echo "  ipData='" . $ipData . "'<br>";
 echo "<br>";
 
 echo "Test first client REGISTER:<br>";
-echo "  resp='" . DoData("REGISTER", "Key", 0, "0.0.0.0", $ipData) . "'<br>";
+echo "  resp='" . DoData("REGISTER", "Key", 9876, "0.1.2.3", 1, $ipData) . "'<br>";
+echo "  ipData='" . $ipData . "'<br>";
+echo "<br>";
+
+echo "Test cmd GETDATA, should result same:<br>";
+echo "  resp='" . DoData("GETDATA", "Key", 0, "0.0.0.0", 0, $ipData) . "'<br>";
+echo "  ipData='" . $ipData . "'<br>";
+echo "<br>";
+
+echo "Test second client REGISTER with same key: should result in error<br>";
+echo "  resp='" . DoData("REGISTER", "Key", 5432, "9.9.9.9", 1, $ipData) . "'<br>";
 echo "  ipData='" . $ipData . "'<br>";
 echo "<br>";
 
 echo "Test attempt server REGISTER with same key:<br>";
-echo "  resp='" . DoData("REGISTER", "Key", 5678, "0.0.0.0", $ipData) . "'<br>";
+echo "  resp='" . DoData("REGISTER", "Key", 5678, "0.0.0.0", 0, $ipData) . "'<br>";
 echo "  ipData='" . $ipData . "'<br>";
 echo "<br>";
 
 echo "Test server UNREGISTER:<br>";
-echo "  resp='" . DoData("UNREGISTER", "Key", 9999, "0.0.0.0", $ipData) . "'<br>";
+echo "  resp='" . DoData("UNREGISTER", "Key", 9999, "0.0.0.0", 0, $ipData) . "'<br>";
 echo "  ipData='" . $ipData . "'<br>";
 echo "<br>";
 
 echo "Test server REGISTER again:<br>";
-echo "  resp='" . DoData("REGISTER", "Key", 1234, "10.10.10.10", $ipData) . "'<br>";
+echo "  resp='" . DoData("REGISTER", "Key", 1234, "10.10.10.10", 0, $ipData) . "'<br>";
 echo "  ipData='" . $ipData . "'<br>";
 echo "<br>";
 

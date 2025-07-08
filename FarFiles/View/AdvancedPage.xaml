@@ -7,7 +7,7 @@
     Title="Advanced info and settings"
     x:DataType="viewmodel:AdvancedViewModel">
     <ScrollView BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
-        <Grid RowDefinitions="150,40,40,40,40,40"
+        <Grid RowDefinitions="Auto,40,40,40,40,40"
               ColumnDefinitions="200,*">
 
             <Editor Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" IsReadOnly="True"
