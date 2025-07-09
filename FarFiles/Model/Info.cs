@@ -26,6 +26,7 @@ namespace FarFiles.Model
         /// </summary>
         public int UdpPort { get; set; } = -1;
         public int UdpPortOtherside { get; set; } = -1;
+        public string NATType { get; set; } = "";
         public string StrLocalIP { get; set; } = "";
         public string StrLocalIPSvr { get; set; } = "";     // server does not need to know localip of client
         public string StrPublicIp { get; set; } = "";

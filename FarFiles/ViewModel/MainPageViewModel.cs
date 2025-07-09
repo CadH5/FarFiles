@@ -1258,7 +1258,7 @@ public partial class MainPageViewModel : BaseViewModel
 
 
 
-    protected async Task DoHolePunchingAsync(UdpWrapper udpWrapper)
+    protected async Task DoHolePunchingAsyncOLDJEEWEE(UdpWrapper udpWrapper)
     {
         byte[] dummyMessage = Encoding.UTF8.GetBytes("punch");
         for (int i = 0; i < 25; i++)
@@ -1278,6 +1278,57 @@ public partial class MainPageViewModel : BaseViewModel
         }
         string descrOtherSide = MauiProgram.Settings.ModeIsServer ? "client" : "server";
         throw new Exception($"Unable to connect with {descrOtherSide}");
+    }
+
+    protected async Task DoHolePunchingAsync(UdpWrapper udpWrapper)
+    {
+        byte[] dummyMessage = Encoding.UTF8.GetBytes("punch");
+
+        int secondsPunching = 25;       // JEEWEE: SETTING
+        int milliSecondsSendDelay = 200;// JEEWEE: SETTING
+        CancellationTokenSource cts = new(TimeSpan.FromSeconds(secondsPunching)); // total timeout
+        bool received = false;
+
+        // START receiver loop (non-blocking)
+        var receiveTask = Task.Run(async () =>
+        {
+            while (!cts.Token.IsCancellationRequested)
+            {
+                try
+                {
+                    var result = await udpWrapper.ReceiveAsync(1);
+                    // If you get a message, consider punching successful
+                    received = true;
+                    break;
+                }
+                catch (OperationCanceledException)
+                {
+                    // expected if timeout passed
+                    continue;
+                }
+            }
+        }, cts.Token);
+
+        // START sender loop (non-blocking)
+        var sendTask = Task.Run(async () =>
+        {
+            int loopTimes = secondsPunching * 1000 / milliSecondsSendDelay;
+            for (int i = 0; i < loopTimes && !cts.Token.IsCancellationRequested && !received; i++)
+            {
+                await udpWrapper.SendAsync(dummyMessage, dummyMessage.Length,
+                IPEndPointFromIPAsStrPlusPort(
+                    MauiProgram.Info.StrPublicIpOtherside,
+                    MauiProgram.Info.UdpPortOtherside));
+                await Task.Delay(200, cts.Token); // give some space between sends
+            }
+        }, cts.Token);
+
+        // Wait for success or timeout
+        Task result = await Task.WhenAny(receiveTask, Task.Delay(secondsPunching * 1000));
+        cts.Cancel();
+
+        if (!received)
+            throw new Exception("Unable to connect with other side.");
     }
 
     protected async Task<string> TestStunUdpConnection()
@@ -1310,7 +1361,8 @@ public partial class MainPageViewModel : BaseViewModel
         using (var udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0)))
         {
             localUdpEndPoint = ((IPEndPoint)udpClient.Client.LocalEndPoint);
-            int localUdpPort = localUdpEndPoint.Port;
+            //JEEWEE
+            //int localUdpPort = localUdpEndPoint.Port;
         }
 
         // 2️ Use STUN to find public IP & port
@@ -1324,6 +1376,12 @@ public partial class MainPageViewModel : BaseViewModel
         var stunClient = new StunClient3489(stunServerEndPoint, localUdpEndPoint);
 
         await stunClient.QueryAsync(); // Perform the STUN request
+
+        //JEEWEE
+        //Console.WriteLine($"Public IP: {stunClient.State.PublicEndPoint.Address}");
+        //Console.WriteLine($"Public Port: {stunClient.State.PublicEndPoint.Port}");
+        //Console.WriteLine($"NAT Type: {stunClient.State.NatType}");
+        MauiProgram.Info.NATType = stunClient.State.NatType.ToString();
 
         return stunClient.State.PublicEndPoint;
     }

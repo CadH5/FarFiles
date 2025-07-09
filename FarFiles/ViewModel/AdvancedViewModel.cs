@@ -16,6 +16,7 @@ public partial class AdvancedViewModel : BaseViewModel
             $"Local IP server: {MauiProgram.Info.StrLocalIPSvr}{nl}" +
             (MauiProgram.Settings.ModeIsServer ? "" :
             $"IP Svr That Client Connected To: {MauiProgram.Info.IpSvrThatClientConnectedTo}{nl}") +
+            $"NATtype from stun server: {MauiProgram.Info.NATType}{nl}" +
             $"Connected: {MauiProgram.Info.Connected}";
     }
 
