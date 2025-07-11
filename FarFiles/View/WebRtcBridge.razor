@@ -1,0 +1,54 @@
+@using Microsoft.JSInterop;
+@inject IJSRuntime JS
+
+<h3>TURN WebRTC Bridge via Blazor</h3>
+@* JEEWEE
+<button @onclick="StartWebRTC">Start WebRTC (Initiator)</button>
+<button @onclick="SendBinaryTest">Send Binary</button>
+ *@
+<script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
+<script>
+    let peer;
+
+    window.setupWebRTC = function (isInitiator, turnConfig, signalData) {
+        peer = new SimplePeer({
+            initiator: isInitiator,
+            trickle: false,
+            config: {
+                iceServers: [
+                    {
+                        urls: turnConfig.urls,
+                        username: turnConfig.username,
+                        credential: turnConfig.credential
+                    }
+                ]
+            }
+        });
+
+        peer.on('signal', data => {
+            DotNet.invokeMethodAsync('YourApp', 'ReceiveFromJs', JSON.stringify({ type: 'signal', data }));
+        });
+
+        peer.on('connect', () => {
+            DotNet.invokeMethodAsync('YourApp', 'ReceiveFromJs', JSON.stringify({ type: 'connected' }));
+        });
+
+        peer.on('data', data => {
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(data)));
+            DotNet.invokeMethodAsync('YourApp', 'ReceiveFromJs', JSON.stringify({ type: 'data-binary', base64 }));
+        });
+
+        peer.on('error', err => {
+            DotNet.invokeMethodAsync('YourApp', 'ReceiveFromJs', JSON.stringify({ type: 'error', message: err.message }));
+        });
+
+        if (signalData) {
+            peer.signal(signalData);
+        }
+    };
+
+    window.sendBinaryToPeer = function (base64) {
+        const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        peer.send(binary);
+    };
+</script>

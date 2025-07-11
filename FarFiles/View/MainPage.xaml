@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
     x:Class="FarFiles.View.MainPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -6,6 +5,8 @@
     xmlns:model="clr-namespace:FarFiles.Model"
     xmlns:viewmodel="clr-namespace:FarFiles.ViewModel"
     xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+    xmlns:local="clr-namespace:FarFiles.View"
+    xmlns:blazor="clr-namespace:Microsoft.AspNetCore.Components.WebView.Maui;assembly=Microsoft.AspNetCore.Components.WebView.Maui"
     ios:Page.UseSafeArea="True"
     Title="Far Files"
     x:DataType="viewmodel:MainPageViewModel">
@@ -15,6 +16,15 @@
         RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}"
         >
+
+        <blazor:BlazorWebView Grid.Row="0" Grid.Column="0" IsVisible="False"
+            HostPage="wwwroot/index.html"
+            HeightRequest="600"
+            WidthRequest="400">
+            <blazor:BlazorWebView.RootComponents>
+                <blazor:RootComponent Selector="#app" ComponentType="{x:Type local:WebRtcBridge}" />
+            </blazor:BlazorWebView.RootComponents>
+        </blazor:BlazorWebView>
 
         <Image Grid.Row="0" Grid.Column="0"  Source="farfiles"></Image>
 

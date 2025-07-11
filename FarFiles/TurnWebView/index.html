@@ -1,0 +1,70 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>TURN WebRTC Bridge</title>
+    <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
+</head>
+<body>
+    <h3>TURN WebRTC Bridge Loaded</h3>
+    <script>
+        let peer;
+
+        function postToNative(message) {
+            const encoded = encodeURIComponent(JSON.stringify(message));
+            window.location.href = 'app://message?json=' + encoded;
+        }
+
+        window.setupWebRTC = function (signalDataJson, isInitiator, turnConfigJson) {
+            const signalData = signalDataJson ? JSON.parse(signalDataJson) : null;
+            const turnConfig = JSON.parse(turnConfigJson);
+
+            peer = new SimplePeer({
+                initiator: isInitiator,
+                trickle: false,
+                config: {
+                    iceServers: [
+                        {
+                            urls: turnConfig.urls,
+                            username: turnConfig.username,
+                            credential: turnConfig.credential
+                        }
+                    ]
+                }
+            });
+
+            peer.on('signal', data => {
+                postToNative({ type: 'signal', data });
+            });
+
+            peer.on('connect', () => {
+                postToNative({ type: 'connected' });
+            });
+
+            peer.on('data', data => {
+                const byteArray = Array.from(new Uint8Array(data));
+                postToNative({ type: 'data-binary', data: byteArray });
+            });
+
+            peer.on('error', err => {
+                postToNative({ type: 'error', message: err.message });
+            });
+
+            if (signalData) {
+                peer.signal(signalData);
+            }
+        };
+
+        window.sendData = function (messageOrArray) {
+            if (peer && peer.connected) {
+                if (Array.isArray(messageOrArray)) {
+                    peer.send(new Uint8Array(messageOrArray));
+                } else {
+                    peer.send(messageOrArray); // Assume string
+                }
+            }
+        };
+    </script>
+</body>
+</html>
