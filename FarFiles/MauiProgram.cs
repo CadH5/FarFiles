@@ -100,6 +100,41 @@ public static class MauiProgram
     }
 
 
+    /// <summary>
+    /// Actually, a requirement is that the enum has contiguous int values
+    /// </summary>
+    /// <param name="valAsStr"></param>
+    /// <param name="valAsInt"></param>
+    /// <returns></returns>
+    public static bool ParseIntEnum<T>(string valAsStr, out int valAsInt) where T : System.Enum
+    {
+        if (! int.TryParse(valAsStr, out valAsInt))
+        {
+            valAsInt = 0;
+            return false;
+        }
+        if (valAsInt < 0 || valAsInt >= Enum.GetNames(typeof(T)).Length)
+        {
+            valAsInt = 0;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Actually, a requirement is that the enum has contiguous int values
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="valAsInt"></param>
+    /// <returns></returns>
+    public static string IntEnumValToString<T>(int valAsInt) where T : System.Enum
+    {
+        if (ParseIntEnum<T>(valAsInt.ToString(), out int dummyInt))
+            return Enum.GetNames(typeof(T))[valAsInt];
+
+        return "";
+    }
 
     public static async Task<string> PostToCentralServerAsync(string strCmd, bool closing = false)
     {
@@ -116,7 +151,8 @@ public static class MauiProgram
 
             var requestData = new { Cmd = strCmd, ConnectKey = Settings.ConnectKey,
                 UdpPort = MauiProgram.Info.UdpPort, LocalIP = MauiProgram.Info.StrLocalIP,
-                IsSvr0Client1 = MauiProgram.Info.FirstModeIsServer ? 0 : 1
+                IsSvr0Client1 = MauiProgram.Info.FirstModeIsServer ? 0 : 1,
+                CommunicModeAsInt = MauiProgram.Settings.CommunicModeAsInt,
             };
 
             var json = JsonSerializer.Serialize(requestData);
@@ -182,6 +218,7 @@ public static class MauiProgram
         Settings.FullPathRoot = Preferences.Get("FullPathRoot", Settings.FullPathRoot);
 #endif
         Settings.SvrClModeAsInt = Preferences.Get("SvrClModeAsInt", Settings.SvrClModeAsInt);
+        Settings.CommunicModeAsInt = Preferences.Get("CommunicModeAsInt", Settings.CommunicModeAsInt);
         Settings.Idx0isOverwr1isSkip = Preferences.Get("Idx0isOverwr1isSkip", Settings.Idx0isOverwr1isSkip);
         Settings.ConnectKey = Preferences.Get("ConnectKey", Settings.ConnectKey);
         Settings.StunServer = Preferences.Get("StunServer", Settings.StunServer);
@@ -209,6 +246,7 @@ public static class MauiProgram
         Preferences.Set("FullPathRoot", Settings.FullPathRoot);
 #endif
         Preferences.Set("SvrClModeAsInt", Settings.SvrClModeAsInt);
+        Preferences.Set("CommunicModeAsInt", Settings.CommunicModeAsInt);
         Preferences.Set("Idx0isOverwr1isSkip", Settings.Idx0isOverwr1isSkip);
         Preferences.Set("ConnectKey", Settings.ConnectKey);
         Preferences.Set("StunServer", Settings.StunServer);

@@ -14,6 +14,7 @@ public partial class AdvancedViewModel : BaseViewModel
             $"Public IP other side: {MauiProgram.Info.StrPublicIpOtherside}{nl}" +
             $"Local IP: {MauiProgram.Info.StrLocalIP}{nl}" +
             $"Local IP server: {MauiProgram.Info.StrLocalIPSvr}{nl}" +
+            $"Communication mode: {MauiProgram.IntEnumValToString<CommunicMode>(MauiProgram.Settings.CommunicModeAsInt)}{nl}" +
             (MauiProgram.Settings.ModeIsServer ? "" :
             $"IP Svr That Client Connected To: {MauiProgram.Info.IpSvrThatClientConnectedTo}{nl}") +
             $"NATtype from stun server: {MauiProgram.Info.NATType}{nl}" +

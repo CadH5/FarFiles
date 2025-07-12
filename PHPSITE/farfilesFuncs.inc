@@ -2,15 +2,15 @@
 
 const UNREGISTERED_CONNKEY = "-";
 
-function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, &$ipData)
+function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $CommunicModeAsInt,
+                &$ipData, &$clientCommunicMode)
 {
     if ($cmd !== "REGISTER" && $cmd !== "UNREGISTER" && $cmd !== "GETDATA")
         return "Internal server error (GETDATA(CMD))";
 
     $ipData = "";
+    $clientCommunicMode = "-1";
     $errMsg = "";
-    //JEEWEE
-    //$isForSvr = $udpPort !== 0;
     $ipPubl = $_SERVER['REMOTE_ADDR'];
     // for some reason, if I use localhost and xampp, $_SERVER['REMOTE_ADDR'] results in "::1"
     if (strlen($ipPubl) > 2 && substr($ipPubl, 0, 2) === "::") {
@@ -69,7 +69,7 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, &$ipData)
                             }
                         } else {
                             // for client; found
-                            if ($oneData->nUdpClientPort !== 0)
+                            if ($oneData->nClientCommunicMode !== -1)
                             {
                                 $errMsg = "Client already registered";
                             }
@@ -77,11 +77,13 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, &$ipData)
                             {
                                 $oneData->nUdpClientPort = $udpPort;
                                 $oneData->nIpClientAsInt = StrIpToInt($ipPubl);
+                                $oneData->nClientCommunicMode = $CommunicModeAsInt;
                                 fseek($fpData, $prevPos, SEEK_SET);
                                 WriteOneData($fpData, $oneData);
 
-                                // refill output $ipData
+                                // refill output
                                 $ipData = $oneData->ToIpData();
+                                $clientCommunicMode = $oneData->nClientCommunicMode;
                             }
                         }
 
@@ -100,6 +102,7 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, &$ipData)
             $oneData->nIsRegistered = 1;
             $oneData->strConnKey = $connectKey;
             $oneData->SetThingsFromIpData($ipData);
+            $oneData->nClientCommunicMode = -1;
             WriteOneData($fpData, $oneData);
         }
 
@@ -527,6 +530,7 @@ function WriteOneData($fpData, FfBinConnData $oneData)
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nLocalIpSvrAsInt);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nIpClientAsInt);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nUdpClientPort);
+    ELib_FileBinWriteInt_Encr($fpData, $oneData->nClientCommunicMode);
     ELib_FileBinWrite($fpData, DateTimeToBytes($oneData->dtThisCreated), 8);
 }
 
@@ -546,6 +550,7 @@ function ReadOneData($fpData)
     $retData->nLocalIpSvrAsInt = ELib_FileBinReadInt_Decr($fpData);
     $retData->nIpClientAsInt = ELib_FileBinReadInt_Decr($fpData);
     $retData->nUdpClientPort = ELib_FileBinReadInt_Decr($fpData);
+    $retData->nClientCommunicMode = ELib_FileBinReadInt_Decr($fpData);
     $retData->dtThisCreated = BytesToDateTime(ELib_FileBinRead($fpData, 8));
     return $retData;
 }
@@ -560,6 +565,7 @@ class FfBinConnData
     public $nLocalIpSvrAsInt = 0;
     public $nIpClientAsInt;
     public $nUdpClientPort = 0;
+    public $nClientCommunicMode = -1;
     public $dtThisCreated;
 
     public function __construct() {
@@ -594,6 +600,7 @@ class FfBinConnData
         echo "nLocalIpSvrAsInt=$this->nLocalIpSvrAsInt<br>";
         echo "nIpClientAsInt=$this->nIpClientAsInt<br>";
         echo "nUdpClientPort=$this->nUdpClientPort<br>";
+        echo "nClientCommunicMode=$this->nClientCommunicMode<br>";
         $diffWithNow = $this->dtThisCreated->diff(new DateTime());
         echo "dtThisCreated={$this->dtThisCreated->format('Y-m-d H:i:s.u')}" .
             ", days: {$diffWithNow->days}, minutes: {$diffWithNow->i}<br>";
@@ -611,6 +618,7 @@ class FfBinConnData
         fprintf($fpTxt, GetStrIpFromInt($this->nLocalIpSvrAsInt) . " ");
         fprintf($fpTxt, GetStrIpFromInt($this->nIpClientAsInt) . " ");
         fprintf($fpTxt, "%7d ", $this->nUdpClientPort);
+        fprintf($fpTxt, "%2d ", $this->nClientCommunicMode);
         fprintf($fpTxt, $this->dtThisCreated->format('Y-m-d H:i:s.u') . " ");
         fprintf($fpTxt, "%4d ", $diffWithNow->days);
         fprintf($fpTxt, $this->strConnKey);

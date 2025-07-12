@@ -55,7 +55,22 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 MauiProgram.Settings.SvrClModeAsInt = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(IsChkLocalIPVisible));
+                OnPropertyChanged(nameof(IsCommunicModeVisible));
+            }
+        }
+    }
+
+    // same thing for CommunicModeAsInt
+    // selection change:
+    public int CommunicModeAsInt
+    {
+        get => MauiProgram.Settings.CommunicModeAsInt;
+        set
+        {
+            if (MauiProgram.Settings.CommunicModeAsInt != value)
+            {
+                MauiProgram.Settings.CommunicModeAsInt = value;
+                OnPropertyChanged();
             }
         }
     }
@@ -73,7 +88,7 @@ public partial class MainPageViewModel : BaseViewModel
                 _isBtnConnectVisible = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsBtnBackToFilesVisible));
-                OnPropertyChanged(nameof(IsChkLocalIPVisible));
+                OnPropertyChanged(nameof(IsCommunicModeVisible));
             }
         }
     }
@@ -83,11 +98,9 @@ public partial class MainPageViewModel : BaseViewModel
         get => ! IsBtnConnectVisible;
     }
 
-    public bool IsChkLocalIPVisible
+    public bool IsCommunicModeVisible
     {
-        //JEEWEE
-        //get => IsBtnConnectVisible && ! MauiProgram.Settings.ModeIsServer;
-        get => IsBtnConnectVisible;
+        get => IsBtnConnectVisible && ! MauiProgram.Settings.ModeIsServer;
     }
 
 
@@ -413,7 +426,7 @@ public partial class MainPageViewModel : BaseViewModel
 
 
     /// <summary>
-    /// Gets Json prop 'ipData' from response and sets it into Info props
+    /// Gets Json prop 'ipData' from response and sets it into Info props (and CommunicModeAsInt to Settings)
     /// Throws exception if there is an errMsg
     /// </summary>
     /// <param name="respFromCentralSvr"></param>
@@ -423,6 +436,12 @@ public partial class MainPageViewModel : BaseViewModel
         string errMsg = GetJsonProp(respFromCentralSvr, "errMsg");
         if ("" == errMsg)
             errMsg = IpDataToInfo(GetJsonProp(respFromCentralSvr, "ipData"));
+        if ("" == errMsg && MauiProgram.Settings.ModeIsServer)
+        {
+            string clientCommunicModeAsStr = GetJsonProp(respFromCentralSvr, "clientCommunicMode");
+            if (MauiProgram.ParseIntEnum<CommunicMode>(clientCommunicModeAsStr, out int modeAsInt))
+                MauiProgram.Settings.CommunicModeAsInt = modeAsInt;
+        }
 
         if ("" != errMsg)
         {
@@ -442,7 +461,9 @@ public partial class MainPageViewModel : BaseViewModel
             CentralSvrRespToInfoData(response);
             if (MauiProgram.Info.UdpPortOtherside > 0)
                 return;
-            Thread.Sleep(sleepMilliSecs);
+            //JEEWEE
+            //Thread.Sleep(sleepMilliSecs);
+            await Task.Delay(sleepMilliSecs);
         }
     }
 

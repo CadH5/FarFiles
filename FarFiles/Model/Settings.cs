@@ -14,6 +14,13 @@ namespace FarFiles.Model
         CLIENT,
     }
 
+    public enum CommunicMode
+    {
+        LOCALIP,
+        NATHOLEPUNCHING,
+        CENTRALSVR,
+    }
+
     public class Settings
     {
 #if ANDROID
@@ -24,6 +31,7 @@ namespace FarFiles.Model
         public string FullPathRoot { get; set; } = "";
 #endif
         public int SvrClModeAsInt { get; set; } = (int)SvrClMode.SERVER;
+        public int CommunicModeAsInt { get; set; } = (int)CommunicMode.LOCALIP;
         public bool ModeIsServer { get => SvrClModeAsInt == (int)SvrClMode.SERVER ||
                         SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE; }
         public int Idx0isOverwr1isSkip { get; set; } = 0;
