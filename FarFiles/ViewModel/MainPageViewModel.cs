@@ -10,9 +10,14 @@ using System;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+//JEEWEE
+//using System.Runtime.InteropServices.WindowsRuntime;
+using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
+//JEEWEE
+//using Windows.Media.Protection.PlayReady;
 
 namespace FarFiles.ViewModel;
 
@@ -20,8 +25,12 @@ public partial class MainPageViewModel : BaseViewModel
 {
     protected int _numSendMsg = 0;
     protected int _numReceivedAns = 0;
-    protected UdpWrapper _udpClient = null;
-    protected UdpWrapper _udpServer = null;
+    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    //protected UdpWrapper _udpClient = null;
+    //protected UdpWrapper _udpServer = null;
+    protected CommunicWrapper _communicClient = null;
+    protected CommunicWrapper _communicServer = null;
+
     protected FileDataService _fileDataService;
     protected CopyMgr _copyMgr = null;
 
@@ -104,18 +113,19 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    public bool UseSvrLocalIP
-    {
-        get => Settings.UseSvrLocalIP;
-        set
-        {
-            if (Settings.UseSvrLocalIP != value)
-            {
-                Settings.UseSvrLocalIP = value;
-                OnPropertyChanged();
-            }
-        }
-    }
+    //JEEWEE
+    //public bool UseSvrLocalIP
+    //{
+    //    get => Settings.UseSvrLocalIP;
+    //    set
+    //    {
+    //        if (Settings.UseSvrLocalIP != value)
+    //        {
+    //            Settings.UseSvrLocalIP = value;
+    //            OnPropertyChanged();
+    //        }
+    //    }
+    //}
 
 
     public string FullPathRoot
@@ -263,24 +273,64 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+    protected async Task TestUpldDwnldJEEWEE()
+    {
+        var content = new MultipartFormDataContent();
+        using (var client = new HttpClient())
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes("TestJEEWEE");
+            var byteContent = new ByteArrayContent(bytes, 0, bytes.Length);
+            byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                        "application/octet-stream");
+            content.Add(byteContent, "filesToUpload[]", "JEEWEETest.bin");
+            //JEEWEE
+            //content.Add(new StringContent("Yes"), "chkOverwrite");
+
+            HttpResponseMessage response = await client.PostAsync(
+                        "http://localhost:8080/farfiles/upld.php", content);
+            response.EnsureSuccessStatusCode(); // Throw if not successful
+        }
+
+        using (var client = new HttpClient())
+        {
+            CancellationTokenSource cts = new(TimeSpan.FromSeconds(MauiProgram.Settings.TimeoutSecsClient)); // total timeout
+            while (!cts.Token.IsCancellationRequested)
+            {
+                try
+                {
+                    byte[] retBytes = await client.GetByteArrayAsync(
+                            "http://localhost:8080/farfiles/dwnld.php?fileNameExt=JEEWEETest.bin");
+                    if (retBytes != null && retBytes.Length > 0)
+                    {
+                        File.WriteAllBytes(@"C:\temp\jan.bin", retBytes);
+                        break;
+                    }
+                }
+                catch
+                {
+                }
+                await Task.Delay(1 * 1000);
+            }
+        }
+    }
 
     public void OnCloseThings()
     {
         if (MauiProgram.Info.Connected)
         {
-            UdpWrapper udpWr = _udpClient ?? _udpServer;
-            if (null != udpWr)
+            CommunicWrapper communicWr = _communicClient ?? _communicServer;
+            if (null != communicWr)
             {
                 var msgSvrCl = new MsgSvrClDisconnInfo();
-                Task.Run(() => udpWr.SendAsync(msgSvrCl.Bytes, msgSvrCl.Bytes.Length))
+                Task.Run(() => communicWr.SendBytesAsync(msgSvrCl.Bytes, msgSvrCl.Bytes.Length))
                     .Wait(TimeSpan.FromSeconds(1));
             }
         }
         _copyMgr?.Dispose();
-        _udpServer?.Dispose();
-        _udpServer = null;
-        _udpClient?.Dispose();
-        _udpClient = null;
+        _communicServer?.Dispose();
+        _communicServer = null;
+        _communicClient?.Dispose();
+        _communicClient = null;
     }
 
 
@@ -297,6 +347,8 @@ public partial class MainPageViewModel : BaseViewModel
         //====================================================================================
 
         //OpenClientJEEWEE();
+        await TestUpldDwnldJEEWEE();
+        return;
 
         if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
         {
@@ -326,20 +378,16 @@ public partial class MainPageViewModel : BaseViewModel
             // Sometimes, later on, we need to know how this instance was connected first time, before any swap
             MauiProgram.Info.FirstModeIsServer = MauiProgram.Settings.ModeIsServer;
 
+            // server and client: get udp port from Stun server. Even if communication through
+            // central server is used (udp port is used for identification of files, in that case).
             int udpPort = 0;
-            //JEEWEE
-            //if (MauiProgram.Settings.ModeIsServer)
-            //{
             descrTrying = " obtaining udp port from stun server";
-            // server and client: get udp port from Stun server
             var udpIEndPoint = await GetUdpSvrIEndPointFromStun(Settings);
             if (null == udpIEndPoint)
                 throw new Exception("Unknown error getting data from Stun Server");
             udpPort = udpIEndPoint.Port;
             if (udpPort <= 0)
                 throw new Exception("Wrong data from Stun Server");
-            //JEEWEE
-            //}
 
             MauiProgram.Info.UdpPort = udpPort;
             descrTrying = " obtaining local IP";
@@ -354,36 +402,46 @@ public partial class MainPageViewModel : BaseViewModel
 
             if (MauiProgram.Settings.ModeIsServer)
             {
-                // Polling is not necessary for localip
-                if (!MauiProgram.Settings.UseSvrLocalIP)
-                {
-                    // server: in loop: poll central server untill client connects
-                    descrTrying = " consulting client connection in central server";
-                    await PollCentralServerAsSvrUntilClientConnectsAsync();
+                //JEEWEE
+                //// Polling is not necessary for localip
+                //if (!MauiProgram.Settings.UseSvrLocalIP)
+                //{
+                // server: in loop: poll central server untill client connects
+                descrTrying = " consulting client connection in central server";
+                await PollCentralServerAsSvrUntilClientConnectsAsync();
 
-                    // Client has connected
-                }
+                // Client has connected. Now we know CommunicMode
+                
+                //JEEWEE
+                //}
 
                 // server: do conversation: in loop: listen for client msgs and response
                 descrTrying = " listening for client contact";
                 LblInfo1 = $"Listening for client contact ...";
                 try
                 {
-                    _udpServer = new UdpWrapper(new UdpClient(udpPort));
+                    //JEEWEE
+                    //_udpServer = new UdpWrapper(new UdpClient(udpPort));
+                    _communicServer = new CommunicWrapper(
+                            MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.CENTRALSVR ?
+                            null : new UdpClient(udpPort));
                 }
                 catch
                 {
-                    _udpServer = null;
+                    _communicServer = null;
                     throw;
                 }
 
-                if (!MauiProgram.Settings.UseSvrLocalIP)
+                //JEEWEE
+                //if (!MauiProgram.Settings.UseSvrLocalIP)
+                if (MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.NATHOLEPUNCHING)
                 {
                     // send client a dummy message("NAT hole punching")
                     descrTrying = " NAT hole punching";
-                    await DoHolePunchingAsync(_udpServer);
+                    await DoHolePunchingAsync(_communicServer.UdpWrapper);
                 }
 
+                // Do the big listen-answer loop
                 await DoListenLoopAsSvrAsync();
                 if (MauiProgram.Info.AppIsShuttingDown)
                     return;
@@ -642,9 +700,9 @@ public partial class MainPageViewModel : BaseViewModel
         OnPropertyChanged();
 
         // we must keep using our own UdpWrapper instance
-        var sav = _udpClient;
-        _udpClient = _udpServer;
-        _udpServer = sav;
+        var sav = _communicClient;
+        _communicClient = _communicServer;
+        _communicServer = sav;
 
         // we restart with empty subpaths
         MauiProgram.Info.SvrPathParts.Clear();
@@ -820,20 +878,28 @@ public partial class MainPageViewModel : BaseViewModel
                 LblInfo1 = "";
                 LblInfo2 = "";
                 Log($"client: sending to server: {sendMsgSvrCl.GetType()}");
-                int iResult = await _udpClient.SendAsync(sendMsgSvrCl.Bytes, sendMsgSvrCl.Bytes.Length);
+                int iResult = await _communicClient.SendBytesAsync(sendMsgSvrCl.Bytes, sendMsgSvrCl.Bytes.Length);
                 Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
 
-                UdpReceiveResult response = await _udpClient.ReceiveAsync(
-                        MauiProgram.Settings.TimeoutSecsClient);
+                //JEEWEE
+                //UdpReceiveResult response = await _udpClient.ReceiveAsync(
+                //        MauiProgram.Settings.TimeoutSecsClient);
+                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! POLLING SECONDS MECHANISM
+                byte[] response = await _communicClient.ReceiveBytesAsync(
+                        5000, MauiProgram.Settings.TimeoutSecsClient);
 
-                Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
+                //JEEWEE
+                //Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
+                Log($"Received from server: answer {++_numReceivedAns}, {response.Length} bytes");
 
-                if (response.Buffer.Length == 0)
+                if (response.Length == 0)
                 {
                     throw new Exception($"Answer from server seems empty for unknown reason");
                 }
 
-                msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response.Buffer);
+                //JEEWEE
+                //msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response.Buffer);
+                msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response);
                 Log($"client: received from server: type '{msgSvrClAnswer?.GetType()}'");
                 if (null == msgSvrClAnswer)     // message should be ignored
                     continue;
@@ -881,14 +947,18 @@ public partial class MainPageViewModel : BaseViewModel
 
         try
         {
-            UdpReceiveResult received;
-            if (null == _udpServer)
+            //JEEWEE
+            //UdpReceiveResult received;
+            byte[] received;
+            if (null == _communicServer)
                 return true;
 
             try
             {
                 // use timeouts of 1 minute
-                received = await _udpServer.ReceiveAsync(60);
+                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! POLLING MECHANISM
+                //received = await _udpServer.ReceiveAsync(60);
+                received = await _communicServer.ReceiveBytesAsync(5000, 60);
             }
             catch (OperationCanceledException)
             {
@@ -898,13 +968,17 @@ public partial class MainPageViewModel : BaseViewModel
             // Client can restart, and connect another time; in that case its IPEndPoint changes.
             // If _udpServer.IPEndPoint is null, client/server were swapped and then the
             // receiver's IPEndPoint must NOT be used
-            if (_rememberClientRemoteEnd || _udpServer.IPEndPoint != null)
+            if (_rememberClientRemoteEnd || _communicServer.UdpWrapper?.IPEndPoint != null)
             {
-                _udpServer.SetClientRemoteEnd(received.RemoteEndPoint);
+                //JEEWEE
+                //_communicServer.SetClientRemoteEnd(received.RemoteEndPoint);
+                _communicServer.SetClientRemoteEnd(_communicServer.LastReceivedRemoteEndPoint);
                 _rememberClientRemoteEnd = false;
             }
 
-            msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
+            //JEEWEE
+            //msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
+            msgSvrCl = MsgSvrClBase.CreateFromBytes(received);
             if (null == msgSvrCl)   // message should be ignored
             {
                 return false;       // stay in loop
@@ -1100,7 +1174,9 @@ public partial class MainPageViewModel : BaseViewModel
 
             LblInfo2 = $"sending {sendWhatStr} ...";
             Log($"server: going to send bytes: {msgSvrClAns.Bytes.Length}, {msgSvrClAns.GetType()}");
-            await _udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
+            //JEEWEE
+            //await _udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
+            await _communicServer.SendBytesAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
             LblInfo2 = $"sent: {sendWhatStr}";
 
             MauiProgram.Info.NumAnswersSent++;
@@ -1119,7 +1195,7 @@ public partial class MainPageViewModel : BaseViewModel
                 // rejected: send message to the client that now also is server, so that it
                 // switches back to client
                 msgSvrClAns = new MsgSvrClSwapRejectedBySvr();
-                await _udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
+                await _communicServer.SendBytesAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
             }
         }
         catch (Exception exc)
@@ -1239,67 +1315,61 @@ public partial class MainPageViewModel : BaseViewModel
     {
         try
         {
-            string ipAddressSvr = UseSvrLocalIP ?
+            //JEEWEE
+            bool useLocalIP = MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.LOCALIP;
+
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //string ipAddressSvr = UseSvrLocalIP ?
+            string ipAddressSvr = useLocalIP ?
                     MauiProgram.Info.StrLocalIPSvr :
                     MauiProgram.Info.StrPublicIpOtherside;
-            if (UseSvrLocalIP)
+            //JEEWEE
+            //if (UseSvrLocalIP)
+            if (useLocalIP)
             {
-                _udpClient = new UdpWrapper(new UdpClient(
+                _communicClient = new CommunicWrapper(new UdpClient(
                         new IPEndPoint(IPAddress.Any, 0))); // Let the OS pick the local address
+            }
+            else if (MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.CENTRALSVR)
+            {
+                _communicClient = new CommunicWrapper(null);
             }
             else
             {
-                _udpClient = new UdpWrapper(new UdpClient(
+                _communicClient = new CommunicWrapper(new UdpClient(
                         new IPEndPoint(IPAddress.Any, Convert.ToInt32(
                         MauiProgram.Info.UdpPort))));
             }
 
-            if (!MauiProgram.Settings.UseSvrLocalIP)
+            //JEEWEE
+            //if (!MauiProgram.Settings.UseSvrLocalIP)
+            if (MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.NATHOLEPUNCHING)
             {
-                // cannot send packages to an arbitrary host while connected
-                //JEEWEE
-                // await dummy message from server
-                await DoHolePunchingAsync(_udpClient);
+                LblInfo2 = "Trying NAT hole punching";
+                await DoHolePunchingAsync(_communicClient.UdpWrapper);
             }
 
-            _udpClient.ConnectToServerFromClient(IPEndPointFromIPAsStrPlusPort(ipAddressSvr, Convert.ToInt32(
+            if (MauiProgram.Settings.CommunicModeAsInt != (int)CommunicMode.CENTRALSVR)
+            {
+                _communicClient.UdpWrapper.ConnectToServerFromClient(
+                        IPEndPointFromIPAsStrPlusPort(ipAddressSvr, Convert.ToInt32(
                         MauiProgram.Info.UdpPortOtherside)));
+            }
 
-            LblInfo2 = "Trying to connect to server" + (UseSvrLocalIP ? " (localIP)" : "");
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! LETS SEE HOW TO BEST DISPLAY THINGS
+            LblInfo2 = "Trying to connect to server" + (useLocalIP ? " (localIP)" : "");
             MauiProgram.Info.IpSvrThatClientConnectedTo = ipAddressSvr  ;
 
             return "";
         }
         catch (Exception exc)
         {
-            _udpClient = null;
+            _communicClient = null;
             return MauiProgram.ExcMsgWithInnerMsgs(exc);
         }
     }
 
 
-
-    protected async Task DoHolePunchingAsyncOLDJEEWEE(UdpWrapper udpWrapper)
-    {
-        byte[] dummyMessage = Encoding.UTF8.GetBytes("punch");
-        for (int i = 0; i < 25; i++)
-        {
-            await udpWrapper.SendAsync(dummyMessage, dummyMessage.Length,
-                    IPEndPointFromIPAsStrPlusPort(MauiProgram.Info.StrPublicIpOtherside,
-                            MauiProgram.Info.UdpPortOtherside));
-            try
-            {
-                await udpWrapper.ReceiveAsync(1);
-                // contact!
-                return;
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        }
-        string descrOtherSide = MauiProgram.Settings.ModeIsServer ? "client" : "server";
-        throw new Exception($"Unable to connect with {descrOtherSide}");
-    }
 
     protected async Task DoHolePunchingAsync(UdpWrapper udpWrapper)
     {
@@ -1553,4 +1623,123 @@ public partial class MainPageViewModel : BaseViewModel
         }
     }
 
+
+
+    protected class CommunicWrapper : IDisposable
+    {
+        public UdpWrapper UdpWrapper { get; protected set; } = null;
+        public IPEndPoint LastReceivedRemoteEndPoint { get; protected set; } = null;
+        protected string _csvr_downloadUrl = $"https://www.cadh5.com/farfiles/dwnld.php";
+        protected string _csvr_uploadUrl = $"https://www.cadh5.com/farfiles/upld.php";
+        protected int _rcvNr = 1;
+        protected int _sndNr = 1;
+
+        public CommunicWrapper(UdpClient udpClientOrNull)
+        {
+            if (null != udpClientOrNull)
+                UdpWrapper = new UdpWrapper(udpClientOrNull);
+        }
+
+
+        public void ConnectToServerFromClient(IPEndPoint ipEndPoint)
+        {
+            if (null != UdpWrapper)
+                UdpWrapper.ConnectToServerFromClient(ipEndPoint);
+        }
+
+
+        public void SetClientRemoteEnd(IPEndPoint ipEndPointClient)
+        {
+            if (null != UdpWrapper)
+                UdpWrapper.SetClientRemoteEnd(ipEndPointClient);
+        }
+
+
+        /// <summary>
+        /// ReceiveBytesAsync
+        /// </summary>
+        /// <param name="timeOutSeconds">-1 means no timeout</param>
+        /// <returns></returns>
+        public async Task<byte[]> ReceiveBytesAsync(int pollSleepSeconds, int timeOutSeconds = -1)
+        {
+            if (null != UdpWrapper)
+            {
+                UdpReceiveResult result = await UdpWrapper.ReceiveAsync(timeOutSeconds);
+                LastReceivedRemoteEndPoint = result.RemoteEndPoint;
+                return result.Buffer;
+            }
+
+            //JEEWEE: SECONDS: NEW SETTING?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // no udp communication: poll central server for file
+            string urlRcvFile = _csvr_downloadUrl + "?fileNameExt=" +
+                    CsvrComposeFileName(MauiProgram.Info.StrPublicIp, MauiProgram.Info.UdpPort, _rcvNr);
+            using (var client = new HttpClient())
+            {
+                CancellationTokenSource cts = new(TimeSpan.FromSeconds(MauiProgram.Settings.TimeoutSecsClient)); // total timeout
+                while (!cts.Token.IsCancellationRequested)
+                {
+                    try
+                    {
+                        byte[] retBytes = await client.GetByteArrayAsync(urlRcvFile);
+                        if (retBytes != null && retBytes.Length > 0)
+                        {
+                            _rcvNr++;
+                            return retBytes;
+                        }
+                    }
+                    catch
+                    {
+                    }
+                    await Task.Delay(pollSleepSeconds * 1000);
+                }
+            }
+
+            return new byte[0];
+        }
+
+
+        public async Task<int> SendBytesAsync(byte[] bytes, int numBytesToSend, IPEndPoint ipEndPointOverride = null)
+        {
+            if (null != UdpWrapper)
+            {
+                return await UdpWrapper.SendAsync(bytes, numBytesToSend, ipEndPointOverride);
+            }
+
+            // no udp communication: upload to central server as a file
+            var content = new MultipartFormDataContent();
+            using (var client = new HttpClient())
+            {
+                // Fake the file using ByteArrayContent
+                var byteContent = new ByteArrayContent(bytes, 0, numBytesToSend);
+                byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                            "application/octet-stream");
+                content.Add(byteContent, "filesToUpload[]", CsvrComposeFileName(
+                            MauiProgram.Info.StrPublicIpOtherside, MauiProgram.Info.UdpPortOtherside, _sndNr));
+                //JEEWEE
+                //content.Add(new StringContent("Yes"), "chkOverwrite");
+
+                HttpResponseMessage response = await client.PostAsync(_csvr_uploadUrl, content);
+                response.EnsureSuccessStatusCode(); // Throw if not successful
+            }
+
+            return numBytesToSend;
+        }
+
+
+
+        public void Dispose()
+        {
+            if (null != UdpWrapper)
+                UdpWrapper.Dispose();
+        }
+
+
+        public static string CsvrComposeFileName(string strIp, int udpPort, int seqNr)
+        {
+            string[] parts = strIp.Split('.');
+            if (parts.Length != 4)
+                throw new Exception($"PROGRAMMERS: CsvrComposeFileName: invalid ip '{strIp}'");
+            return String.Join('-', parts) + $"_{udpPort}_{seqNr}.bin";
+        }
+    }
 }

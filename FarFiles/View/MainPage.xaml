@@ -33,7 +33,8 @@
         <Label Grid.Row="4" Grid.Column="0" Text="Connect Mode:"></Label>
         <Picker Grid.Row="4" Grid.Column="1"
                 Style="{StaticResource PickerStyle}"
-                SelectedIndex="{Binding SvrClModeAsInt}">
+                SelectedIndex="{Binding SvrClModeAsInt}"
+                IsEnabled="{Binding IsNotBusy}">
             <Picker.ItemsSource>
                 <x:Array Type="{x:Type x:String}">
                     <x:String>Server</x:String>
@@ -98,7 +99,8 @@
         <Picker Grid.Row="7" Grid.Column="1"
                 Style="{StaticResource PickerStyle}"
                 SelectedIndex="{Binding CommunicModeAsInt}"
-                IsVisible="{Binding IsCommunicModeVisible}">
+                IsVisible="{Binding IsCommunicModeVisible}"
+                IsEnabled="{Binding IsNotBusy}">
             <Picker.ItemsSource>
                 <x:Array Type="{x:Type x:String}">
                     <x:String>Local IP</x:String>

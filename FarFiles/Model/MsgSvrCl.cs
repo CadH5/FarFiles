@@ -33,9 +33,23 @@ namespace FarFiles.Model
 
     public class MsgSvrClBase
     {
-        public const int FARFILESMSG_SIGNATURE = 12344321;
+        /// <summary>
+        /// FARFILESMSG_SIGN_AND_VERSION: 12344321 is v1, 12344322 is v2, etc, indicating msg protocol version
+        /// </summary>
+        public const int FARFILESMSG_SIGN_AND_VERSION = 12344321;
+
+        /// <summary>
+        /// FARFILESMSG_MINSIGN: signature of first msg protocol version published
+        /// </summary>
+        public const int FARFILESMSG_MINSIGN = 12344321;
+
         public const int MAXNUMARR_TOAVOIDMEMERR = 1000000;
         public byte[] Bytes;
+
+        /// <summary>
+        /// MsgsProtocolVersion: starts with 1; is incremented when protocol changes in new published FarFiles version
+        /// </summary>
+        public int MsgsProtocolVersion { get; protected set; } = 0;
 
         // after signature and type:
         protected const int STARTINDEX_INDIVIDUAL = sizeof(int) + sizeof(int);
@@ -44,7 +58,7 @@ namespace FarFiles.Model
         {
             get
             {
-                return TypeFromBytes(Bytes);
+                return TypeFromBytes(Bytes, out int sign);
             }
         }
 
@@ -55,7 +69,7 @@ namespace FarFiles.Model
         /// <param name="type"></param>
         protected MsgSvrClBase(MsgSvrClType type)
         {
-            var bytes = BitConverter.GetBytes(FARFILESMSG_SIGNATURE).ToList();
+            var bytes = BitConverter.GetBytes(FARFILESMSG_SIGN_AND_VERSION).ToList();
             bytes.AddRange(BitConverter.GetBytes((int)type));
             Bytes = bytes.ToArray();
         }
@@ -71,7 +85,7 @@ namespace FarFiles.Model
         {
             //JEEWEE: I THINK MsgSvrClType.UNMATCHED_SIGNATURE SHOULD NOT HAPPEN HERE
 
-            MsgSvrClType foundType = TypeFromBytes(bytes);
+            MsgSvrClType foundType = TypeFromBytes(bytes, out int sign);
             if (foundType != expectedType)
             {
                 if (foundType == MsgSvrClType.ERROR)
@@ -80,6 +94,7 @@ namespace FarFiles.Model
                 throw new Exception($"Expected message type: {expectedType}, got: {foundType}");
             }
             Bytes = bytes;      // reference, no copy!
+            MsgsProtocolVersion = sign - FARFILESMSG_MINSIGN + 1;
         }
 
 
@@ -189,17 +204,22 @@ namespace FarFiles.Model
 
         /// <summary>
         /// Tries to get int from first 4 bytes after the 4 signature bytes, and cast to MsgSvrClType
+        /// Also checks signature (must be int from first to current msg version)
         /// If exception, returns UNMATCHED_SIGNATURE and message should be ignored (can happen as the updconnection is open)
         /// </summary>
         /// <param name="bytes"></param>
+        /// <param name="sign">first int found, is also checked</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public static MsgSvrClType TypeFromBytes(byte[] bytes)
+        protected static MsgSvrClType TypeFromBytes(byte[] bytes, out int sign)
         {
             int iType = -1;
             try
             {
-                iType = BitConverter.ToInt32(bytes, sizeof(int));   // type comes after the (int) signature
+                sign = BitConverter.ToInt32(bytes, 0);
+                if (sign < FARFILESMSG_MINSIGN || sign > FARFILESMSG_SIGN_AND_VERSION)
+                    return MsgSvrClType.UNMATCHED_SIGNATURE;
+                iType = BitConverter.ToInt32(bytes, sizeof(int));   // type comes after the (int) signature_and_verion
                 return (MsgSvrClType)iType;
             }
             //JEEWEE
