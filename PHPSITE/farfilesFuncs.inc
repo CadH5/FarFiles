@@ -9,7 +9,7 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
         return "Internal server error (GETDATA(CMD))";
 
     $ipData = "";
-    $clientCommunicMode = "-1";
+    $clientCommunicMode = -1;
     $errMsg = "";
     $ipPubl = $_SERVER['REMOTE_ADDR'];
     // for some reason, if I use localhost and xampp, $_SERVER['REMOTE_ADDR'] results in "::1"
@@ -54,6 +54,7 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
 
                         // this connectKey exists in file and is not unregistered
                         $ipData = $oneData->ToIpData();
+                        $clientCommunicMode = $oneData->nClientCommunicMode;
 
                         if ($cmd === "GETDATA") {
                             break;

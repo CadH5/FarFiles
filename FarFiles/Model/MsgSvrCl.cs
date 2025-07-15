@@ -9,7 +9,7 @@ namespace FarFiles.Model
 {
     public enum MsgSvrClType
     {
-        UNMATCHED_SIGNATURE,
+        UNMATCHED_SIGNORTYPE,
         ERROR,
         DISCONN_INFO,
         STRING_SEND,
@@ -83,15 +83,18 @@ namespace FarFiles.Model
         /// <exception cref="Exception"></exception>
         protected MsgSvrClBase(byte[] bytes, MsgSvrClType expectedType)
         {
-            //JEEWEE: I THINK MsgSvrClType.UNMATCHED_SIGNATURE SHOULD NOT HAPPEN HERE
-
             MsgSvrClType foundType = TypeFromBytes(bytes, out int sign);
             if (foundType != expectedType)
             {
                 if (foundType == MsgSvrClType.ERROR)
                     throw new Exception(new MsgSvrClErrorAnswer(bytes).GetErrMsgsJoined());
 
-                throw new Exception($"Expected message type: {expectedType}, got: {foundType}");
+                string startsWithDescr = "";
+                if (foundType == MsgSvrClType.UNMATCHED_SIGNORTYPE)
+                    startsWithDescr =
+                        $" (bytes start with '{MauiProgram.DispStartBytes(bytes, 0, 30)}')'";
+
+                throw new Exception($"Expected message type: {expectedType}, got: {foundType}{startsWithDescr}");
             }
             Bytes = bytes;      // reference, no copy!
             MsgsProtocolVersion = sign - FARFILESMSG_MINSIGN + 1;
@@ -99,17 +102,17 @@ namespace FarFiles.Model
 
 
         /// <summary>
-        /// Returns null if type is UNMATCHED_SIGNATURE (message should be ignored), else a MsgSvrClBase instance
+        /// Returns null if type is UNMATCHED_SIGNORTYPE (message should be ignored), else a MsgSvrClBase instance
         /// </summary>
         /// <param name="bytes"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         public static MsgSvrClBase CreateFromBytes(byte[] bytes)
         {
-            MsgSvrClType type = TypeFromBytes(bytes);
+            MsgSvrClType type = TypeFromBytes(bytes, out int sign);
             switch (type)
             {
-                case MsgSvrClType.UNMATCHED_SIGNATURE:
+                case MsgSvrClType.UNMATCHED_SIGNORTYPE:
                     return null;
 
                 case MsgSvrClType.ERROR:
@@ -205,7 +208,7 @@ namespace FarFiles.Model
         /// <summary>
         /// Tries to get int from first 4 bytes after the 4 signature bytes, and cast to MsgSvrClType
         /// Also checks signature (must be int from first to current msg version)
-        /// If exception, returns UNMATCHED_SIGNATURE and message should be ignored (can happen as the updconnection is open)
+        /// If exception, returns UNMATCHED_SIGNORTYPE and message should be ignored (can happen as the updconnection is open)
         /// </summary>
         /// <param name="bytes"></param>
         /// <param name="sign">first int found, is also checked</param>
@@ -214,25 +217,18 @@ namespace FarFiles.Model
         protected static MsgSvrClType TypeFromBytes(byte[] bytes, out int sign)
         {
             int iType = -1;
+            sign = -1;
             try
             {
                 sign = BitConverter.ToInt32(bytes, 0);
                 if (sign < FARFILESMSG_MINSIGN || sign > FARFILESMSG_SIGN_AND_VERSION)
-                    return MsgSvrClType.UNMATCHED_SIGNATURE;
+                    return MsgSvrClType.UNMATCHED_SIGNORTYPE;
                 iType = BitConverter.ToInt32(bytes, sizeof(int));   // type comes after the (int) signature_and_verion
                 return (MsgSvrClType)iType;
             }
-            //JEEWEE
-            //catch (Exception exc)
-            //{
-            //    throw new Exception($"Received invalid FarFiles message" +
-            //        (iType == -1 ? "" : $" starting with int {iType}") +
-            //        ": " + exc.Message);
-            //}
-
             catch
             {
-                return MsgSvrClType.UNMATCHED_SIGNATURE;
+                return MsgSvrClType.UNMATCHED_SIGNORTYPE;
             }
         }
 

@@ -6,6 +6,8 @@ using Microsoft.Maui.LifecycleEvents;
 using System.Text;
 using System;
 using Microsoft.Maui.Media;
+//JEEWEE
+//using Android.Provider;
 
 namespace FarFiles;
 
@@ -136,6 +138,27 @@ public static class MauiProgram
         return "";
     }
 
+
+    /// <summary>
+    /// Returns a string to display bytes as ascii chars, replacing bytes < 32 by dot
+    /// </summary>
+    /// <param name="byArr"></param>
+    /// <param name="startIdx"></param>
+    /// <param name="maxLen"></param>
+    /// <returns></returns>
+    public static string DispStartBytes(byte[] byArr, int startIdx, int maxLen)
+    {
+        string retStr = "";
+        int till = Math.Min(maxLen, byArr.Length);
+        for (int i = startIdx; i < till; i++)
+        {
+            byte by = byArr[i];
+            retStr += by >= 32 ? (char)by : '.';
+        }
+
+        return retStr;
+    }
+
     public static async Task<string> PostToCentralServerAsync(string strCmd, bool closing = false)
     {
         using (var client = new HttpClient())
@@ -177,10 +200,14 @@ public static class MauiProgram
             else
             {
                 HttpResponseMessage response = await client.PostAsync(url, content);
+                Log.LogLine($"PostToCentralServerAsync: strCmd='{strCmd}', SvrClModeAsInt ={Settings.SvrClModeAsInt}, " +
+                    $" {response.StatusCode}");
                 response.EnsureSuccessStatusCode();
 
                 string retStr = await response.Content.ReadAsStringAsync();
                 retStr = retStr.Trim();
+
+                Log.LogLine($"   PostToCentralServerAsync: retStr={retStr}");
 
                 if (!retStr.StartsWith('{'))
                 {

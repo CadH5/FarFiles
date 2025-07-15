@@ -421,11 +421,11 @@ public partial class ClientViewModel : BaseViewModel
 
         LblFileNofN = $"file {fileN} of {filesTotal} ...";
         LblByteNofN = bytesTotal < 100000 ? "" :
-                $"byte {BytesStr(byteN)} of {BytesStr(bytesTotal)} ...";
+                $"byte {BytesStrForLbl(byteN)} of {BytesStrForLbl(bytesTotal)} ...";
         return false;
     }
 
-    protected string BytesStr(long numBytes)
+    protected string BytesStrForLbl(long numBytes)
     {
         string retStr = numBytes.ToString();
         for (int i=retStr.Length - 3; i > 0; i -= 3)

@@ -109,7 +109,10 @@ public partial class MainPageViewModel : BaseViewModel
 
     public bool IsCommunicModeVisible
     {
-        get => IsBtnConnectVisible && ! MauiProgram.Settings.ModeIsServer;
+        //JEEWEE
+        //get => IsBtnConnectVisible && ! MauiProgram.Settings.ModeIsServer;
+        // currently always true
+        get => true;
     }
 
 
@@ -273,47 +276,6 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    protected async Task TestUpldDwnldJEEWEE()
-    {
-        var content = new MultipartFormDataContent();
-        using (var client = new HttpClient())
-        {
-            byte[] bytes = Encoding.UTF8.GetBytes("TestJEEWEE");
-            var byteContent = new ByteArrayContent(bytes, 0, bytes.Length);
-            byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
-                        "application/octet-stream");
-            content.Add(byteContent, "filesToUpload[]", "JEEWEETest.bin");
-            //JEEWEE
-            //content.Add(new StringContent("Yes"), "chkOverwrite");
-
-            HttpResponseMessage response = await client.PostAsync(
-                        "http://localhost:8080/farfiles/upld.php", content);
-            response.EnsureSuccessStatusCode(); // Throw if not successful
-        }
-
-        using (var client = new HttpClient())
-        {
-            CancellationTokenSource cts = new(TimeSpan.FromSeconds(MauiProgram.Settings.TimeoutSecsClient)); // total timeout
-            while (!cts.Token.IsCancellationRequested)
-            {
-                try
-                {
-                    byte[] retBytes = await client.GetByteArrayAsync(
-                            "http://localhost:8080/farfiles/dwnld.php?fileNameExt=JEEWEETest.bin");
-                    if (retBytes != null && retBytes.Length > 0)
-                    {
-                        File.WriteAllBytes(@"C:\temp\jan.bin", retBytes);
-                        break;
-                    }
-                }
-                catch
-                {
-                }
-                await Task.Delay(1 * 1000);
-            }
-        }
-    }
-
     public void OnCloseThings()
     {
         if (MauiProgram.Info.Connected)
@@ -346,9 +308,9 @@ public partial class MainPageViewModel : BaseViewModel
         //return;
         //====================================================================================
 
+        //await TestUpldDwnldJEEWEE();
         //OpenClientJEEWEE();
-        await TestUpldDwnldJEEWEE();
-        return;
+        //return;
 
         if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
         {
@@ -402,29 +364,28 @@ public partial class MainPageViewModel : BaseViewModel
 
             if (MauiProgram.Settings.ModeIsServer)
             {
-                //JEEWEE
-                //// Polling is not necessary for localip
-                //if (!MauiProgram.Settings.UseSvrLocalIP)
-                //{
-                // server: in loop: poll central server untill client connects
-                descrTrying = " consulting client connection in central server";
-                await PollCentralServerAsSvrUntilClientConnectsAsync();
+                // Polling is not necessary nor desired for localip
+                if (MauiProgram.Settings.CommunicModeAsInt != (int)CommunicMode.LOCALIP)
+                {
+                    // server: in loop: poll central server untill client connects
+                    descrTrying = " consulting client connection in central server";
+                    await PollCentralServerAsSvrUntilClientConnectsAsync();
 
-                // Client has connected. Now we know CommunicMode
-                
-                //JEEWEE
-                //}
+                    MauiProgram.Log.LogLine($"server: after polling: CommunicModeAsInt=" +
+                            $"{MauiProgram.Settings.CommunicModeAsInt}");
+                }
 
                 // server: do conversation: in loop: listen for client msgs and response
-                descrTrying = " listening for client contact";
-                LblInfo1 = $"Listening for client contact ...";
+                descrTrying = " creating communication object";
                 try
                 {
                     //JEEWEE
                     //_udpServer = new UdpWrapper(new UdpClient(udpPort));
-                    _communicServer = new CommunicWrapper(
-                            MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.CENTRALSVR ?
-                            null : new UdpClient(udpPort));
+                    var udpClientOrNull = MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.CENTRALSVR ?
+                                null : new UdpClient(udpPort);
+                    _communicServer = new CommunicWrapper(udpClientOrNull);
+                    Log($"server: created CommunicWrapper with udpClientOrNull=" +
+                        (null == udpClientOrNull ? "null" : $"udpPort={udpPort}"));
                 }
                 catch
                 {
@@ -438,17 +399,21 @@ public partial class MainPageViewModel : BaseViewModel
                 {
                     // send client a dummy message("NAT hole punching")
                     descrTrying = " NAT hole punching";
+                    LblInfo1 = $"doing NAT hole punching ...";
                     await DoHolePunchingAsync(_communicServer.UdpWrapper);
                 }
 
                 // Do the big listen-answer loop
+                LblInfo1 = $"Listening for client contact ...";
                 await DoListenLoopAsSvrAsync();
+
                 if (MauiProgram.Info.AppIsShuttingDown)
                     return;
 
                 // if we are here, then now the server/client were swapped, and now
                 // we are client
                 descrTrying = " starting to act as a client";
+
                 await RetrieveServerPathInfoOnClientAndOpenClientPageAsync();
             }
             else
@@ -460,6 +425,9 @@ public partial class MainPageViewModel : BaseViewModel
                 {
                     throw new Exception(errMsg);
                 }
+
+                //JEEWEE: THIS IS TOTALLY WRONG, BUT HELPS IF SERVER POLLS AT 5 SECS (not necessary any more)
+                //await Task.Delay(6 * 1000);
 
                 descrTrying = " starting to act as a client";
                 _rememberClientRemoteEnd = false;   // also after swap: do not remember RemoteEndPoint
@@ -484,7 +452,7 @@ public partial class MainPageViewModel : BaseViewModel
 
 
     /// <summary>
-    /// Gets Json prop 'ipData' from response and sets it into Info props (and CommunicModeAsInt to Settings)
+    /// Gets Json prop 'ipData' from response and sets it into Info props
     /// Throws exception if there is an errMsg
     /// </summary>
     /// <param name="respFromCentralSvr"></param>
@@ -494,12 +462,19 @@ public partial class MainPageViewModel : BaseViewModel
         string errMsg = GetJsonProp(respFromCentralSvr, "errMsg");
         if ("" == errMsg)
             errMsg = IpDataToInfo(GetJsonProp(respFromCentralSvr, "ipData"));
-        if ("" == errMsg && MauiProgram.Settings.ModeIsServer)
-        {
-            string clientCommunicModeAsStr = GetJsonProp(respFromCentralSvr, "clientCommunicMode");
-            if (MauiProgram.ParseIntEnum<CommunicMode>(clientCommunicModeAsStr, out int modeAsInt))
-                MauiProgram.Settings.CommunicModeAsInt = modeAsInt;
-        }
+
+        // respFromCentralSvr also has prop "clientCommunicMode", an int, but we don't use it
+        // any more
+
+        //JEEWEE
+        //if ("" == errMsg && MauiProgram.Settings.ModeIsServer)
+        //{
+        //    string clientCommunicModeAsStr = GetJsonProp(respFromCentralSvr, "clientCommunicMode");
+        //    if (MauiProgram.ParseIntEnum<CommunicMode>(clientCommunicModeAsStr, out int modeAsInt))
+        //    {
+        //        MauiProgram.Settings.CommunicModeAsInt = modeAsInt;
+        //    }
+        //}
 
         if ("" != errMsg)
         {
@@ -886,7 +861,7 @@ public partial class MainPageViewModel : BaseViewModel
                 //        MauiProgram.Settings.TimeoutSecsClient);
                 //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! POLLING SECONDS MECHANISM
                 byte[] response = await _communicClient.ReceiveBytesAsync(
-                        5000, MauiProgram.Settings.TimeoutSecsClient);
+                        3, MauiProgram.Settings.TimeoutSecsClient);
 
                 //JEEWEE
                 //Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
@@ -919,9 +894,8 @@ public partial class MainPageViewModel : BaseViewModel
         }
         catch (Exception exc)
         {
-            Log("client: exception; LblInfo1=" + LblInfo1);
-            Log("client: exception; LblInfo2=" + LblInfo2);
             string errMsg = $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
+            Log($"client: exception, LblInfo1='{LblInfo1}', LblInfo2='{LblInfo2}', errMsg='{errMsg}'");
             await Shell.Current.DisplayAlert("Error", errMsg, "OK");
             DisconnectAndResetOnClient();
         }
@@ -958,7 +932,7 @@ public partial class MainPageViewModel : BaseViewModel
                 // use timeouts of 1 minute
                 //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! POLLING MECHANISM
                 //received = await _udpServer.ReceiveAsync(60);
-                received = await _communicServer.ReceiveBytesAsync(5000, 60);
+                received = await _communicServer.ReceiveBytesAsync(3, 60);
             }
             catch (OperationCanceledException)
             {
@@ -968,7 +942,7 @@ public partial class MainPageViewModel : BaseViewModel
             // Client can restart, and connect another time; in that case its IPEndPoint changes.
             // If _udpServer.IPEndPoint is null, client/server were swapped and then the
             // receiver's IPEndPoint must NOT be used
-            if (_rememberClientRemoteEnd || _communicServer.UdpWrapper?.IPEndPoint != null)
+            if (_rememberClientRemoteEnd || _communicServer.UdpWrapper?.IPEndPointClient != null)
             {
                 //JEEWEE
                 //_communicServer.SetClientRemoteEnd(received.RemoteEndPoint);
@@ -1327,18 +1301,24 @@ public partial class MainPageViewModel : BaseViewModel
             //if (UseSvrLocalIP)
             if (useLocalIP)
             {
-                _communicClient = new CommunicWrapper(new UdpClient(
-                        new IPEndPoint(IPAddress.Any, 0))); // Let the OS pick the local address
+                IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Any, 0);   // Let the OS pick the local address
+                _communicClient = new CommunicWrapper(new UdpClient(ipEndPoint));
+                Log("client: localIP: created CommunicWrapper with new udpClient with IPEndPoint" +
+                    " (IPAddress.Any, 0): " + ipEndPoint);
             }
             else if (MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.CENTRALSVR)
             {
                 _communicClient = new CommunicWrapper(null);
+                Log("client: via centralsvr: created CommunicWrapper with udpClient null)");
             }
-            else
+            else          // NATHOLEPUNCHING
             {
-                _communicClient = new CommunicWrapper(new UdpClient(
-                        new IPEndPoint(IPAddress.Any, Convert.ToInt32(
-                        MauiProgram.Info.UdpPort))));
+                IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Any, MauiProgram.Info.UdpPort);
+                var udpClient = new UdpClient(
+                        new IPEndPoint(IPAddress.Any, MauiProgram.Info.UdpPort));
+                _communicClient = new CommunicWrapper(udpClient);
+                Log("client: NAT hole punching: created CommunicWrapper with udpClient" +
+                    " (IPAddress.Any): " + ipEndPoint);
             }
 
             //JEEWEE
@@ -1351,14 +1331,15 @@ public partial class MainPageViewModel : BaseViewModel
 
             if (MauiProgram.Settings.CommunicModeAsInt != (int)CommunicMode.CENTRALSVR)
             {
-                _communicClient.UdpWrapper.ConnectToServerFromClient(
-                        IPEndPointFromIPAsStrPlusPort(ipAddressSvr, Convert.ToInt32(
-                        MauiProgram.Info.UdpPortOtherside)));
+                IPEndPoint ipEndPoint = IPEndPointFromIPAsStrPlusPort(ipAddressSvr,
+                        MauiProgram.Info.UdpPortOtherside);
+                _communicClient.UdpWrapper.ConnectToServerFromClient(ipEndPoint);
+                Log("client: ConnectToServerFromClient with server enpoint: " + ipEndPoint);
             }
 
             //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! LETS SEE HOW TO BEST DISPLAY THINGS
             LblInfo2 = "Trying to connect to server" + (useLocalIP ? " (localIP)" : "");
-            MauiProgram.Info.IpSvrThatClientConnectedTo = ipAddressSvr  ;
+            MauiProgram.Info.IpSvrThatClientConnectedTo = ipAddressSvr;
 
             return "";
         }
@@ -1536,16 +1517,27 @@ public partial class MainPageViewModel : BaseViewModel
     /// <returns></returns>
     protected static string GetJsonProp(string strJson, string propName)
     {
-        string search = $"\"{propName}\":\"";
+        string search = $"\"{propName}\":";
         int idx = strJson.IndexOf(search);
         if (idx == -1)
             return "";
         idx += search.Length;
-        int idx2 = strJson.IndexOf("\"", idx);
-        if (idx2 == -1)
+        if (idx >= strJson.Length)
             return "";
-
-        return strJson.Substring(idx, idx2 - idx);
+        if (strJson[idx] == '"')
+        {
+            idx++;
+            int idx2 = strJson.IndexOf("\"", idx);
+            if (idx2 == -1)
+                return "";
+            return strJson.Substring(idx, idx2 - idx);
+        }
+        int idx3 = strJson.IndexOf(",", idx);
+        if (idx3 == -1)
+            idx3 = strJson.IndexOf("}", idx);
+        if (idx3 == -1)
+            idx3 = strJson.Length;
+        return strJson.Substring(idx, idx3 - idx).Trim();
     }
 
 
@@ -1554,7 +1546,7 @@ public partial class MainPageViewModel : BaseViewModel
     {
         protected UdpClient _udpClient;       // also for server
         protected IPEndPoint _ipEndPointClient = null;
-        public IPEndPoint IPEndPoint { get => _ipEndPointClient; }
+        public IPEndPoint IPEndPointClient { get => _ipEndPointClient; }
 
         public UdpWrapper(UdpClient udpClient)
         {
@@ -1640,7 +1632,6 @@ public partial class MainPageViewModel : BaseViewModel
                 UdpWrapper = new UdpWrapper(udpClientOrNull);
         }
 
-
         public void ConnectToServerFromClient(IPEndPoint ipEndPoint)
         {
             if (null != UdpWrapper)
@@ -1671,8 +1662,12 @@ public partial class MainPageViewModel : BaseViewModel
 
             //JEEWEE: SECONDS: NEW SETTING?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // no udp communication: poll central server for file
-            string urlRcvFile = _csvr_downloadUrl + "?fileNameExt=" +
+            string urlRcvFile = _csvr_downloadUrl + "?filenameext=" +
                     CsvrComposeFileName(MauiProgram.Info.StrPublicIp, MauiProgram.Info.UdpPort, _rcvNr);
+
+            string svrCl = MauiProgram.Settings.ModeIsServer ? "server" : "client";
+            MauiProgram.Log.LogLine($"{svrCl}: downloading: {urlRcvFile}");
+
             using (var client = new HttpClient())
             {
                 CancellationTokenSource cts = new(TimeSpan.FromSeconds(MauiProgram.Settings.TimeoutSecsClient)); // total timeout
@@ -1687,8 +1682,10 @@ public partial class MainPageViewModel : BaseViewModel
                             return retBytes;
                         }
                     }
-                    catch
+                    catch (Exception exc)
                     {
+                        MauiProgram.Log.LogLine("Exception, ReceiveBytesAsync, central server: " +
+                                MauiProgram.ExcMsgWithInnerMsgs(exc));
                     }
                     await Task.Delay(pollSleepSeconds * 1000);
                 }
@@ -1713,13 +1710,25 @@ public partial class MainPageViewModel : BaseViewModel
                 var byteContent = new ByteArrayContent(bytes, 0, numBytesToSend);
                 byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
                             "application/octet-stream");
-                content.Add(byteContent, "filesToUpload[]", CsvrComposeFileName(
-                            MauiProgram.Info.StrPublicIpOtherside, MauiProgram.Info.UdpPortOtherside, _sndNr));
+                string fileNameExt = CsvrComposeFileName(MauiProgram.Info.StrPublicIpOtherside,
+                            MauiProgram.Info.UdpPortOtherside, _sndNr);
+                content.Add(byteContent, "filesToUpload[]", fileNameExt);
+
+                string svrCl = MauiProgram.Settings.ModeIsServer ? "server" : "client";
+                MauiProgram.Log.LogLine($"{svrCl}: uploading: {fileNameExt}");
+
                 //JEEWEE
                 //content.Add(new StringContent("Yes"), "chkOverwrite");
 
                 HttpResponseMessage response = await client.PostAsync(_csvr_uploadUrl, content);
-                response.EnsureSuccessStatusCode(); // Throw if not successful
+                if (!response.IsSuccessStatusCode)
+                {
+                    string responseText = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"Errorstatus {response.StatusCode} while sending to central server: " +
+                        responseText);
+                }
+
+                _sndNr++;
             }
 
             return numBytesToSend;

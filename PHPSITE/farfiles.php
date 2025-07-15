@@ -35,7 +35,8 @@ if ("" === $errMsg)
             $ipData, $clientCommunicMode);
 }
 
-$response = ["status" => $errMsg === "" ? "success" : "error", "errMsg" => $errMsg, "ipData" => $ipData];
+$response = ["status" => $errMsg === "" ? "success" : "error", "errMsg" => $errMsg, "ipData" => $ipData,
+    "clientCommunicMode" => $clientCommunicMode ];
 
 echo json_encode($response);
 

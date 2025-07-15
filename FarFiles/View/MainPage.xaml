@@ -46,8 +46,10 @@
         <Label Grid.Row="5" Grid.Column="0" Text="Connect Key:"></Label>
         <Entry Grid.Row="5" Grid.Column="1" Text="{Binding Settings.ConnectKey}"></Entry>
 
-        <Label Grid.Row="6" Grid.Column="0" Text="{Binding LblInfo1}"></Label>
-        <Label Grid.Row="7" Grid.Column="0" Text="{Binding LblInfo2}"></Label>
+        <StackLayout Orientation="Vertical" Grid.Row="6" Grid.Column="0">
+            <Label Text="{Binding LblInfo1}"></Label>
+            <Label Text="{Binding LblInfo2}"></Label>
+        </StackLayout>
 
         <Button
             Grid.Row="6"
