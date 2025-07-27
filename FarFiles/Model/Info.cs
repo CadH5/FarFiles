@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 namespace FarFiles.Model
 {
+    /// <summary>
+    /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
+    /// so it's always CLIENTFROMSVR, but I keep functionality in the code
+    /// </summary>
     public enum CpClientToFromMode
     {
         CLIENTFROMSVR,

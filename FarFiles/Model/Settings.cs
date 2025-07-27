@@ -10,8 +10,8 @@ namespace FarFiles.Model
     public enum SvrClMode
     {
         SERVER,
-        SERVERWRITABLE,
         CLIENT,
+        SERVERWRITABLE,     // JWdP 20250726 In UI outcommented this possibility, in order to simplify app usage
     }
 
     public enum CommunicMode
@@ -32,6 +32,11 @@ namespace FarFiles.Model
 #endif
         public int SvrClModeAsInt { get; set; } = (int)SvrClMode.SERVER;
         public int CommunicModeAsInt { get; set; } = (int)CommunicMode.LOCALIP;
+
+        /// <summary>
+        /// JWdP 20250726 In UI outcommented possibility SERVERWRITABLE, in order to simplify app usage,
+        /// but I keep functionality in code.
+        /// </summary>
         public bool ModeIsServer { get => SvrClModeAsInt == (int)SvrClMode.SERVER ||
                         SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE; }
         public int Idx0isOverwr1isSkip { get; set; } = 0;
@@ -42,8 +47,6 @@ namespace FarFiles.Model
         public int TimeoutSecsClient { get; set; } = 20;
 
         public int BufSizeMoreOrLess { get; set; } = 20000;
-        //JEEWEE
-        //public bool UseSvrLocalIP { get; set; } = false;
 
         /// <summary>
         /// ConnectionGuid: determined by Client, first time when not yet determined.

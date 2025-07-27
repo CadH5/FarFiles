@@ -25,9 +25,6 @@ public partial class MainPageViewModel : BaseViewModel
 {
     protected int _numSendMsg = 0;
     protected int _numReceivedAns = 0;
-    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    //protected UdpWrapper _udpClient = null;
-    //protected UdpWrapper _udpServer = null;
     protected CommunicWrapper _communicClient = null;
     protected CommunicWrapper _communicServer = null;
 
@@ -109,26 +106,9 @@ public partial class MainPageViewModel : BaseViewModel
 
     public bool IsCommunicModeVisible
     {
-        //JEEWEE
-        //get => IsBtnConnectVisible && ! MauiProgram.Settings.ModeIsServer;
         // currently always true
         get => true;
     }
-
-
-    //JEEWEE
-    //public bool UseSvrLocalIP
-    //{
-    //    get => Settings.UseSvrLocalIP;
-    //    set
-    //    {
-    //        if (Settings.UseSvrLocalIP != value)
-    //        {
-    //            Settings.UseSvrLocalIP = value;
-    //            OnPropertyChanged();
-    //        }
-    //    }
-    //}
 
 
     public string FullPathRoot
@@ -379,8 +359,6 @@ public partial class MainPageViewModel : BaseViewModel
                 descrTrying = " creating communication object";
                 try
                 {
-                    //JEEWEE
-                    //_udpServer = new UdpWrapper(new UdpClient(udpPort));
                     var udpClientOrNull = MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.CENTRALSVR ?
                                 null : new UdpClient(udpPort);
                     _communicServer = new CommunicWrapper(udpClientOrNull);
@@ -393,8 +371,6 @@ public partial class MainPageViewModel : BaseViewModel
                     throw;
                 }
 
-                //JEEWEE
-                //if (!MauiProgram.Settings.UseSvrLocalIP)
                 if (MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.NATHOLEPUNCHING)
                 {
                     // send client a dummy message("NAT hole punching")
@@ -699,6 +675,14 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+    /// <summary>
+    /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
+    /// so it's always CLIENTFROMSVR, but I keep functionality in the code
+    /// </summary>
+    /// <param name="copyToFromSvrMode">20250726 will curently always be CLIENTFROMSVR</param>
+    /// <param name="selecteds"></param>
+    /// <param name="funcCopyGetAbortSetLbls"></param>
+    /// <returns></returns>
     public async Task CopyFromOrToSvrOnClient_msgbxs_Async(
             CpClientToFromMode copyToFromSvrMode,
             FileOrFolderData[] selecteds,
@@ -724,6 +708,8 @@ public partial class MainPageViewModel : BaseViewModel
 
             if (copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
             {
+                // JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
+                // so it's always CLIENTFROMSVR, but I keep functionality in the code
                 var reqToClientItself = new MsgSvrClCopyRequest(
                         MauiProgram.Info.SvrPathParts,
                         selectedDirs, selectedFiles);
@@ -863,8 +849,6 @@ public partial class MainPageViewModel : BaseViewModel
                 byte[] response = await _communicClient.ReceiveBytesAsync(
                         3, MauiProgram.Settings.TimeoutSecsClient);
 
-                //JEEWEE
-                //Log($"Received from server: answer {++_numReceivedAns}, {response.Buffer.Length} bytes");
                 Log($"Received from server: answer {++_numReceivedAns}, {response.Length} bytes");
 
                 if (response.Length == 0)
@@ -872,8 +856,6 @@ public partial class MainPageViewModel : BaseViewModel
                     throw new Exception($"Answer from server seems empty for unknown reason");
                 }
 
-                //JEEWEE
-                //msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response.Buffer);
                 msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response);
                 Log($"client: received from server: type '{msgSvrClAnswer?.GetType()}'");
                 if (null == msgSvrClAnswer)     // message should be ignored
@@ -921,8 +903,6 @@ public partial class MainPageViewModel : BaseViewModel
 
         try
         {
-            //JEEWEE
-            //UdpReceiveResult received;
             byte[] received;
             if (null == _communicServer)
                 return true;
@@ -944,14 +924,10 @@ public partial class MainPageViewModel : BaseViewModel
             // receiver's IPEndPoint must NOT be used
             if (_rememberClientRemoteEnd || _communicServer.UdpWrapper?.IPEndPointClient != null)
             {
-                //JEEWEE
-                //_communicServer.SetClientRemoteEnd(received.RemoteEndPoint);
                 _communicServer.SetClientRemoteEnd(_communicServer.LastReceivedRemoteEndPoint);
                 _rememberClientRemoteEnd = false;
             }
 
-            //JEEWEE
-            //msgSvrCl = MsgSvrClBase.CreateFromBytes(received.Buffer);
             msgSvrCl = MsgSvrClBase.CreateFromBytes(received);
             if (null == msgSvrCl)   // message should be ignored
             {
@@ -1148,8 +1124,6 @@ public partial class MainPageViewModel : BaseViewModel
 
             LblInfo2 = $"sending {sendWhatStr} ...";
             Log($"server: going to send bytes: {msgSvrClAns.Bytes.Length}, {msgSvrClAns.GetType()}");
-            //JEEWEE
-            //await _udpServer.SendAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
             await _communicServer.SendBytesAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
             LblInfo2 = $"sent: {sendWhatStr}";
 
@@ -1289,16 +1263,11 @@ public partial class MainPageViewModel : BaseViewModel
     {
         try
         {
-            //JEEWEE
             bool useLocalIP = MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.LOCALIP;
 
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            //string ipAddressSvr = UseSvrLocalIP ?
             string ipAddressSvr = useLocalIP ?
                     MauiProgram.Info.StrLocalIPSvr :
                     MauiProgram.Info.StrPublicIpOtherside;
-            //JEEWEE
-            //if (UseSvrLocalIP)
             if (useLocalIP)
             {
                 IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Any, 0);   // Let the OS pick the local address
@@ -1321,8 +1290,6 @@ public partial class MainPageViewModel : BaseViewModel
                     " (IPAddress.Any): " + ipEndPoint);
             }
 
-            //JEEWEE
-            //if (!MauiProgram.Settings.UseSvrLocalIP)
             if (MauiProgram.Settings.CommunicModeAsInt == (int)CommunicMode.NATHOLEPUNCHING)
             {
                 LblInfo2 = "Trying NAT hole punching";
@@ -1433,8 +1400,6 @@ public partial class MainPageViewModel : BaseViewModel
         using (var udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 0)))
         {
             localUdpEndPoint = ((IPEndPoint)udpClient.Client.LocalEndPoint);
-            //JEEWEE
-            //int localUdpPort = localUdpEndPoint.Port;
         }
 
         // 2️ Use STUN to find public IP & port
@@ -1449,10 +1414,6 @@ public partial class MainPageViewModel : BaseViewModel
 
         await stunClient.QueryAsync(); // Perform the STUN request
 
-        //JEEWEE
-        //Console.WriteLine($"Public IP: {stunClient.State.PublicEndPoint.Address}");
-        //Console.WriteLine($"Public Port: {stunClient.State.PublicEndPoint.Port}");
-        //Console.WriteLine($"NAT Type: {stunClient.State.NatType}");
         MauiProgram.Info.NATType = stunClient.State.NatType.ToString();
 
         return stunClient.State.PublicEndPoint;
@@ -1716,9 +1677,6 @@ public partial class MainPageViewModel : BaseViewModel
 
                 string svrCl = MauiProgram.Settings.ModeIsServer ? "server" : "client";
                 MauiProgram.Log.LogLine($"{svrCl}: uploading: {fileNameExt}");
-
-                //JEEWEE
-                //content.Add(new StringContent("Yes"), "chkOverwrite");
 
                 HttpResponseMessage response = await client.PostAsync(_csvr_uploadUrl, content);
                 if (!response.IsSuccessStatusCode)

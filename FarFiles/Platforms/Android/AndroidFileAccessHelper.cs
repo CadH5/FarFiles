@@ -187,7 +187,6 @@ namespace FarFiles.Platforms.Android
                     _uriDir = null;
                     parentDirDocu = null;
                     MauiProgram.Settings.AndroidUriRoot = null;
-                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!! MAAR DAT $%^HELPT NIET! LABEL BLIJFT PATH!
                     return null;
                 }
 

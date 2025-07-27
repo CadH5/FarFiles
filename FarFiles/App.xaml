@@ -89,7 +89,7 @@
                 <Setter Property="Background" Value="#00FFDD" />
             </Style>
 
-            <!--JEEWEE-->
+            <!--JWdP June 2025 keeping this in code as an example-->
             <!--<Style x:Key="CheckBoxStyle" TargetType="CheckBox">
                 <Setter Property="BackgroundColor" Value="#00FFDD" />
                 <Setter Property="Background" Value="#00FFDD" />
