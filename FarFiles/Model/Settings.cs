@@ -25,7 +25,7 @@ namespace FarFiles.Model
     {
 #if ANDROID
         public Android.Net.Uri AndroidUriRoot { get; set; } = null;
-        public string FullPathRoot { get => AndroidUriRoot.Path; }    // no setter
+        public string FullPathRoot { get => AndroidUriRoot?.Path ?? ""; }    // no setter
 #else
         public object AndroidUriRoot { get => null; }
         public string FullPathRoot { get; set; } = "";

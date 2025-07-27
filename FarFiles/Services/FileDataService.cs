@@ -17,6 +17,9 @@ public class FileDataService
 
     public FileDataService()
     {
+#if ANDROID
+        _androidFileAccessHelper.SetUriToNullIfInvalid(MauiProgram.Settings.AndroidUriRoot);
+#endif
     }
 
 

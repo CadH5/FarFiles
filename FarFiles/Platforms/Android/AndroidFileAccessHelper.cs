@@ -32,6 +32,15 @@ namespace FarFiles.Platforms.Android
         }
 
 
+        /// <summary>
+        /// It turns out that path in settings in Android may become invalid; this function enforces re-browse
+        /// </summary>
+        public void SetUriToNullIfInvalid(global::Android.Net.Uri androidUri)
+        {
+            UriAndSubpathCore(androidUri, new string[0], CoreMode.CHECKURIDIR, null, null,
+                    out DocumentFile dummyParentDirDocu, out bool dummyPathCreated);
+        }
+
         public DocumentFile GetDocumentFileFromUriAndSubpath(global::Android.Net.Uri androidUri,
                     string[] dirNamesSubPath, bool forDirs, string fileOrFolderName,
                     out DocumentFile parentDirDocu)
@@ -140,6 +149,7 @@ namespace FarFiles.Platforms.Android
             FILLLISTDIRS,
             FILLLISTFILES,
             CREATEPATH,
+            CHECKURIDIR,
         }
 
 
@@ -166,16 +176,32 @@ namespace FarFiles.Platforms.Android
                 _uriDir = DocumentFile.FromTreeUri(context, androidUri);
             }
 
-            if (null == _uriDir || !_uriDir.IsDirectory)
-                throw new Exception($"AndroidUri is invalid or not a directory: {androidUri.ToString()}");
-
             pathCreated = false;
             string joinedPath = "";
             string parentJoinedPath = "";
+
+            if (null == _uriDir || !_uriDir.IsDirectory)
+            {
+                if (mode == CoreMode.CHECKURIDIR)
+                {
+                    _uriDir = null;
+                    parentDirDocu = null;
+                    MauiProgram.Settings.AndroidUriRoot = null;
+                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!! MAAR DAT $%^HELPT NIET! LABEL BLIJFT PATH!
+                    return null;
+                }
+
+                throw new Exception($"AndroidUri is invalid or not a directory: {androidUri.ToString()}");
+            }
+
             parentDirDocu = _uriDir;
+
+            if (mode == CoreMode.CHECKURIDIR)
+                return null;
+
             bool forDirs = mode == CoreMode.SEARCHDIR ||
-                        mode == CoreMode.FILLLISTDIRS ||
-                        mode == CoreMode.CREATEPATH;
+                mode == CoreMode.FILLLISTDIRS ||
+                mode == CoreMode.CREATEPATH;
 
             DocumentFile[] docusDirs = _navDirsCachePerPath.GetDocusDirsUpdCache(
                         joinedPath, _uriDir);
