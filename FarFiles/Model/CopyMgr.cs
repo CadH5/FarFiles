@@ -42,6 +42,7 @@ namespace FarFiles.Model
         protected long _currFileSizeOnDestOrSrc;
         protected int _currNumFilesOpenedOnSrc;
         protected long _fileSizeCounter;
+        protected int _encryptVal;
         protected IncrementalHash _readHasher = null;
         protected IncrementalHash _writeHasher = null;
         protected FileAttributes _currFileAttrsOnDest;
@@ -65,6 +66,7 @@ namespace FarFiles.Model
             _settings = alternativeSettings ?? MauiProgram.Settings;
             _idx0isOverwr1isSkip = _settings.Idx0isOverwr1isSkip;   // on server, may be overwritten by value on client
             _remainingLimit = remainingLimit;
+            _encryptVal = GetEncval();
         }
 
         public void StartCopyFromOrToSvrOnSvrOrClient(MsgSvrClCopyRequest copyRequest,
@@ -148,9 +150,11 @@ namespace FarFiles.Model
                         {
                             _readHasher.AppendData(rdBytes);
                             byte[] compressedBytes = Compress(rdBytes);
+                            byte[] compressedEncrBytes = EnOrDecryptInOrigin(compressedBytes,
+                                        0, compressedBytes.Length, true);
                             _bufSvrMsg.AddRange(BitConverter.GetBytes((short)StartCode.COMPRESSEDPART));
-                            _bufSvrMsg.AddRange(BitConverter.GetBytes((int)compressedBytes.Length));
-                            _bufSvrMsg.AddRange(compressedBytes);
+                            _bufSvrMsg.AddRange(BitConverter.GetBytes((int)compressedEncrBytes.Length));
+                            _bufSvrMsg.AddRange(compressedEncrBytes);
                         }
                         _fileSizeCounter += rdBytes.Length;
 
@@ -406,7 +410,8 @@ namespace FarFiles.Model
                     case (short)StartCode.COMPRESSEDPART:
                         int numBytes = BitConverter.ToInt32(data, idxData);
                         idxData += sizeof(int);
-                        byte[] decompressed = Decompress(data, idxData, numBytes);
+                        byte[] decrDecompressedBytes = Decompress(EnOrDecryptInOrigin(
+                                        data, idxData, numBytes, false), idxData, numBytes);
                         idxData += numBytes;
                         if (_writer == null)
                         {
@@ -414,10 +419,10 @@ namespace FarFiles.Model
                         }
                         else
                         {
-                            _writer.Write(decompressed);
-                            _writeHasher.AppendData(decompressed);
+                            _writer.Write(decrDecompressedBytes);
+                            _writeHasher.AppendData(decrDecompressedBytes);
                         }
-                        _fileSizeCounter += decompressed.Length;
+                        _fileSizeCounter += decrDecompressedBytes.Length;
 
                         if (null != funcCopyGetAbortSetLbls)
                         {
@@ -495,6 +500,22 @@ namespace FarFiles.Model
         }
 
 
+        /// <summary>
+        /// returns int that is >= 0 and < 256, based on connectkey which is same for client and server
+        /// </summary>
+        /// <returns></returns>
+        protected int GetEncval()
+        {
+            int ret = 0;
+            foreach (char c in MauiProgram.Settings.ConnectKey)
+            {
+                ret += (int)c;
+            }
+
+            ret %= 256;
+            return ret;
+        }
+
         public void ClientAbort(bool clientToSvr)
         {
             ClientAborted = true;
@@ -527,10 +548,10 @@ namespace FarFiles.Model
         }
 
         /// <summary>
-        /// 
+        /// Compress byte array to a new byte array
         /// </summary>
         /// <param name="data"></param>
-        /// <returns></returns>
+        /// <returns>compressed byte array (with may be larger than origin btw)</returns>
         public static byte[] Compress(byte[] data)
         {
             // Thanks, https://stackoverflow.com/questions/39191950/how-to-compress-a-byte-array-without-stream-or-system-io
@@ -543,6 +564,14 @@ namespace FarFiles.Model
             return output.ToArray();
         }
 
+
+        /// <summary>
+        /// Decompress byte array to a new byte array
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="idxStart"></param>
+        /// <param name="count"></param>
+        /// <returns>decompressed byte array</returns>
         public static byte[] Decompress(byte[] data, int idxStart, int count)
         {
             // Thanks, https://stackoverflow.com/questions/39191950/how-to-compress-a-byte-array-without-stream-or-system-io
@@ -554,6 +583,22 @@ namespace FarFiles.Model
                 dstream.CopyTo(output);
             }
             return output.ToArray();
+        }
+
+
+        public byte[] EnOrDecryptInOrigin(byte[] data, int idxStart, int numBytes, bool encript)
+        {
+            int till = idxStart + numBytes;
+            for (int i=idxStart; i < till; i += 2)
+            {
+                int newVal = encript ? data[i] + _encryptVal : data[i] - _encryptVal;
+                if (newVal < 0)
+                    newVal += 256;
+                else if (newVal >= 256)
+                    newVal -= 256;
+                data[i] = (byte)newVal;
+            }
+            return data;
         }
 
 

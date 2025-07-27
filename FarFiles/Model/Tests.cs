@@ -387,10 +387,12 @@ namespace FarFiles.Model
                 LogErrMsgsIfAny(wrLog, "ErrMsgs DeleteDirPlusSubdirsPlusFilesWindows:", errMsgs);
 
                 string testPathSvr = Path.Combine(testPath, "Svr");
+                string testConnectKey = "TEST";
                 var settingsSvr = new Settings()
                 {
                     FullPathRoot = testPathSvr,
                     BufSizeMoreOrLess = 200,
+                    ConnectKey = testConnectKey,
                 };
 
                 // Determine clientSvrPathParts, and use them also to set up initial test file tree
@@ -422,6 +424,7 @@ namespace FarFiles.Model
                     FullPathRoot = testPathClient,
                     Idx0isOverwr1isSkip = 0,
                     BufSizeMoreOrLess = 200,
+                    ConnectKey = testConnectKey,
                 };
 
                 // create the files (one having size 0):
@@ -503,6 +506,8 @@ namespace FarFiles.Model
                         Path.Combine(topDirOnSvr, "sub1SAV"));
 
                 // Now 3 tests 'copy TO server': 1. create, 2. overwrite, 3. skip
+                // JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
+                // but I keep functionality in the code, and also in these tests.
                 for (int iCploop = 0; iCploop < 3; iCploop++)
                 {
                     wrLog.WriteLine();
