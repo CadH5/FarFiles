@@ -439,9 +439,6 @@ public partial class MainPageViewModel : BaseViewModel
         if ("" == errMsg)
             errMsg = IpDataToInfo(GetJsonProp(respFromCentralSvr, "ipData"));
 
-        // respFromCentralSvr also has prop "clientCommunicMode", an int, but we don't use it
-        // any more
-
         //JEEWEE
         //if ("" == errMsg && MauiProgram.Settings.ModeIsServer)
         //{

@@ -3,13 +3,12 @@
 const UNREGISTERED_CONNKEY = "-";
 
 function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $CommunicModeAsInt,
-                &$ipData, &$clientCommunicMode)
+                &$ipData)
 {
     if ($cmd !== "REGISTER" && $cmd !== "UNREGISTER" && $cmd !== "GETDATA")
         return "Internal server error (GETDATA(CMD))";
 
     $ipData = "";
-    $clientCommunicMode = -1;
     $errMsg = "";
     $ipPubl = $_SERVER['REMOTE_ADDR'];
     // for some reason, if I use localhost and xampp, $_SERVER['REMOTE_ADDR'] results in "::1"
@@ -21,7 +20,7 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
     $strDataFileTempCleanup = "./farfilesdata_tempCleanup.tmp";
     $fpData = null;
     $nUnregisteredCounter = 0;
-    $bUnregistered = FALSE;
+    $bSvrUnregistered = FALSE;
 
     try
     {
@@ -54,37 +53,50 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
 
                         // this connectKey exists in file and is not unregistered
                         $ipData = $oneData->ToIpData();
-                        $clientCommunicMode = $oneData->nClientCommunicMode;
 
                         if ($cmd === "GETDATA") {
                             break;
                         }
-                        if ($isSvr0Client1 === 0) {
+
+                        if ($isSvr0Client1 === 0) {    // server
                             if ($cmd === "UNREGISTER") {
                                 $oneData->nIsRegistered = 0;
                                 fseek($fpData, $prevPos, SEEK_SET);
                                 WriteOneData($fpData, $oneData);
-                                $bUnregistered = TRUE;
+                                $bSvrUnregistered = TRUE;
                             } else {        // "REGISTER"
                                 $errMsg = "ConnectKey already occupied for server";
                             }
                         } else {
                             // for client; found
-                            if ($oneData->nClientCommunicMode !== -1)
+                            if ($cmd === "UNREGISTER")
+                            {
+                                // client UNREGISTER: set udpPort to 0. Maybe client will register again
+                                $oneData->nUdpClientPort = 0;
+                                fseek($fpData, $prevPos, SEEK_SET);
+                                WriteOneData($fpData, $oneData);
+                            }
+                            else if ($udpPort === 0)
+                            {
+                                $errMsg = "UdpPort 0: invalid value";
+                            }
+                            else if ($oneData->nUdpClientPort !== 0)
                             {
                                 $errMsg = "Client already registered";
+                            }
+                            else if ($CommunicModeAsInt != $oneData->nSvrCommunicMode)
+                            {
+                                $errMsg = "Different communication modes: server uses '" . GetCommunicModeStr($oneData->nSvrCommunicMode) . "'";
                             }
                             else
                             {
                                 $oneData->nUdpClientPort = $udpPort;
                                 $oneData->nIpClientAsInt = StrIpToInt($ipPubl);
-                                $oneData->nClientCommunicMode = $CommunicModeAsInt;
                                 fseek($fpData, $prevPos, SEEK_SET);
                                 WriteOneData($fpData, $oneData);
 
                                 // refill output
                                 $ipData = $oneData->ToIpData();
-                                $clientCommunicMode = $oneData->nClientCommunicMode;
                             }
                         }
 
@@ -98,12 +110,12 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
         if ("" === $errMsg && $isSvr0Client1 === 0 && $cmd === "REGISTER") {
             $ipSvrPubl = $ipPubl;
             $ipData =  $ipSvrPubl . "," . sprintf("%d", $udpPort) . "," . $localIP . "," .
-                    "0.0.0.0" . "," . "0";     // client public ip and udpport (not yet registered)
+                "0.0.0.0" . "," . "0";     // client public ip and udpport (not yet registered)
             $oneData = new FfBinConnData();
             $oneData->nIsRegistered = 1;
             $oneData->strConnKey = $connectKey;
             $oneData->SetThingsFromIpData($ipData);
-            $oneData->nClientCommunicMode = -1;
+            $oneData->nSvrCommunicMode = $CommunicModeAsInt;
             WriteOneData($fpData, $oneData);
         }
 
@@ -118,7 +130,7 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
         // unregistered data found (but note: we have only counted the ones until we found the matching
         // FfBinConnData
 
-        if ("" === $errMsg && $bUnregistered && $nUnregisteredCounter > 1000) {
+        if ("" === $errMsg && $bSvrUnregistered && $nUnregisteredCounter > 1000) {
             $errMsg = CleanupDataFile($strDataFile, $strDataFileTempCleanup);
         }
 
@@ -144,6 +156,18 @@ function IsRegistrationStillValid($oneData)
     return $oneData->nIsRegistered && $oneData->dtThisCreated->diff($dtNow)->days < 1;
 }
 
+
+function GetCommunicModeStr($nCommunicMode)
+{
+    // must correspondent to the values in FarFiles app of course
+    if ($nCommunicMode === 0)
+        return "LocalIP";
+    if ($nCommunicMode === 1)
+        return "NAT hole punching";
+    if ($nCommunicMode === 2)
+        return "Central Server";
+    return "unknown (" . strval($nCommunicMode) . ")";
+}
 
 
 
@@ -531,7 +555,7 @@ function WriteOneData($fpData, FfBinConnData $oneData)
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nLocalIpSvrAsInt);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nIpClientAsInt);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nUdpClientPort);
-    ELib_FileBinWriteInt_Encr($fpData, $oneData->nClientCommunicMode);
+    ELib_FileBinWriteInt_Encr($fpData, $oneData->nSvrCommunicMode);
     ELib_FileBinWrite($fpData, DateTimeToBytes($oneData->dtThisCreated), 8);
 }
 
@@ -551,7 +575,7 @@ function ReadOneData($fpData)
     $retData->nLocalIpSvrAsInt = ELib_FileBinReadInt_Decr($fpData);
     $retData->nIpClientAsInt = ELib_FileBinReadInt_Decr($fpData);
     $retData->nUdpClientPort = ELib_FileBinReadInt_Decr($fpData);
-    $retData->nClientCommunicMode = ELib_FileBinReadInt_Decr($fpData);
+    $retData->nSvrCommunicMode = ELib_FileBinReadInt_Decr($fpData);
     $retData->dtThisCreated = BytesToDateTime(ELib_FileBinRead($fpData, 8));
     return $retData;
 }
@@ -566,7 +590,7 @@ class FfBinConnData
     public $nLocalIpSvrAsInt = 0;
     public $nIpClientAsInt;
     public $nUdpClientPort = 0;
-    public $nClientCommunicMode = -1;
+    public $nSvrCommunicMode = -1;
     public $dtThisCreated;
 
     public function __construct() {
@@ -601,7 +625,7 @@ class FfBinConnData
         echo "nLocalIpSvrAsInt=$this->nLocalIpSvrAsInt<br>";
         echo "nIpClientAsInt=$this->nIpClientAsInt<br>";
         echo "nUdpClientPort=$this->nUdpClientPort<br>";
-        echo "nClientCommunicMode=$this->nClientCommunicMode<br>";
+        echo "nSvrCommunicMode=$this->nSvrCommunicMode<br>";
         $diffWithNow = $this->dtThisCreated->diff(new DateTime());
         echo "dtThisCreated={$this->dtThisCreated->format('Y-m-d H:i:s.u')}" .
             ", days: {$diffWithNow->days}, minutes: {$diffWithNow->i}<br>";
@@ -619,7 +643,7 @@ class FfBinConnData
         fprintf($fpTxt, GetStrIpFromInt($this->nLocalIpSvrAsInt) . " ");
         fprintf($fpTxt, GetStrIpFromInt($this->nIpClientAsInt) . " ");
         fprintf($fpTxt, "%7d ", $this->nUdpClientPort);
-        fprintf($fpTxt, "%2d ", $this->nClientCommunicMode);
+        fprintf($fpTxt, "%2d ", $this->nSvrCommunicMode);
         fprintf($fpTxt, $this->dtThisCreated->format('Y-m-d H:i:s.u') . " ");
         fprintf($fpTxt, "%4d ", $diffWithNow->days);
         fprintf($fpTxt, $this->strConnKey);

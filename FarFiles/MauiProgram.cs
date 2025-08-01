@@ -234,6 +234,13 @@ public static class MauiProgram
     }
 
 
+    public static List<T> CopyList<T>(List<T> oriList)
+    {
+        var retList = new List<T>();
+        retList.AddRange(oriList);
+        return retList;
+    }
+
 
 
     private static void LoadSettings_donotforgettoaddnewsetting()

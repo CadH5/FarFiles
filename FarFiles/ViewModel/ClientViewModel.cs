@@ -41,6 +41,8 @@ public partial class ClientViewModel : BaseViewModel
                 MauiProgram.Info.LocalPathPartsCl;
     }
 
+    protected List<string> _savSvrInfoPathParts = null;
+
     /// <summary>
     /// // JWdP 20250726 In UI outcommented possibility SERVERWRITABLE, in order to simplify app usage,
     /// // but I keep functionality in code.
@@ -244,6 +246,8 @@ public partial class ClientViewModel : BaseViewModel
     [RelayCommand]
     async Task CopyToFromSvr()
     {
+        _savSvrInfoPathParts = null;
+
         try
         {
             CopyToFromSvrMode = CopyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
@@ -276,6 +280,8 @@ public partial class ClientViewModel : BaseViewModel
             IsBusyPlus = true;
             IsProgressing = true;
             _abortProgress = false;
+
+            _savSvrInfoPathParts = MauiProgram.CopyList(MauiProgram.Info.SvrPathParts);
 
             FfCollViewItem[] selecteds = ContentPageRef.GetSelecteds();
             if (selecteds.Length != 1 || !selecteds.First().FfData.IsDir)      // button should be disabled
@@ -330,8 +336,9 @@ public partial class ClientViewModel : BaseViewModel
         else
         {
             // GotoDir on server, by sending and receiving messages
-            var savSvrPathParts = new List<string>();
-            savSvrPathParts.AddRange(MauiProgram.Info.SvrPathParts);
+            //JEEWEE
+            //var savSvrPathParts = new List<string>();
+            //savSvrPathParts.AddRange(MauiProgram.Info.SvrPathParts);
 
             Exception excSendRcv = null;
             try
@@ -346,9 +353,13 @@ public partial class ClientViewModel : BaseViewModel
 
             if (_abortProgress || null != excSendRcv)
             {
-                MauiProgram.Info.SvrPathParts.Clear();
-                MauiProgram.Info.SvrPathParts.AddRange(savSvrPathParts);
+                //JEEWEE
+                //MauiProgram.Info.SvrPathParts.Clear();
+                //MauiProgram.Info.SvrPathParts.AddRange(savSvrPathParts);
+                if (null != _savSvrInfoPathParts)
+                    MauiProgram.Info.SvrPathParts = MauiProgram.CopyList(_savSvrInfoPathParts);
             }
+            _savSvrInfoPathParts = null;
             OnPropertyChanged("TxtSvrPath");
 
             if (null != excSendRcv)
