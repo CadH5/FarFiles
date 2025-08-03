@@ -47,7 +47,8 @@ public static class MauiProgram
 #if ANDROID
                 events.AddAndroid(android => android.OnStop(activity =>
                 {
-                    OnCloseThings();
+                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!
+                    //OnCloseThings();
                 }));
 #endif
 #if IOS || MACCATALYST
@@ -75,7 +76,9 @@ public static class MauiProgram
     }
 
 
-    private async static void OnCloseThings()
+    //JEEWEE
+    //private async static void OnCloseThings()
+    public static void OnCloseThings()
     {
         MauiProgram.Info.AppIsShuttingDown = true;
         SaveSettings_donotforgettoaddnewsetting();
