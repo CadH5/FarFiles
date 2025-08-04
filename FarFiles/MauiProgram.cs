@@ -45,9 +45,17 @@ public static class MauiProgram
                 }));
 #endif
 #if ANDROID
+                // JWdP 20250802 This fires as the app is minimized. It seems IMPOSSIBLE to catch
+                // the event that the user swipes the app away so it closes. That is BAD, because
+                // at this 'OnStop' point we cannot know whether the user is going to
+                // a kill the app (swipe it away)
+                // b resume the app (open it again)
+                // So I now disable and close everything and display a message in mainview that user
+                // can only restart
                 events.AddAndroid(android => android.OnStop(activity =>
                 {
-                    OnCloseThings();
+                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    //OnCloseThings();
                 }));
 #endif
 #if IOS || MACCATALYST
@@ -84,12 +92,16 @@ public static class MauiProgram
         {
             if (MauiProgram.Info.FirstModeIsServer)           // originally the server, but svr/client may have swapped
             {
-                var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
-                    "UNREGISTER", true));
+                if (MauiProgram.Info.FfState != FfState.UNREGISTERED)
+                {
+                    // do not change MauiProgram.Info.FfState yet!! MainPageVwModel.OnCloseThings() needs it
 
-                // Wait max 1 second — no deadlock risk
-                unregisterTask.Wait(TimeSpan.FromSeconds(1));
- 
+                    var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
+                        "UNREGISTER", true));
+                    // Wait max 1 second — no deadlock risk
+                    unregisterTask.Wait(TimeSpan.FromSeconds(1));
+                }
+
                 // (Note: if UNREGISTER fails somehow, then after a day the registration
                 // also becomes invalid; see PHP).
             }
@@ -239,6 +251,13 @@ public static class MauiProgram
         var retList = new List<T>();
         retList.AddRange(oriList);
         return retList;
+    }
+
+
+    public static string FirstCapitalRestLowc(string input)
+    {
+        return String.IsNullOrEmpty(input) ? "" :
+                input[0].ToString().ToUpper() + input.Substring(1).ToLower();
     }
 
 

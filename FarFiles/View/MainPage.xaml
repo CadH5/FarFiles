@@ -12,11 +12,19 @@
     <Grid
         ColumnDefinitions="*,*"
         ColumnSpacing="5"
-        RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto"
+        RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}"
         >
 
-        <Image Grid.Row="0" Grid.Column="0"  Source="farfiles"></Image>
+        <Image Grid.Row="0" Grid.Column="0" Source="ffstate_unreg.gif" WidthRequest="52" HorizontalOptions="Start"
+               IsVisible="{Binding IsFfstate_unreg}"></Image>
+        <Image Grid.Row="0" Grid.Column="0" Source="ffstate_reg.gif" WidthRequest="52" HorizontalOptions="Start"
+               IsVisible="{Binding IsFfstate_reg}"></Image>
+        <Image Grid.Row="0" Grid.Column="0" Source="ffstate_conn.gif" WidthRequest="52" HorizontalOptions="Start"
+               IsVisible="{Binding IsFfstate_conn}"></Image>
+        <Image Grid.Row="0" Grid.Column="0" Source="ffstate_intrans.gif" WidthRequest="52" HorizontalOptions="Start"
+               IsVisible="{Binding IsFfstate_intrans}"></Image>
+        <Label Grid.Row="0" Grid.Column="1" Text="{Binding StrFfstate}"></Label>
 
         <Button
             Grid.Row="1"
@@ -117,10 +125,18 @@
         <Button
                 Grid.Row="8"
                 Grid.Column="1"
-                Margin="8,0,0,0" WidthRequest="200"
+                Margin="8" WidthRequest="200"
                 Command="{Binding OpenAdvancedDlgCommand}"
                 Style="{StaticResource ButtonOutline}"
                 Text="Advanced ..." />
+
+        <Button
+                Grid.Row="9"
+                Grid.Column="1"
+                Margin="8" WidthRequest="200"
+                Command="{Binding CloseAppCommand}"
+                Style="{StaticResource ButtonOutline}"
+                Text="Close App" />
 
         <ActivityIndicator
             Grid.RowSpan="2"

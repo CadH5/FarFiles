@@ -15,6 +15,13 @@ namespace FarFiles.Model
         CLIENTFROMSVR,
         CLIENTTOSVR,
     }
+    public enum FfState
+    {
+        UNREGISTERED,
+        REGISTERED,
+        CONNECTED,
+        INTRANSACTION,
+    }
     public class Info
     {
         public MainPageViewModel MainPageVwModel { get; set; }
@@ -38,13 +45,15 @@ namespace FarFiles.Model
         public string IpSvrThatClientConnectedTo { get; set; } = "";
         public bool IsSvrWritableReportedToClient { get; set; } = false;
         public CpClientToFromMode CpClientToFromMode { get; set; } = CpClientToFromMode.CLIENTFROMSVR;
-        public bool Connected { get; set; } = false;
+        //JEEWEE
+        //public bool Connected { get; set; } = false;
         public bool AppIsShuttingDown { get; set; } = false;
         public int NumAnswersSent { get; set; } = 0;
         public List<string> SvrPathParts { get; set; } = new List<string>();
         public List<string> LocalPathPartsCl { get; set; } = new List<string>();
         public FileOrFolderData[] CurrSvrFolders { get; set; } = new FileOrFolderData[0];
         public FileOrFolderData[] CurrSvrFiles { get; set; } = new FileOrFolderData[0];
+        public FfState FfState { get; set; } = FfState.UNREGISTERED;
 
         /// <summary>
         /// SvrReceivedClientGuid: once server has received the client guid, it remembers it
@@ -57,7 +66,9 @@ namespace FarFiles.Model
         {
             UdpPort = -1;
             IpSvrThatClientConnectedTo = "";
-            Connected = false;
+            //JEEWEE
+            //Connected = false;
+            FfState = FfState.UNREGISTERED;
             SvrPathParts.Clear();
             LocalPathPartsCl.Clear();
             CurrSvrFolders = new FileOrFolderData[0];

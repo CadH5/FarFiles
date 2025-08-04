@@ -18,7 +18,7 @@ public partial class AdvancedViewModel : BaseViewModel
             (MauiProgram.Settings.ModeIsServer ? "" :
             $"IP Svr That Client Connected To: {MauiProgram.Info.IpSvrThatClientConnectedTo}{nl}") +
             $"NATtype from stun server: {MauiProgram.Info.NATType}{nl}" +
-            $"Connected: {MauiProgram.Info.Connected}";
+            $"State: {MauiProgram.Info.FfState}";
     }
 
     public Settings Settings { get; protected set; } = MauiProgram.Settings;

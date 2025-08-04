@@ -82,6 +82,21 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
+    public bool IsFfstate_unreg { get => MauiProgram.Info.FfState == FfState.UNREGISTERED; }
+    public bool IsFfstate_reg { get => MauiProgram.Info.FfState == FfState.REGISTERED; }
+    public bool IsFfstate_conn { get => MauiProgram.Info.FfState == FfState.CONNECTED; }
+    public bool IsFfstate_intrans { get => MauiProgram.Info.FfState == FfState.INTRANSACTION; }
+
+    public string StrFfstate { get => "State: " + MauiProgram.FirstCapitalRestLowc(MauiProgram.Info.FfState.ToString()); }
+    public void SetFfInfoStateAndImage(FfState newFfState)
+    {
+        MauiProgram.Info.FfState = newFfState;
+        OnPropertyChanged(nameof(IsFfstate_unreg));
+        OnPropertyChanged(nameof(IsFfstate_reg));
+        OnPropertyChanged(nameof(IsFfstate_conn));
+        OnPropertyChanged(nameof(IsFfstate_intrans));
+        OnPropertyChanged(nameof(StrFfstate));
+    }
 
     public bool _isBtnConnectVisible = true;
     public bool IsBtnConnectVisible
@@ -258,7 +273,9 @@ public partial class MainPageViewModel : BaseViewModel
 
     public void OnCloseThings()
     {
-        if (MauiProgram.Info.Connected)
+        //JEEWEE
+        //if (MauiProgram.Info.Connected)
+        if (MauiProgram.Info.FfState == FfState.CONNECTED)
         {
             CommunicWrapper communicWr = _communicClient ?? _communicServer;
             if (null != communicWr)
@@ -268,6 +285,7 @@ public partial class MainPageViewModel : BaseViewModel
                     .Wait(TimeSpan.FromSeconds(1));
             }
         }
+        SetFfInfoStateAndImage(FfState.UNREGISTERED);
         _copyMgr?.Dispose();
         _communicServer?.Dispose();
         _communicServer = null;
@@ -340,6 +358,9 @@ public partial class MainPageViewModel : BaseViewModel
 
             CentralSvrRespToInfoData(response);
 
+            // no exception, so:
+            SetFfInfoStateAndImage(FfState.REGISTERED);
+
             IsBusy = true;
 
             if (MauiProgram.Settings.ModeIsServer)
@@ -410,7 +431,9 @@ public partial class MainPageViewModel : BaseViewModel
                 await RetrieveServerPathInfoOnClientAndOpenClientPageAsync();
             }
 
-            MauiProgram.Info.Connected = true;
+            //JEEWEE
+            //MauiProgram.Info.Connected = true;
+            SetFfInfoStateAndImage(FfState.CONNECTED);
         }
         catch (Exception exc)
         {
@@ -550,7 +573,10 @@ public partial class MainPageViewModel : BaseViewModel
             if (msgSvrClAnswer == null)
                 break;
             if (msgSvrClAnswer is MsgSvrClAbortedConfirmation)
+            {
+                SetFfInfoStateAndImage(FfState.CONNECTED);
                 break;
+            }
 
             if (msgSvrClAnswer is MsgSvrClPathInfoAndroidBusy)
             {
@@ -559,6 +585,7 @@ public partial class MainPageViewModel : BaseViewModel
                 sleepMilliSecs = Math.Min(3000, sleepMilliSecs + 1000);
                 LblInfo1 = "sending still busy inquiry to server ...";
                 msgSvrClToSend = new MsgSvrClPathInfoAndroidStillBusyInq();
+                SetFfInfoStateAndImage(FfState.INTRANSACTION);
             }
             else
             {
@@ -575,7 +602,12 @@ public partial class MainPageViewModel : BaseViewModel
                 if (isLast)
                 {
                     LblInfo2 = "received: path info from server";
+                    SetFfInfoStateAndImage(FfState.CONNECTED);
                     break;
+                }
+                else
+                {
+                    SetFfInfoStateAndImage(FfState.INTRANSACTION);
                 }
             }
 
@@ -631,6 +663,7 @@ public partial class MainPageViewModel : BaseViewModel
         // appears a dialog to see whether they agree
 
         LblInfo2 = "received recieve confirmation from server";
+        SetFfInfoStateAndImage(FfState.INTRANSACTION);
 
         return true;
     }
@@ -817,6 +850,20 @@ public partial class MainPageViewModel : BaseViewModel
         await Shell.Current.GoToAsync(nameof(AdvancedPage), true);
     }
 
+    
+    [RelayCommand]
+    async Task CloseApp()
+    {
+        bool accepted = await Shell.Current.DisplayAlert("Shutdown?",
+            "OK to shutdown application " + (MauiProgram.Info.FfState == FfState.UNREGISTERED ? "?" :
+                         "and unregister in Central Server ? "),
+            "OK", "Cancel");
+        if (accepted)
+        {
+            OnCloseThings();
+            Application.Current.Quit();
+        }
+    }
 
 
     /// <summary>
@@ -850,6 +897,7 @@ public partial class MainPageViewModel : BaseViewModel
 
                 if (response.Length == 0)
                 {
+                    SetFfInfoStateAndImage(FfState.CONNECTED);
                     throw new Exception($"Answer from server seems empty for unknown reason");
                 }
 
@@ -864,11 +912,13 @@ public partial class MainPageViewModel : BaseViewModel
                 break;
             }
 
+            SetFfInfoStateAndImage(FfState.CONNECTED);
             return msgSvrClAnswer;
         }
         catch (OperationCanceledException)
         {
             string errMsg = $"Response from server timed out";
+            SetFfInfoStateAndImage(FfState.REGISTERED);
             await Shell.Current.DisplayAlert("Error", errMsg, "OK");
         }
         catch (Exception exc)
@@ -947,6 +997,7 @@ public partial class MainPageViewModel : BaseViewModel
                 LblInfo1 = $"received: string: '{receivedTxt}'";
                 msgSvrClAns = new MsgSvrClStringAnswer();
                 sendWhatStr = "answer";
+                SetFfInfoStateAndImage(FfState.CONNECTED);
             }
             else if (msgSvrCl is MsgSvrClPathInfoRequest)
             {
@@ -968,6 +1019,7 @@ public partial class MainPageViewModel : BaseViewModel
                     msgSvrClAns = new MsgSvrClErrorAnswer(
                         $"Server: already connected to different client");
                     sendWhatStr = "ERRORMSG (request from different client)";
+                    SetFfInfoStateAndImage(FfState.CONNECTED);
                 }
                 else
                 {
@@ -979,6 +1031,7 @@ public partial class MainPageViewModel : BaseViewModel
                         msgSvrClAns = new MsgSvrClErrorAnswer(
                             $"Server: path info request: not yet possible because of aborted previous request");
                         sendWhatStr = "ERRORMSG (previous aborted thread still active)";
+                        SetFfInfoStateAndImage(FfState.CONNECTED);
                     }
                     else
                     {
@@ -986,6 +1039,7 @@ public partial class MainPageViewModel : BaseViewModel
                                     svrSubParts));
                         _threadAndroidPathInfo.Start();
                         msgSvrClAns = new MsgSvrClPathInfoAndroidBusy(_seqNrPathInfoAns++);
+                        SetFfInfoStateAndImage(FfState.INTRANSACTION);
                     }
 
 #else
@@ -1003,6 +1057,7 @@ public partial class MainPageViewModel : BaseViewModel
                 {
                     msgSvrClAns = new MsgSvrClPathInfoAndroidBusy(_seqNrPathInfoAns++);
                     sendWhatStr = $"still busy ({_seqNrPathInfoAns})";
+                    SetFfInfoStateAndImage(FfState.INTRANSACTION);
                 }
                 else
                 {
@@ -1017,6 +1072,7 @@ public partial class MainPageViewModel : BaseViewModel
                     msgSvrClAns = new MsgSvrClErrorAnswer(
                         $"Server: wrong request last {msgSvrCl.GetType()}, no active path info answer state");
                     sendWhatStr = "ERRORMSG (wrong request next part path info)";
+                    SetFfInfoStateAndImage(FfState.CONNECTED);
                 }
                 else
                 {
@@ -1025,6 +1081,8 @@ public partial class MainPageViewModel : BaseViewModel
                             _currPathInfoAnswerState,
                             MauiProgram.Settings.BufSizeMoreOrLess);
                     sendWhatStr = "path info part " + _seqNrPathInfoAns;
+                    SetFfInfoStateAndImage(_currPathInfoAnswerState.EndReached ?
+                                    FfState.CONNECTED : FfState.INTRANSACTION);
                 }
             }
             else if (msgSvrCl is MsgSvrClCopyRequest)
@@ -1046,6 +1104,7 @@ public partial class MainPageViewModel : BaseViewModel
                     msgSvrClAns = new MsgSvrClErrorAnswer(
                         $"Server: wrong request last {msgSvrCl.GetType()}, no active copy process");
                     sendWhatStr = $"ERRORMSG (wrong request {msgSvrCl.GetType()})";
+                    SetFfInfoStateAndImage(FfState.CONNECTED);
                 }
                 else
                 {
@@ -1093,6 +1152,7 @@ public partial class MainPageViewModel : BaseViewModel
                 // JWdP 20250530 _threadAndroidPathInfo.Abort() is obsolete and
                 // raises PlatformNotSupported exception, it says, so I just let it terminating
                 sendWhatStr = "confirmation";
+                SetFfInfoStateAndImage(FfState.CONNECTED);
             }
             else if (msgSvrCl is MsgSvrClSwapRequest)
             {
@@ -1101,6 +1161,7 @@ public partial class MainPageViewModel : BaseViewModel
                 LblInfo1 = "received: request swap server/client";
                 msgSvrClAns = new MsgSvrClSwapReqReceivedConfirm();
                 sendWhatStr = "swap request recieved confirmation";
+                SetFfInfoStateAndImage(FfState.INTRANSACTION);
             }
             else if (msgSvrCl is MsgSvrClSwapRejectedBySvr)
             {
@@ -1108,6 +1169,7 @@ public partial class MainPageViewModel : BaseViewModel
                 // swap back to Client, and do not send an answer
                 LblInfo1 = "received: swap server/client rejected";
                 SwapSvrClient();
+                SetFfInfoStateAndImage(FfState.CONNECTED);
                 return true;
             }
             else
@@ -1115,6 +1177,7 @@ public partial class MainPageViewModel : BaseViewModel
                 msgSvrClAns = new MsgSvrClErrorAnswer(
                     $"Server: received unexpected message type {msgSvrCl.GetType()}");
                 sendWhatStr = $"ERRORMSG (wrong request {msgSvrCl.GetType()})";
+                SetFfInfoStateAndImage(FfState.CONNECTED);
             }
 
             //5️ Respond to client(hole punching)
@@ -1153,12 +1216,12 @@ public partial class MainPageViewModel : BaseViewModel
                         MauiProgram.ExcMsgWithInnerMsgs(exc));
                 await Shell.Current.DisplayAlert("Server: error receiving message or sending answer",
                             MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
+                SetFfInfoStateAndImage(FfState.CONNECTED);
             }
         }
 
         return false;
     }
-
 
     protected void GetFileOrFolderDataArray(string[] svrSubParts)
     {
@@ -1188,6 +1251,8 @@ public partial class MainPageViewModel : BaseViewModel
         sendWhatStr = "path info " +
                 (_currPathInfoAnswerState.EndReached ?
                 "last part" : $"part {_seqNrPathInfoAns}");
+        SetFfInfoStateAndImage(_currPathInfoAnswerState.EndReached ?
+                            FfState.CONNECTED : FfState.INTRANSACTION);
         return msgSvrClAns;
     }
 
@@ -1195,17 +1260,28 @@ public partial class MainPageViewModel : BaseViewModel
     protected string SendWhatStrFromCopyMsgtosend(MsgSvrClBase msgSvrClAns)
     {
         if (msgSvrClAns is MsgSvrClErrorAnswer)
+        {
+            SetFfInfoStateAndImage(FfState.CONNECTED);
             return $"ERRORMSG ({((MsgSvrClErrorAnswer)msgSvrClAns).GetErrMsgsJoined()})";
+        }
 
         if (msgSvrClAns is MsgSvrClCopyAnswer)
+        {
+            bool isLastPart = ((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart;
+            SetFfInfoStateAndImage(isLastPart ? FfState.CONNECTED : FfState.INTRANSACTION);
             return "copy info: " +
-                (((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart ? "last part" :
+                (isLastPart ? "last part" :
                 $"copy info; file {_copyMgr?.NumFilesOpenedOnSrc} of {_copyMgr?.ClientTotalNumFilesToCopyFromOrTo}");
+        }
 
         if (msgSvrClAns is MsgSvrClCopyToSvrConfirmation)
+        {
+            SetFfInfoStateAndImage(FfState.CONNECTED);
             return "confirmation";
+        }
 
         // should not happen:
+        SetFfInfoStateAndImage(FfState.CONNECTED)       ;
         return msgSvrClAns.GetType().ToString();
     }
 
@@ -1463,6 +1539,8 @@ public partial class MainPageViewModel : BaseViewModel
                 "Server has disconnected";
         Log(logLine);
         await Shell.Current.DisplayAlert("Disconnected", logLine, "OK");
+        SetFfInfoStateAndImage(MauiProgram.Settings.ModeIsServer ? FfState.REGISTERED :
+                                FfState.UNREGISTERED);
         return true;
     }
 
