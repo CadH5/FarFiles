@@ -82,19 +82,19 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    public bool IsFfstate_unreg { get => MauiProgram.Info.FfState == FfState.UNREGISTERED; }
-    public bool IsFfstate_reg { get => MauiProgram.Info.FfState == FfState.REGISTERED; }
-    public bool IsFfstate_conn { get => MauiProgram.Info.FfState == FfState.CONNECTED; }
-    public bool IsFfstate_intrans { get => MauiProgram.Info.FfState == FfState.INTRANSACTION; }
+    public string Ffstate_imgsrc { get =>
+                MauiProgram.Info.FfState == FfState.UNREGISTERED ? "ffstate_unreg.gif" :
+                (MauiProgram.Info.FfState == FfState.REGISTERED ? "ffstate_reg.gif" :
+                (MauiProgram.Info.FfState == FfState.CONNECTED ? "ffstate_conn.gif" :
+                (MauiProgram.Info.FfState == FfState.INTRANSACTION ? "ffstate_intrans.gif" :
+                ""))); }
 
     public string StrFfstate { get => "State: " + MauiProgram.FirstCapitalRestLowc(MauiProgram.Info.FfState.ToString()); }
     public void SetFfInfoStateAndImage(FfState newFfState)
     {
         MauiProgram.Info.FfState = newFfState;
-        OnPropertyChanged(nameof(IsFfstate_unreg));
-        OnPropertyChanged(nameof(IsFfstate_reg));
-        OnPropertyChanged(nameof(IsFfstate_conn));
-        OnPropertyChanged(nameof(IsFfstate_intrans));
+        MauiProgram.Info.ClientPageVwModel?.InvokeOnPropFfstateImg();
+        OnPropertyChanged(nameof(Ffstate_imgsrc));
         OnPropertyChanged(nameof(StrFfstate));
     }
 
@@ -860,7 +860,7 @@ public partial class MainPageViewModel : BaseViewModel
             "OK", "Cancel");
         if (accepted)
         {
-            OnCloseThings();
+            MauiProgram.OnCloseThingsTotally();     // this calls Info.MainPageVwModel.OnCloseThings()
             Application.Current.Quit();
         }
     }

@@ -17,6 +17,12 @@ public partial class ClientViewModel : BaseViewModel
     // And for Idx0isOverwr1isSkip an extra measure is necessary:
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
+    public string Ffstate_imgsrc { get => MauiProgram.Info.MainPageVwModel.Ffstate_imgsrc; }
+
+    public void InvokeOnPropFfstateImg()
+    {
+        OnPropertyChanged(nameof(Ffstate_imgsrc));
+    }
 
     /// <summary>
     /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage

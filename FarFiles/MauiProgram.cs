@@ -41,7 +41,7 @@ public static class MauiProgram
 #if WINDOWS
                 events.AddWindows(w => w.OnClosed((window, args) =>
                 {
-                    OnCloseThings();
+                    OnCloseThingsTotally();
                 }));
 #endif
 #if ANDROID
@@ -52,6 +52,7 @@ public static class MauiProgram
                 // b resume the app (open it again)
                 // So I now disable and close everything and display a message in mainview that user
                 // can only restart
+                // JEEWEE LATER: NO, PLAN CHANGED, BECAUSE APP REALLY KEEPS DOING THINGS
                 events.AddAndroid(android => android.OnStop(activity =>
                 {
                     //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -61,7 +62,7 @@ public static class MauiProgram
 #if IOS || MACCATALYST
                 events.AddiOS(iOS => iOS.WillTerminate((app) =>
                 {
-                    OnCloseThings();
+                    OnCloseThingsTotally();
                 }));
 #endif
             });
@@ -83,7 +84,7 @@ public static class MauiProgram
     }
 
 
-    private async static void OnCloseThings()
+    public async static void OnCloseThingsTotally()
     {
         MauiProgram.Info.AppIsShuttingDown = true;
         SaveSettings_donotforgettoaddnewsetting();

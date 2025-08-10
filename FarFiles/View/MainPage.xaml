@@ -16,14 +16,17 @@
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}"
         >
 
-        <Image Grid.Row="0" Grid.Column="0" Source="ffstate_unreg.gif" WidthRequest="52" HorizontalOptions="Start"
+        <!--JEEWEE-->
+        <!--<Image Grid.Row="0" Grid.Column="0" Source="ffstate_unreg.gif" WidthRequest="52" HorizontalOptions="Start"
                IsVisible="{Binding IsFfstate_unreg}"></Image>
         <Image Grid.Row="0" Grid.Column="0" Source="ffstate_reg.gif" WidthRequest="52" HorizontalOptions="Start"
                IsVisible="{Binding IsFfstate_reg}"></Image>
         <Image Grid.Row="0" Grid.Column="0" Source="ffstate_conn.gif" WidthRequest="52" HorizontalOptions="Start"
                IsVisible="{Binding IsFfstate_conn}"></Image>
         <Image Grid.Row="0" Grid.Column="0" Source="ffstate_intrans.gif" WidthRequest="52" HorizontalOptions="Start"
-               IsVisible="{Binding IsFfstate_intrans}"></Image>
+               IsVisible="{Binding IsFfstate_intrans}"></Image>-->
+
+        <Image Grid.Row="0" Grid.Column="0" Source="{Binding Ffstate_imgsrc}" WidthRequest="52" HorizontalOptions="Start"></Image>
         <Label Grid.Row="0" Grid.Column="1" Text="{Binding StrFfstate}"></Label>
 
         <Button

@@ -20,11 +20,14 @@
     <Grid
         ColumnDefinitions="*"
         ColumnSpacing="5"
-        RowDefinitions="30,30,30,30,Auto,60,10,Auto,*"
+        RowDefinitions="60,30,30,30,Auto,60,10,Auto,*"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
 
-            <Label Grid.Row="0" Text="{Binding TxtLocalRoot}" />
-            <Label Grid.Row="1" Text="{Binding TxtSvrPath}" />
+        <StackLayout Orientation="Horizontal" Grid.Row="0">
+            <Image Source="{Binding Ffstate_imgsrc}" WidthRequest="52"></Image>
+            <Label Margin="5,0,0,0" VerticalTextAlignment="Center" Text="{Binding TxtLocalRoot}" />
+        </StackLayout>
+        <Label Grid.Row="1" Text="{Binding TxtSvrPath}" />
             <Label Grid.Row="2" x:Name="LblSelectedNofN" />
             <StackLayout Orientation="Horizontal" Grid.Row="3">
                 <!--Next 3 buttons are enabled/disabled by their names from UpdatePage()-->
