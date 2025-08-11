@@ -705,14 +705,6 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    /// <summary>
-    /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
-    /// so it's always CLIENTFROMSVR, but I keep functionality in the code
-    /// </summary>
-    /// <param name="copyToFromSvrMode">20250726 will curently always be CLIENTFROMSVR</param>
-    /// <param name="selecteds"></param>
-    /// <param name="funcCopyGetAbortSetLbls"></param>
-    /// <returns></returns>
     public async Task CopyFromOrToSvrOnClient_msgbxs_Async(
             CpClientToFromMode copyToFromSvrMode,
             FileOrFolderData[] selecteds,
@@ -738,8 +730,6 @@ public partial class MainPageViewModel : BaseViewModel
 
             if (copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
             {
-                // JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
-                // so it's always CLIENTFROMSVR, but I keep functionality in the code
                 var reqToClientItself = new MsgSvrClCopyRequest(
                         MauiProgram.Info.SvrPathParts,
                         selectedDirs, selectedFiles);

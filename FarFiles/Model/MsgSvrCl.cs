@@ -901,9 +901,6 @@ namespace FarFiles.Model
     /// <summary>
     /// This class has the very same functionality as MsgSvrClCopyAnswer,
     /// but is separated for sake of more clarity; used to copy FROM client TO server
-    /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
-    /// so it's always CLIENTFROMSVR, but I keep functionality in the code
-    /// (Currently this class will never be used)
     /// </summary>
     public class MsgSvrClCopyToSvrPart : MsgSvrClCopyAnswer
     {

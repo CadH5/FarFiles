@@ -48,10 +48,9 @@
                 IsEnabled="{Binding IsNotBusy}">
             <Picker.ItemsSource>
                 <x:Array Type="{x:Type x:String}">
-                    <x:String>Server</x:String>
                     <x:String>Client</x:String>
-                    <!--JWdP 20250726 Decided to outcomment Writable Server feature from UI, in order to simplify app usage-->
-                    <!--<x:String>Server, writable</x:String>-->
+                    <x:String>Server</x:String>
+                    <x:String>Server, writable</x:String>
                 </x:Array>
             </Picker.ItemsSource>
         </Picker>

@@ -506,8 +506,6 @@ namespace FarFiles.Model
                         Path.Combine(topDirOnSvr, "sub1SAV"));
 
                 // Now 3 tests 'copy TO server': 1. create, 2. overwrite, 3. skip
-                // JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
-                // but I keep functionality in the code, and also in these tests.
                 for (int iCploop = 0; iCploop < 3; iCploop++)
                 {
                     wrLog.WriteLine();

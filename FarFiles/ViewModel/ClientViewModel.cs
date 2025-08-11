@@ -24,10 +24,6 @@ public partial class ClientViewModel : BaseViewModel
         OnPropertyChanged(nameof(Ffstate_imgsrc));
     }
 
-    /// <summary>
-    /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
-    /// so it's always CLIENTFROMSVR, but I keep functionality in the code
-    /// </summary>
     public CpClientToFromMode CopyToFromSvrMode
     {
         get => MauiProgram.Info.CpClientToFromMode;
@@ -49,17 +45,8 @@ public partial class ClientViewModel : BaseViewModel
 
     protected List<string> _savSvrInfoPathParts = null;
 
-    /// <summary>
-    /// // JWdP 20250726 In UI outcommented possibility SERVERWRITABLE, in order to simplify app usage,
-    /// // but I keep functionality in code.
-    /// </summary>
     public bool IsSvrWritable { get => MauiProgram.Info.IsSvrWritableReportedToClient; }
 
-    /// <summary>
-    /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
-    /// so it's always CLIENTFROMSVR, but I keep functionality in the code
-    /// (currently the button with this text is always invisible)
-    /// </summary>
     public string TxtBtnCopyToFromSvr
     {
         // the buttontext must be precisely the oposite of the current state:
@@ -169,8 +156,6 @@ public partial class ClientViewModel : BaseViewModel
         {
             string dispPath = MauiProgram.Settings.FullPathRoot;
 
-            /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
-            /// so it's always CLIENTFROMSVR, but I keep functionality in the code
             if (CopyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
             {
                 foreach (string part in MauiProgram.Info.LocalPathPartsCl)
@@ -180,10 +165,6 @@ public partial class ClientViewModel : BaseViewModel
         }
     }
 
-    /// <summary>
-    /// // JWdP 20250726 In UI outcommented possibility SERVERWRITABLE, in order to simplify app usage,
-    /// // but I keep functionality in code.
-    /// </summary>
     public string TxtSvrPath
     {
         get
@@ -241,13 +222,6 @@ public partial class ClientViewModel : BaseViewModel
     }
 
 
-
-    /// <summary>
-    /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
-    /// so it's always CLIENTFROMSVR, but I keep functionality in the code
-    /// (currently the button for this command is always invisible)
-    /// </summary>
-    /// <returns></returns>
 
     [RelayCommand]
     async Task CopyToFromSvr()
@@ -326,8 +300,6 @@ public partial class ClientViewModel : BaseViewModel
 
     async Task GotoDirCoreAsync()
     {
-        /// JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage
-        /// so it's always CLIENTFROMSVR, but I keep functionality in the code
         if (CopyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
         {
             // GotoDir locally

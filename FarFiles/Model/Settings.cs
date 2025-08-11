@@ -9,9 +9,9 @@ namespace FarFiles.Model
 {
     public enum SvrClMode
     {
-        SERVER,
         CLIENT,
-        SERVERWRITABLE,     // JWdP 20250726 In UI outcommented this possibility, in order to simplify app usage
+        SERVER,
+        SERVERWRITABLE,
     }
 
     public enum CommunicMode
@@ -34,8 +34,7 @@ namespace FarFiles.Model
         public int CommunicModeAsInt { get; set; } = (int)CommunicMode.LOCALIP;
 
         /// <summary>
-        /// JWdP 20250726 In UI outcommented possibility SERVERWRITABLE, in order to simplify app usage,
-        /// but I keep functionality in code.
+        /// ModeIsServer: true if SvrClModeAsInt is (int)SvrClMode.SERVER or (int)SvrClMode.SERVERWRITABLE
         /// </summary>
         public bool ModeIsServer { get => SvrClModeAsInt == (int)SvrClMode.SERVER ||
                         SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE; }

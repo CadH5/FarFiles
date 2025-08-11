@@ -272,13 +272,6 @@ public static class MauiProgram
         Settings.FullPathRoot = Preferences.Get("FullPathRoot", Settings.FullPathRoot);
 #endif
         Settings.SvrClModeAsInt = Preferences.Get("SvrClModeAsInt", Settings.SvrClModeAsInt);
-        // JWdP 20250726 In UI outcommented possibility SERVERWRITABLE, in order to simplify app usage,
-        // but I keep functionality in code.
-        // But if accidentally in Settings SERVERWRITABLE was stored, weird phenomens would occur, so
-        // here is an extra security:
-        if (Settings.SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE)
-            Settings.SvrClModeAsInt = (int)SvrClMode.SERVER;
-
         Settings.CommunicModeAsInt = Preferences.Get("CommunicModeAsInt", Settings.CommunicModeAsInt);
         Settings.Idx0isOverwr1isSkip = Preferences.Get("Idx0isOverwr1isSkip", Settings.Idx0isOverwr1isSkip);
         Settings.ConnectKey = Preferences.Get("ConnectKey", Settings.ConnectKey);

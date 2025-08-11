@@ -54,13 +54,11 @@
                             Text="Swap server/client" Command="{Binding SwapCommand}"
                                 Style="{StaticResource ButtonOutline}"
                                 x:Name="BtnSwap"></Button>
-                <!--JWdP 20250726 Decided to outcomment CopyTo feature from UI, in order to simplify app usage-->
-                <!--======================================================================================-->
-                <!--<Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
+                <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
                             IsVisible="{Binding IsSvrWritable}"
                             Text="{Binding TxtBtnCopyToFromSvr}" Command="{Binding CopyToFromSvrCommand}"
                                 Style="{StaticResource ButtonOutline}"
-                                x:Name="BtnCopyToFromSvr"></Button>-->
+                                x:Name="BtnCopyToFromSvr"></Button>
                 <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
                             Text="select all files" Command="{Binding SelectAllCommand}"
                                 Style="{StaticResource ButtonOutline}"></Button>
