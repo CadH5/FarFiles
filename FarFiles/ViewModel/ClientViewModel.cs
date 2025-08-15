@@ -32,7 +32,7 @@ public partial class ClientViewModel : BaseViewModel
             MauiProgram.Info.CpClientToFromMode = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(TxtBtnCopyToFromSvr));
-            OnPropertyChanged(nameof(TxtLocalRoot));
+            OnPropertyChanged(nameof(TxtFilesView));
         }
     }
 
@@ -174,6 +174,17 @@ public partial class ClientViewModel : BaseViewModel
             return $"Sub path on server{writable}: '{String.Join('/', MauiProgram.Info.SvrPathParts)}'";
         }
     }
+
+    public string TxtFilesView
+    {
+        get
+        {
+            string vwFileSytem = MauiProgram.Info.CpClientToFromMode == CpClientToFromMode.CLIENTFROMSVR ?
+                        "Server" : "Local";
+            return $"{vwFileSytem} files:";
+        }
+    }
+
 
     [RelayCommand]
     void ClrAll()
@@ -338,7 +349,8 @@ public partial class ClientViewModel : BaseViewModel
                     MauiProgram.Info.SvrPathParts = MauiProgram.CopyList(_savSvrInfoPathParts);
             }
             _savSvrInfoPathParts = null;
-            OnPropertyChanged("TxtSvrPath");
+            OnPropertyChanged(nameof(TxtSvrPath));
+            OnPropertyChanged(nameof(TxtFilesView));
 
             if (null != excSendRcv)
                 throw excSendRcv;

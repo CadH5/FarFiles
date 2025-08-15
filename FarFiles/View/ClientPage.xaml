@@ -16,11 +16,10 @@
         <BackButtonBehavior IsEnabled="False" />
     </Shell.BackButtonBehavior>-->
 
-    <!--ColumnDefinitions="Auto,*"-->
     <Grid
         ColumnDefinitions="*"
         ColumnSpacing="5"
-        RowDefinitions="60,30,30,30,Auto,60,10,Auto,*"
+        RowDefinitions="60,30,30,30,Auto,60,10,Auto,Auto,*"
         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
 
         <StackLayout Orientation="Horizontal" Grid.Row="0">
@@ -28,82 +27,84 @@
             <Label Margin="5,0,0,0" VerticalTextAlignment="Center" Text="{Binding TxtLocalRoot}" />
         </StackLayout>
         <Label Grid.Row="1" Text="{Binding TxtSvrPath}" />
-            <Label Grid.Row="2" x:Name="LblSelectedNofN" />
-            <StackLayout Orientation="Horizontal" Grid.Row="3">
-                <!--Next 3 buttons are enabled/disabled by their names from UpdatePage()-->
-                <Button Margin="5" Text="clear all" Command="{Binding ClrAllCommand}"
-                        Style="{StaticResource ButtonOutline}"
-                        x:Name="BtnClrAll"></Button>
-                <Button Margin="5" Text="goto" Command="{Binding 
-                        GotoDirCommand}"
-                        Style="{StaticResource ButtonOutline}"
-                        x:Name="BtnGoto"></Button>
-                <Button Margin="5" Text="copy" Command="{Binding CopyCommand}"
-                        Style="{StaticResource ButtonOutline}"
-                        x:Name="BtnCopy"></Button>
+        <Label Grid.Row="2" x:Name="LblSelectedNofN" />
+        <StackLayout Orientation="Horizontal" Grid.Row="3">
+            <!--Next 3 buttons are enabled/disabled by their names from UpdatePage()-->
+            <Button Margin="5" Text="clear all" Command="{Binding ClrAllCommand}"
+                    Style="{StaticResource ButtonOutline}"
+                    x:Name="BtnClrAll"></Button>
+            <Button Margin="5" Text="goto" Command="{Binding 
+                    GotoDirCommand}"
+                    Style="{StaticResource ButtonOutline}"
+                    x:Name="BtnGoto"></Button>
+            <Button Margin="5" Text="copy" Command="{Binding CopyCommand}"
+                    Style="{StaticResource ButtonOutline}"
+                    x:Name="BtnCopy"></Button>
 
-                <Button Margin="5" Text="..." Command="{Binding MoreButtonsCommand}"
-                        Style="{StaticResource ButtonOutline}"
-                        x:Name="BtnMore"></Button>
-            </StackLayout>
+            <Button Margin="5" Text="..." Command="{Binding MoreButtonsCommand}"
+                    Style="{StaticResource ButtonOutline}"
+                    x:Name="BtnMore"></Button>
+        </StackLayout>
 
-            <StackLayout Orientation="Vertical" Grid.Row="4"
-                         Margin="0,5,0,0"
-                         IsVisible="{Binding MoreButtonsMode}">
-                <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
-                            Text="Swap server/client" Command="{Binding SwapCommand}"
-                                Style="{StaticResource ButtonOutline}"
-                                x:Name="BtnSwap"></Button>
-                <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
-                            IsVisible="{Binding IsSvrWritable}"
-                            Text="{Binding TxtBtnCopyToFromSvr}" Command="{Binding CopyToFromSvrCommand}"
-                                Style="{StaticResource ButtonOutline}"
-                                x:Name="BtnCopyToFromSvr"></Button>
-                <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
-                            Text="select all files" Command="{Binding SelectAllCommand}"
-                                Style="{StaticResource ButtonOutline}"></Button>
-                <StackLayout Orientation="Horizontal"
-                                         Margin="0,5,0,0">
-                    <Button HorizontalOptions="Start" Margin="5,2,0,2" WidthRequest="200"
-                            Text="select filtered files" Command="{Binding SelectFltrCommand}"
-                                Style="{StaticResource ButtonOutline}"></Button>
-                    <Label Margin="5,0,0,0" VerticalTextAlignment="Center"
-                           Text="filename contains:" />
-                    <Entry Margin="5,0,0,0" Text="{Binding TxtSelectFltr}"></Entry>
-                </StackLayout>
-            </StackLayout>
-
-            <StackLayout Orientation="Horizontal" Grid.Row="5"
-                                IsEnabled="{Binding IsNotBusy}">
-                <Label x:Name="LblOverwrSkip" VerticalTextAlignment="Center" Text="existing files:" />
-                <Picker 
-                        Style="{StaticResource PickerStyle}"
-                        Margin="5,0,0,0" HeightRequest="40" WidthRequest="200"
-                                    SelectedIndex="{Binding Settings.Idx0isOverwr1isSkip}">
-                    <Picker.ItemsSource>
-                        <x:Array Type="{x:Type x:String}">
-                            <x:String>overwrite</x:String>
-                            <x:String>skip</x:String>
-                        </x:Array>
-                    </Picker.ItemsSource>
-                </Picker>
-            </StackLayout>
-        
-            <!-- Grid.Row="6": empty row with fixed size, for some space -->
-        
-            <StackLayout Orientation="Vertical" Grid.Row="7" IsVisible="{Binding IsProgressing}">
-                <Label x:Name="CpFileNofN" Margin="3" Text="{Binding LblFileNofN}"
-                       FontSize="Medium"/>
-                <Label x:Name="CpByteNofN" Margin="3" Text="{Binding LblByteNofN}"
-                       FontSize="Medium"/>
-                <Button Margin="5" WidthRequest="150" Text="abort" Command="{Binding 
-                            AbortProgressCommand}"
+        <StackLayout Orientation="Vertical" Grid.Row="4"
+                        Margin="0,5,0,0"
+                        IsVisible="{Binding MoreButtonsMode}">
+            <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
+                        Text="Swap server/client" Command="{Binding SwapCommand}"
                             Style="{StaticResource ButtonOutline}"
-                            x:Name="BtnAbort"></Button>
+                            x:Name="BtnSwap"></Button>
+            <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
+                        IsVisible="{Binding IsSvrWritable}"
+                        Text="{Binding TxtBtnCopyToFromSvr}" Command="{Binding CopyToFromSvrCommand}"
+                            Style="{StaticResource ButtonOutline}"
+                            x:Name="BtnCopyToFromSvr"></Button>
+            <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
+                        Text="select all files" Command="{Binding SelectAllCommand}"
+                            Style="{StaticResource ButtonOutline}"></Button>
+            <StackLayout Orientation="Horizontal"
+                                        Margin="0,5,0,0">
+                <Button HorizontalOptions="Start" Margin="5,2,0,2" WidthRequest="200"
+                        Text="select filtered files" Command="{Binding SelectFltrCommand}"
+                            Style="{StaticResource ButtonOutline}"></Button>
+                <Label Margin="5,0,0,0" VerticalTextAlignment="Center"
+                        Text="filename contains:" />
+                <Entry Margin="5,0,0,0" Text="{Binding TxtSelectFltr}"></Entry>
             </StackLayout>
+        </StackLayout>
+
+        <StackLayout Orientation="Horizontal" Grid.Row="5"
+                            IsEnabled="{Binding IsNotBusy}">
+            <Label x:Name="LblOverwrSkip" VerticalTextAlignment="Center" Text="existing files:" />
+            <Picker 
+                    Style="{StaticResource PickerStyle}"
+                    Margin="5,0,0,0" HeightRequest="40" WidthRequest="200"
+                                SelectedIndex="{Binding Settings.Idx0isOverwr1isSkip}">
+                <Picker.ItemsSource>
+                    <x:Array Type="{x:Type x:String}">
+                        <x:String>overwrite</x:String>
+                        <x:String>skip</x:String>
+                    </x:Array>
+                </Picker.ItemsSource>
+            </Picker>
+        </StackLayout>
+        
+        <!-- Grid.Row="6": empty row with fixed size, for some space -->
+        
+        <StackLayout Orientation="Vertical" Grid.Row="7" IsVisible="{Binding IsProgressing}">
+            <Label x:Name="CpFileNofN" Margin="3" Text="{Binding LblFileNofN}"
+                    FontSize="Medium"/>
+            <Label x:Name="CpByteNofN" Margin="3" Text="{Binding LblByteNofN}"
+                    FontSize="Medium"/>
+            <Button Margin="5" WidthRequest="150" Text="abort" Command="{Binding 
+                        AbortProgressCommand}"
+                        Style="{StaticResource ButtonOutline}"
+                        x:Name="BtnAbort"></Button>
+        </StackLayout>
+
+        <Label Grid.Row="8" Text="{Binding TxtFilesView}" FontAttributes="Bold"/>
 
         <CollectionView x:Name="FfCollView"
-                        Grid.Row="8"
+                        Grid.Row="9"
                         ItemsSource="{Binding FfColl}"
                         SelectionMode="Multiple"
                         SelectionChanged="FfCollView_SelectionChanged"
