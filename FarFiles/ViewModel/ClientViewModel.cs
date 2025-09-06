@@ -413,6 +413,56 @@ public partial class ClientViewModel : BaseViewModel
 
 
     [RelayCommand]
+    async Task DelSelected()
+    {
+        if (IsBusy)
+            return;
+        if (null == ContentPageRef)
+            return;
+
+        try
+        {
+            IsBusyPlus = true;
+            IsProgressing = true;
+            _abortProgress = false;
+
+            ContentPageRef.ClrDotDotAt0();
+            FfCollViewItem[] selecteds = ContentPageRef.GetSelecteds();
+            if (selecteds.Length == 0)      // possible if they only had selected ".."
+                return;
+
+            LblFileNofN = "waiting for server ...";
+            LblByteNofN = "";
+
+            string descr = CopyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR ?
+                "locally" : "on server";
+            bool accepted = await Shell.Current.DisplayAlert("Start delete operation?",
+                $"Delete {descr} selected {selecteds.Length} file(s) and/or folder(s) with content(s)",
+                "OK", "Cancel");
+            if (!accepted)
+                return;
+
+            await MauiProgram.Info.MainPageVwModel.DeleteOnSvrOrClient_msgbxs_Async(
+                        CopyToFromSvrMode,
+                        selecteds.Select(i => i.FfData).ToArray(),
+                        null);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Unable to delete: {ex.Message}");
+            await Shell.Current.DisplayAlert("Error!", ex.Message, "OK");
+        }
+        finally
+        {
+            IsBusyPlus = false;
+            IsProgressing = false;
+            LblFileNofN = "";
+            LblByteNofN = "";
+        }
+    }
+
+
+    [RelayCommand]
     void MoreButtons()
     {
         MoreButtonsMode = ! MoreButtonsMode;

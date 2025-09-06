@@ -134,6 +134,7 @@ public partial class ClientPage : ContentPage
         BtnClrAll.IsEnabled = can && numSelected > 0;
         BtnCopy.IsEnabled = can && numSelected > 0;
         BtnGoto.IsEnabled = can && numSelected == 1 && GetSelecteds().First().FfData.IsDir;
+        BtnDelSelected.IsEnabled = numSelected > 0;     // not !_isBusy here, because it is in the More Buttons section
         string descr = _cpClientToFromMode == CpClientToFromMode.CLIENTFROMSVR ?
                     "from server" : "locally";
         LblSelectedNofN.Text = $"selected {descr}: {numSelected}" +

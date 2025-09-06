@@ -22,6 +22,8 @@ namespace FarFiles.Model
         COPY_REQ,
         COPYNEXT_REQ,
         COPY_ANS,
+        DEL_REQ,
+        DEL_ANS,
         ABORTED_INFO,
         ABORTED_CONFIRM,
         COPY_TOSVRPART,
@@ -150,6 +152,12 @@ namespace FarFiles.Model
 
                 case MsgSvrClType.COPY_ANS:
                     return new MsgSvrClCopyAnswer(bytes);
+
+                case MsgSvrClType.DEL_REQ:
+                    return new MsgSvrClDelRequest(bytes);
+
+                case MsgSvrClType.DEL_ANS:
+                    return new MsgSvrClDelAnswer(bytes);
 
                 case MsgSvrClType.ABORTED_INFO:
                     return new MsgSvrClAbortedInfo(bytes);
@@ -844,6 +852,95 @@ namespace FarFiles.Model
                 int dataLen = Bytes.Length - idx;
                 data = new byte[dataLen];
                 Array.Copy(Bytes, idx, data, 0, dataLen);
+            }
+            catch (Exception exc)
+            {
+                throw new Exception(
+                    $"Error getting data from message: {exc.Message}");
+            }
+        }
+    }
+
+
+
+
+
+    /// <summary>
+    /// Request to delete files and folders on server (which should be writable)
+    /// </summary>
+    public class MsgSvrClDelRequest : MsgSvrClBase
+    {
+        public MsgSvrClDelRequest(IEnumerable<string> svrSubpathParts,
+                            IEnumerable<string> folderNames,
+                            IEnumerable<string> fileNames)
+            : base(MsgSvrClType.DEL_REQ)
+        {
+            var lisBytes = Bytes.ToList();
+            AddNumAndStringsToLisBytes(lisBytes, svrSubpathParts);
+            AddNumAndStringsToLisBytes(lisBytes, folderNames);
+            AddNumAndStringsToLisBytes(lisBytes, fileNames);
+            Bytes = lisBytes.ToArray();
+        }
+
+
+        public MsgSvrClDelRequest(byte[] bytes)
+            : base(bytes, MsgSvrClType.DEL_REQ)
+        {
+        }
+
+
+        public void GetSubPartsAndFolderAndFileNames(out string[] svrSubParts,
+                out string[] folderNames, out string[] fileNames)
+        {
+            try
+            {
+                int idx = STARTINDEX_INDIVIDUAL;
+                svrSubParts = GetStringsAtIndex(ref idx);
+                folderNames = GetStringsAtIndex(ref idx);
+                fileNames = GetStringsAtIndex(ref idx);
+            }
+            catch (Exception exc)
+            {
+                throw new Exception(
+                    $"Error interpreting strings from message: {exc.Message}");
+            }
+        }
+    }
+
+
+
+    /// <summary>
+    /// Answer from Del Request.
+    /// </summary>
+    public class MsgSvrClDelAnswer : MsgSvrClBase
+    {
+        public MsgSvrClDelAnswer(int numDirsDeleted, int numFilesDeleted, int numErrs)
+            : base(MsgSvrClType.DEL_ANS)
+        {
+            var lisBytes = Bytes.ToList();
+            lisBytes.AddRange(BitConverter.GetBytes(numDirsDeleted));
+            lisBytes.AddRange(BitConverter.GetBytes(numFilesDeleted));
+            lisBytes.AddRange(BitConverter.GetBytes(numErrs));
+            Bytes = lisBytes.ToArray();
+        }
+
+
+        public MsgSvrClDelAnswer(byte[] bytes, MsgSvrClType? msgTypeOverride = null)
+            : base(bytes, msgTypeOverride ?? MsgSvrClType.DEL_ANS)
+        {
+        }
+
+
+        public void GetNums(out int numDirsDeleted, out int numFilesDeleted, out int numErrs)
+        {
+            try
+            {
+                int idx = STARTINDEX_INDIVIDUAL;
+                numDirsDeleted = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
+                numFilesDeleted = BitConverter.ToInt32(Bytes, idx);
+                idx += sizeof(int);
+                numErrs = BitConverter.ToInt32(Bytes, idx);
             }
             catch (Exception exc)
             {

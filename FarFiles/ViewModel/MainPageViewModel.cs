@@ -825,7 +825,6 @@ public partial class MainPageViewModel : BaseViewModel
 
 
 
-
     [RelayCommand]
     async Task BackToFiles()
     {

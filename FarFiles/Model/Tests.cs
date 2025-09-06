@@ -301,6 +301,51 @@ namespace FarFiles.Model
                         dataOut.Select(b => (long)b).ToArray(),
                         "MsgSvrClCopyAnswer data");
 
+
+
+
+                // MsgSvrClDelRequest
+                folderNames = new string[] {
+                        "fo1", "folder2", "f3", "", "f5" };
+                fileNames = new string[] {
+                        "fi1", "file2", "f3", "", "f5" };
+                filesSizes = new long[] {
+                        0, 4000, 5000000, 0, 5 };
+                svrPathPartsIn = new string[] { "str1", "", "str2" };
+                msgSvrCl = new MsgSvrClDelRequest(svrPathPartsIn, folderNames, fileNames);
+                AssertEq(wrLog, MsgSvrClType.DEL_REQ, msgSvrCl.Type,
+                        "MsgSvrClDelRequest.Type");
+                ((MsgSvrClDelRequest)msgSvrCl).GetSubPartsAndFolderAndFileNames(
+                        out svrPathPartsOut, out foldersOut, out filesOut);
+                AssertEq(wrLog, svrPathPartsOut, svrPathPartsIn,
+                        "MsgSvrClDelRequest svrPathParts");
+                AssertEq(wrLog, folderNames, foldersOut,
+                        "MsgSvrClDelRequest folderNames");
+                AssertEq(wrLog, fileNames, filesOut,
+                        "MsgSvrClDelRequest fileNames");
+
+                // MsgSvrClDelAnswer
+                int numDirsDeleted = 1;
+                int numFilesDeleted = 2;
+                int numErrs = 3;
+                msgSvrCl = new MsgSvrClDelAnswer(numDirsDeleted, numFilesDeleted, numErrs);
+                AssertEq(wrLog, MsgSvrClType.DEL_ANS, msgSvrCl.Type,
+                        "MsgSvrClDelAnswer.Type");
+                ((MsgSvrClDelAnswer)msgSvrCl).GetNums(
+                        out numDirsDeleted, out numFilesDeleted, out numErrs);
+                AssertEq(wrLog, 1, numDirsDeleted,
+                        "MsgSvrClDelAnswer numDirsDeleted");
+                AssertEq(wrLog, 2, numFilesDeleted,
+                        "MsgSvrClDelAnswer numFilesDeleted");
+                AssertEq(wrLog, 3, numErrs,
+                        "MsgSvrClDelAnswer numErrs");
+
+
+
+
+
+
+
                 // MsgSvrClAbortedInfo
                 msgSvrCl = new MsgSvrClAbortedInfo();
                 AssertEq(wrLog, MsgSvrClType.ABORTED_INFO, msgSvrCl.Type,

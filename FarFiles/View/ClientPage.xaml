@@ -70,6 +70,11 @@
                         Text="filename contains:" />
                 <Entry Margin="5,0,0,0" Text="{Binding TxtSelectFltr}"></Entry>
             </StackLayout>
+            <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
+                        IsVisible="{Binding IsSvrWritable}"
+                        Text="Delete selected(s)" Command="{Binding DelSelectedCommand}"
+                            Style="{StaticResource ButtonOutline}"
+                            x:Name="BtnDelSelected"></Button>
         </StackLayout>
 
         <StackLayout Orientation="Horizontal" Grid.Row="5"
