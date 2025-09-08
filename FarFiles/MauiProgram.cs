@@ -91,21 +91,23 @@ public static class MauiProgram
 
         try
         {
-            if (MauiProgram.Info.FirstModeIsServer)           // originally the server, but svr/client may have swapped
+            //JEEWEE
+            //if (MauiProgram.Info.FirstModeIsServer)           // originally the server, but svr/client may have swapped
+            //{
+            if (MauiProgram.Info.FfState != FfState.UNREGISTERED)
             {
-                if (MauiProgram.Info.FfState != FfState.UNREGISTERED)
-                {
-                    // do not change MauiProgram.Info.FfState yet!! MainPageVwModel.OnCloseThings() needs it
+                // do not change MauiProgram.Info.FfState yet!! MainPageVwModel.OnCloseThings() needs it
 
-                    var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
-                        "UNREGISTER", true));
-                    // Wait max 1 second — no deadlock risk
-                    unregisterTask.Wait(TimeSpan.FromSeconds(1));
-                }
-
-                // (Note: if UNREGISTER fails somehow, then after a day the registration
-                // also becomes invalid; see PHP).
+                var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
+                    "UNREGISTER", true));
+                // Wait max 1 second — no deadlock risk
+                unregisterTask.Wait(TimeSpan.FromSeconds(1));
             }
+
+            // (Note: if UNREGISTER fails somehow, then after a day the registration
+            // also becomes invalid; see PHP).
+            //JEEWEE
+            //}
 
             Info.MainPageVwModel.OnCloseThings();
         }

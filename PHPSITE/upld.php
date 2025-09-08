@@ -20,6 +20,13 @@ if ($arrErrs[0] != UPLOAD_ERR_OK)
     exit;
 }
 
+if (file_exists($arrTmpNameExts[0]) !== TRUE)
+{
+    http_response_code(500);
+    echo "PHP ERROR: not found: tempfile $arrTmpNameExts[0]";
+    exit;
+}
+
 $strTarget_file = "msgs/" . $arrNameExts[0];
 if (move_uploaded_file($arrTmpNameExts[0], $strTarget_file) !== TRUE)
 {

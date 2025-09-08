@@ -978,6 +978,7 @@ public partial class MainPageViewModel : BaseViewModel
             // React on different types of messages:
             if (await OthersideIsDisconnected_msgbox_Async(msgSvrCl))
             {
+                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IF CENTRAL SERVER THEN SVR MUST GO BACK INQUIRING
                 return false;       // stay in loop
             }
 
@@ -1524,13 +1525,14 @@ public partial class MainPageViewModel : BaseViewModel
         if (!(msgSvrCl is MsgSvrClDisconnInfo))
             return false;
 
-        string logLine = MauiProgram.Settings.ModeIsServer ?
-                "Client has disconnected (might be restarted and reconnected)" :
-                "Server has disconnected";
+        string otherIsSvrCl = MauiProgram.Settings.ModeIsServer ? "Client" : "Server";
+        string logLine =
+            $"{otherIsSvrCl} has disconnected: disconnecting and unregistering this side too";
         Log(logLine);
         await Shell.Current.DisplayAlert("Disconnected", logLine, "OK");
-        SetFfInfoStateAndImage(MauiProgram.Settings.ModeIsServer ? FfState.REGISTERED :
-                                FfState.UNREGISTERED);
+        var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
+            "UNREGISTER", true));
+        SetFfInfoStateAndImage(FfState.UNREGISTERED);
         return true;
     }
 

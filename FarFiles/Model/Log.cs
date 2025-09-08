@@ -21,6 +21,12 @@ namespace FarFiles.Model
         }
 
 
+        /// <summary>
+        /// Write logline if we are actually doing logging (if _FarFiles.log in SpecialFolder existed at startup time)
+        /// </summary>
+        /// <param name="str"></param>
+        /// <param name="withDateTime"></param>
+        /// <param name="throwExcIfErr"></param>
         public void LogLine(string str, bool withDateTime = true, bool throwExcIfErr = false)
         {
             if (! _doLogging)

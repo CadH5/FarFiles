@@ -132,6 +132,8 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
 
         if ("" === $errMsg && $bSvrUnregistered && $nUnregisteredCounter > 1000) {
             $errMsg = CleanupDataFile($strDataFile, $strDataFileTempCleanup);
+            if ("" === $errMsg)
+                $errMsg = CleanupMsgs();
         }
 
         if ("" === $errMsg && $cmd !== "GETDATA" && $isSvr0Client1 !== 0 && "" === $ipData)
@@ -231,6 +233,24 @@ function CleanupDataFile($strDataFile, $strDataFileTempCleanup)
 
 
 
+function CleanupMsgs()
+{
+    $dir = __DIR__ . "/msgs";  // subdir "msgs" relative to this script
+
+    $files = glob($dir . "/*.bin");
+    $now = time();
+
+    foreach ($files as $file) {
+        if (is_file($file)) {
+            $fileAge = $now - filemtime($file);
+            if ($fileAge >= 24 * 60 * 60) { // 1 day or older
+                unlink($file);
+            }
+        }
+    }
+}
+
+
 
 function EchoDataFile($strDataFile)
 {
@@ -245,6 +265,16 @@ function EchoDataFile($strDataFile)
         echo "<br>";
     }
     fclose($fpData);
+}
+
+function EchoMsgsDir()
+{
+    $nr = 0;
+    foreach (glob("msgs/*") as $file)
+    {
+        echo "  $nr: file: '$file' date: " . filemtime($file) . "<br>";
+        $nr++;
+    }
 }
 
 function WriteDataFileAsTxt($strDataFile, $strDumpTxtFile)

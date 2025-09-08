@@ -69,12 +69,19 @@ echo "  resp='" . DoData("REGISTER", "Key", 1234, "10.10.10.10", 0, 0,
 echo "  ipData='" . $ipData . "'<br>";
 echo "<br>";
 
-echo "before cleanup:<br>";
+echo "before cleanup farfilesdata.dat:<br>";
 EchoDataFile("./farfilesdata.dat");
 
 CleanupDataFile("./farfilesdata.dat", "./farfilesdata_tmp.tmp");
-echo "after cleanup:<br>";
+echo "after cleanup farfilesdata.dat:<br>";
 EchoDataFile("./farfilesdata.dat");
+
+echo "before cleanup msgs:<br>";
+EchoMsgsDir();
+
+CleanupMsgs();
+echo "after cleanup msgs:<br>";
+EchoMsgsDir();
 
 ?>
 </body>
