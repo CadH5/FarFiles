@@ -44,6 +44,8 @@ namespace FarFiles.Model
         //JEEWEE
         //public bool Connected { get; set; } = false;
         public bool AppIsShuttingDown { get; set; } = false;
+        //JEEWEE
+        //public bool AppIsInResetState { get; set; } = false;
         public int NumAnswersSent { get; set; } = 0;
         public List<string> SvrPathParts { get; set; } = new List<string>();
         public List<string> LocalPathPartsCl { get; set; } = new List<string>();

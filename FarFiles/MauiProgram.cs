@@ -56,7 +56,7 @@ public static class MauiProgram
                 events.AddAndroid(android => android.OnStop(activity =>
                 {
                     //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    //OnCloseThings();
+                    OnCloseThingsTotally();
                 }));
 #endif
 #if IOS || MACCATALYST

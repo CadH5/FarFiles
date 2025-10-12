@@ -13,11 +13,14 @@ $communicMode = "";
 // JWdP 20250223: not too much info for hackers
 
 $errMsg = "";
+$strMonth3 = strtolower(substr(date("F"), 0, 3));
+$strLogFileName = $strMonth3 . "-" . date("Y") . ".txt";
 
 if (!isset($data['Cmd']) || !isset($data['ConnectKey']) || !isset($data['UdpPort']) || !isset($data['LocalIP']) ||
     !isset($data['IsSvr0Client1']) || !isset($data['CommunicModeAsInt']))
 {
     $errMsg = "Incorrect input";
+    TryLogAppend($strLogFileName, $errMsg);
 }
 
 if ("" === $errMsg)
@@ -28,6 +31,9 @@ if ("" === $errMsg)
     $localIP = $data['LocalIP'];
     $isSvr0Client1 = $data['IsSvr0Client1'];
     $CommunicModeAsInt = $data['CommunicModeAsInt'];
+
+    TryLogAppend($strLogFileName, "incoming: " .
+        "cmd=$cmd, connectKey=$connectKey, udpPort=$udpPort, localIP=$localIP, isSvr0Client1=$isSvr0Client1, CommunicModeAsInt=$CommunicModeAsInt");
 
     $errMsg = DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $CommunicModeAsInt,
             $ipData);

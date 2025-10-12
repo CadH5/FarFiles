@@ -289,6 +289,23 @@ function WriteDataFileAsTxt($strDataFile, $strDumpTxtFile)
     fclose($fpData);
 }
 
+function TryLogAppend($strLogFileName, $strLine)
+{
+    for ($i = 0; $i < 3; ++$i)
+    {
+        $fpLog = @fopen("log/" . $strLogFileName, "a");
+        if ($fpLog !== FALSE)
+        {
+            fprintf($fpLog, "%s %s\n",
+                date("d") . "-" . date("m") . "-" . date("Y H:i:s"),
+                $strLine);
+            fclose($fpLog);
+            return true;
+        }
+        usleep(100);
+    }
+    return false;
+}
 
 
 

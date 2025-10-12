@@ -280,7 +280,9 @@ public partial class MainPageViewModel : BaseViewModel
             CommunicWrapper communicWr = _communicClient ?? _communicServer;
             if (null != communicWr)
             {
+                string srvcl = _communicClient == null ? "server" : "client";
                 var msgSvrCl = new MsgSvrClDisconnInfo();
+                Log($"{srvcl}, OnCloseThings: trying to send MsgSvrClDisconnInfo to other side");
                 Task.Run(() => communicWr.SendBytesAsync(msgSvrCl.Bytes, msgSvrCl.Bytes.Length))
                     .Wait(TimeSpan.FromSeconds(1));
             }
@@ -404,6 +406,12 @@ public partial class MainPageViewModel : BaseViewModel
                 LblInfo1 = $"Listening for client contact ...";
                 await DoListenLoopAsSvrAsync();
 
+                //JEEWEE
+                //if (MauiProgram.Info.AppIsInResetState)
+                //{
+                //    MauiProgram.Info.AppIsInResetState = false;
+                //    return;
+                //}
                 if (MauiProgram.Info.AppIsShuttingDown)
                     return;
 
@@ -571,7 +579,7 @@ public partial class MainPageViewModel : BaseViewModel
             MsgSvrClBase msgSvrClAnswer = await SndFromClientRecieve_msgbxs_Async(
                                 msgSvrClToSend);
             if (msgSvrClAnswer == null)
-                break;
+                return false;   //JEEWEE
             if (msgSvrClAnswer is MsgSvrClAbortedConfirmation)
             {
                 SetFfInfoStateAndImage(FfState.CONNECTED);
@@ -979,7 +987,9 @@ public partial class MainPageViewModel : BaseViewModel
             if (await OthersideIsDisconnected_msgbox_Async(msgSvrCl))
             {
                 //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IF CENTRAL SERVER THEN SVR MUST GO BACK INQUIRING
-                return false;       // stay in loop
+                //return false;       // stay in loop
+                //JEEWEE volgens mij niet
+                return true;        // quit loop
             }
 
             if (msgSvrCl is MsgSvrClStringSend)
@@ -1526,13 +1536,22 @@ public partial class MainPageViewModel : BaseViewModel
             return false;
 
         string otherIsSvrCl = MauiProgram.Settings.ModeIsServer ? "Client" : "Server";
+
+        // JWdP 20250928 I wanted to reset the app without shutting down, to a state where user can reconnect,
+        // but I´m getting too many difficult exceptions when trying to reastablish communication when other side
+        // restarts, like something like 'requires a full address'. Better shutdown alltogether.
         string logLine =
-            $"{otherIsSvrCl} has disconnected: disconnecting and unregistering this side too";
+            $"{otherIsSvrCl} has disconnected: shutting down this app";
         Log(logLine);
         await Shell.Current.DisplayAlert("Disconnected", logLine, "OK");
         var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
             "UNREGISTER", true));
         SetFfInfoStateAndImage(FfState.UNREGISTERED);
+
+        IsBusy = false;
+        OnPropertyChanged();
+        MauiProgram.OnCloseThingsTotally();     // this calls Info.MainPageVwModel.OnCloseThings()
+        Application.Current.Quit();
         return true;
     }
 
@@ -1681,19 +1700,21 @@ public partial class MainPageViewModel : BaseViewModel
         /// <returns></returns>
         public async Task<byte[]> ReceiveBytesAsync(int pollSleepSeconds, int timeOutSeconds = -1)
         {
+            string svrCl = MauiProgram.Settings.ModeIsServer ? "server" : "client";
             if (null != UdpWrapper)
             {
                 UdpReceiveResult result = await UdpWrapper.ReceiveAsync(timeOutSeconds);
                 LastReceivedRemoteEndPoint = result.RemoteEndPoint;
+                MauiProgram.Log.LogLine($"{svrCl}: ReceiveBytesAsync: received {result.Buffer.Length} byte(s)");
                 return result.Buffer;
             }
 
             //JEEWEE: SECONDS: NEW SETTING?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // no udp communication: poll central server for file
-            string urlRcvFile = _csvr_downloadUrl + "?filenameext=" +
-                    CsvrComposeFileName(MauiProgram.Info.StrPublicIp, MauiProgram.Info.UdpPort, _rcvNr);
+            string pollingFileName = CsvrComposeFileName(
+                    MauiProgram.Info.StrPublicIp, MauiProgram.Info.UdpPort, _rcvNr);
+            string urlRcvFile = _csvr_downloadUrl + "?filenameext=" + pollingFileName;
 
-            string svrCl = MauiProgram.Settings.ModeIsServer ? "server" : "client";
             MauiProgram.Log.LogLine($"{svrCl}: downloading: {urlRcvFile}");
 
             using (var client = new HttpClient())
@@ -1712,7 +1733,7 @@ public partial class MainPageViewModel : BaseViewModel
                     }
                     catch (Exception exc)
                     {
-                        MauiProgram.Log.LogLine("Exception, ReceiveBytesAsync, central server: " +
+                        MauiProgram.Log.LogLine($"{svrCl}, ReceiveBytesAsync: polling at {pollSleepSeconds} seconds, central server: " +
                                 MauiProgram.ExcMsgWithInnerMsgs(exc));
                     }
                     await Task.Delay(pollSleepSeconds * 1000);

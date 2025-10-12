@@ -29,6 +29,16 @@ namespace FarFiles.Model
         /// <param name="throwExcIfErr"></param>
         public void LogLine(string str, bool withDateTime = true, bool throwExcIfErr = false)
         {
+
+            string strLog = (withDateTime ? DateTime.Now.ToString("dd-MM-yyyy HH:mm:ss") + " "
+                    : "") + str;
+
+#if ANDROID
+#if DEBUG
+            Console.WriteLine(strLog);
+#endif
+#endif
+
             if (! _doLogging)
                 return;
 
@@ -36,10 +46,7 @@ namespace FarFiles.Model
             {
                 using (var wrLog = new StreamWriter(_fullPathLog, true))
                 {
-                    wrLog.WriteLine(
-                        (withDateTime ? DateTime.Now.ToString("dd-MM-yyyy HH:mm:ss") + " "
-                        : "") +
-                        str);
+                    wrLog.WriteLine(strLog);
                 }
             }
             catch
