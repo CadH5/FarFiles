@@ -8,7 +8,8 @@
     x:DataType="viewmodel:AdvancedViewModel">
     <ScrollView BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
         <Grid RowDefinitions="Auto,40,40,40,40,40"
-              ColumnDefinitions="200,*">
+              ColumnDefinitions="200,*"
+              Margin="5">
 
             <Editor Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" IsReadOnly="True"
                    Text="{Binding Info}"></Editor>

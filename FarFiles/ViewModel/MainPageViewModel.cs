@@ -721,112 +721,126 @@ public partial class MainPageViewModel : BaseViewModel
         IEnumerable<string> selectedDirs = selecteds.Where(f => f.IsDir).Select(f => f.Name);
         IEnumerable<string> selectedFiles = selecteds.Where(f => !f.IsDir).Select(f => f.Name);
 
-        MsgSvrClBase msgSvrCl = null;
-        if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
-        {
-            msgSvrCl = new MsgSvrClCopyRequest(MauiProgram.Info.SvrPathParts,
-                    selectedDirs, selectedFiles);
-        }
+        FfState savFfState = MauiProgram.Info.FfState;
+        SetFfInfoStateAndImage(FfState.INTRANSACTION);
 
-        using (var copyMgr = new CopyMgr(_fileDataService))
+        try
         {
-            var nums = new CopyCounters();
-            int numErrMsgsSvr = 0;
-            int numErrMsgsClient = 0;
-            string firstErrMsgSvr = "";
-            string firstErrMsgClient = "";
-
-            if (copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
+            MsgSvrClBase msgSvrCl = null;
+            if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
             {
-                var reqToClientItself = new MsgSvrClCopyRequest(
-                        MauiProgram.Info.SvrPathParts,
+                msgSvrCl = new MsgSvrClCopyRequest(MauiProgram.Info.SvrPathParts,
                         selectedDirs, selectedFiles);
-                copyMgr.StartCopyFromOrToSvrOnSvrOrClient(reqToClientItself,
-                        MauiProgram.Info.LocalPathPartsCl.ToArray());
-                msgSvrCl = (MsgSvrClCopyToSvrPart)copyMgr.GetNextPartCopyansFromSrc(
-                                true, funcCopyGetAbortSetLbls);
             }
 
-            while (true)
+            using (var copyMgr = new CopyMgr(_fileDataService))
             {
-                MsgSvrClBase msgSvrClRecieved = await SndFromClientRecieve_msgbxs_Async(
-                                msgSvrCl);
-                if (null == msgSvrClRecieved)
+                var nums = new CopyCounters();
+                int numErrMsgsSvr = 0;
+                int numErrMsgsClient = 0;
+                string firstErrMsgSvr = "";
+                string firstErrMsgClient = "";
+
+                if (copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)
                 {
-                    //exception msg was displayed
-                    copyMgr.ClientAbort(copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR);
-                    return;
+                    var reqToClientItself = new MsgSvrClCopyRequest(
+                            MauiProgram.Info.SvrPathParts,
+                            selectedDirs, selectedFiles);
+                    copyMgr.StartCopyFromOrToSvrOnSvrOrClient(reqToClientItself,
+                            MauiProgram.Info.LocalPathPartsCl.ToArray());
+                    msgSvrCl = (MsgSvrClCopyToSvrPart)copyMgr.GetNextPartCopyansFromSrc(
+                                    true, funcCopyGetAbortSetLbls);
                 }
-                if (msgSvrClRecieved is MsgSvrClAbortedConfirmation)
-                    break;
 
-                Type expectedType = copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
-                    typeof(MsgSvrClCopyAnswer) : typeof(MsgSvrClCopyToSvrConfirmation);
-                msgSvrClRecieved.CheckExpectedTypeMaybeThrow(expectedType);
-
-                if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
+                while (true)
                 {
-                    if (copyMgr.CreateOnDestFromNextPart((MsgSvrClCopyAnswer)msgSvrClRecieved,
-                                                    funcCopyGetAbortSetLbls))
+                    MsgSvrClBase msgSvrClRecieved = await SndFromClientRecieve_msgbxs_Async(
+                                    msgSvrCl);
+                    if (null == msgSvrClRecieved)
                     {
-                        // ready
-                        copyMgr.LogErrMsgsIfAny("client ErrMsgs:");
-                        nums = copyMgr.Nums;
-                        numErrMsgsClient = copyMgr.ErrMsgs.Count;
-                        firstErrMsgClient = copyMgr.FirstErrMsg;
+                        //exception msg was displayed
+                        copyMgr.ClientAbort(copyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR);
+                        return;
+                    }
+                    if (msgSvrClRecieved is MsgSvrClAbortedConfirmation)
                         break;
+
+                    Type expectedType = copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR ?
+                        typeof(MsgSvrClCopyAnswer) : typeof(MsgSvrClCopyToSvrConfirmation);
+                    msgSvrClRecieved.CheckExpectedTypeMaybeThrow(expectedType);
+
+                    if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
+                    {
+                        if (copyMgr.CreateOnDestFromNextPart((MsgSvrClCopyAnswer)msgSvrClRecieved,
+                                                        funcCopyGetAbortSetLbls))
+                        {
+                            // ready
+                            copyMgr.LogErrMsgsIfAny("client ErrMsgs:");
+                            nums = copyMgr.Nums;
+                            numErrMsgsClient = copyMgr.ErrMsgs.Count;
+                            firstErrMsgClient = copyMgr.FirstErrMsg;
+                            break;
+                        }
+                    }
+
+                    if (copyMgr.ClientAborted)
+                        msgSvrCl = new MsgSvrClAbortedInfo();
+                    else if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
+                        msgSvrCl = new MsgSvrClCopyNextpartRequest();
+                    else
+                    {
+                        // copying from client to server
+                        if (((MsgSvrClCopyAnswer)msgSvrCl).IsLastPart)
+                        {
+                            ((MsgSvrClCopyToSvrConfirmation)msgSvrClRecieved).GetNumsAndFirstErrMsg(
+                                out nums, out numErrMsgsSvr, out firstErrMsgSvr);
+                            break;
+                        }
+                        msgSvrCl = copyMgr.GetNextPartCopyansFromSrc(true,
+                                funcCopyGetAbortSetLbls);
                     }
                 }
 
-                if (copyMgr.ClientAborted)
-                    msgSvrCl = new MsgSvrClAbortedInfo();
-                else if (copyToFromSvrMode == CpClientToFromMode.CLIENTFROMSVR)
-                    msgSvrCl = new MsgSvrClCopyNextpartRequest();
-                else
+                string nl = Environment.NewLine;
+
+                await Shell.Current.DisplayAlert("Copied",
+                    $"Folders created: {nums.FoldersCreated}{nl}" +
+                    $"Files created: {nums.FilesCreated}{nl}" +
+                    $"Files overwritten: {nums.FilesOverwritten}{nl}" +
+                    $"Files skipped: {nums.FilesSkipped}{nl}" +
+                    (nums.DtProblems > 0 ? $"Err dates replaced by Now: {nums.DtProblems}{nl}" : "") +
+                    (nums.ErrHashesDiff > 0 ? $"Err failed hash checks: {nums.ErrHashesDiff}{nl}" : "") +
+                    (numErrMsgsSvr > 0 ? $"ERRORS on server: {numErrMsgsSvr}{nl}" : "") +
+                    (numErrMsgsSvr > 0 ? $"  first: '{firstErrMsgSvr}'{nl}" : "") +
+                    (numErrMsgsClient > 0 ? $"ERRORS on client: {numErrMsgsClient}{nl}" : "") +
+                    (numErrMsgsClient > 0 ? $"  first: '{firstErrMsgClient}'{nl}" : "") +
+                    (copyMgr.ClientAborted ? $"ABORTED BY USER{nl}" : ""),
+                    "OK");
+
+                if (copyMgr.ErrMsgs.Count > 0)
                 {
-                    // copying from client to server
-                    if (((MsgSvrClCopyAnswer)msgSvrCl).IsLastPart)
-                    {
-                        ((MsgSvrClCopyToSvrConfirmation)msgSvrClRecieved).GetNumsAndFirstErrMsg(
-                            out nums, out numErrMsgsSvr, out firstErrMsgSvr);
-                        break;
-                    }
-                    msgSvrCl = copyMgr.GetNextPartCopyansFromSrc(true,
-                            funcCopyGetAbortSetLbls);
+                    MauiProgram.Log.LogLine("", false);
+                    copyMgr.LogErrMsgsIfAny("CopyMgr client ErrMsgs:");
+
+                    int maxDispMsgs = 5;
+                    int numMsgs = Math.Min(maxDispMsgs, copyMgr.ErrMsgs.Count);
+                    string totalMsg = "";
+                    for (int iErr = 0; iErr < numMsgs; iErr++)
+                        totalMsg += copyMgr.ErrMsgs[iErr] + nl;
+
+                    if (copyMgr.ErrMsgs.Count > maxDispMsgs)
+                        totalMsg += $"....... (not all {copyMgr.ErrMsgs.Count} errors listed)";
+                    await Shell.Current.DisplayAlert("ERRORS", totalMsg, "OK");
                 }
             }
-
-            string nl = Environment.NewLine;
-
-            await Shell.Current.DisplayAlert("Copied",
-                $"Folders created: {nums.FoldersCreated}{nl}" +
-                $"Files created: {nums.FilesCreated}{nl}" +
-                $"Files overwritten: {nums.FilesOverwritten}{nl}" +
-                $"Files skipped: {nums.FilesSkipped}{nl}" +
-                (nums.DtProblems > 0 ? $"Err dates replaced by Now: {nums.DtProblems}{nl}" : "") +
-                (nums.ErrHashesDiff > 0 ? $"Err failed hash checks: {nums.ErrHashesDiff}{nl}" : "") +
-                (numErrMsgsSvr > 0 ? $"ERRORS on server: {numErrMsgsSvr}{nl}" : "") +
-                (numErrMsgsSvr > 0 ? $"  first: '{firstErrMsgSvr}'{nl}" : "") +
-                (numErrMsgsClient > 0 ? $"ERRORS on client: {numErrMsgsClient}{nl}" : "") +
-                (numErrMsgsClient > 0 ? $"  first: '{firstErrMsgClient}'{nl}" : "") +
-                (copyMgr.ClientAborted ? $"ABORTED BY USER{nl}" : ""),
-                "OK");
-
-            if (copyMgr.ErrMsgs.Count > 0)
-            {
-                MauiProgram.Log.LogLine("", false);
-                copyMgr.LogErrMsgsIfAny("CopyMgr client ErrMsgs:");
-
-                int maxDispMsgs = 5;
-                int numMsgs = Math.Min(maxDispMsgs, copyMgr.ErrMsgs.Count);
-                string totalMsg = "";
-                for (int iErr = 0; iErr < numMsgs; iErr++)
-                    totalMsg += copyMgr.ErrMsgs[iErr] + nl;
-
-                if (copyMgr.ErrMsgs.Count > maxDispMsgs)
-                    totalMsg += $"....... (not all {copyMgr.ErrMsgs.Count} errors listed)";
-                await Shell.Current.DisplayAlert("ERRORS", totalMsg, "OK");
-            }
+        }
+        catch
+        {
+            throw;
+        }
+        finally
+        {
+            SetFfInfoStateAndImage(savFfState);
         }
     }
 
@@ -910,7 +924,8 @@ public partial class MainPageViewModel : BaseViewModel
                 break;
             }
 
-            SetFfInfoStateAndImage(FfState.CONNECTED);
+            //JEEWEE
+            //SetFfInfoStateAndImage(FfState.CONNECTED);
             return msgSvrClAnswer;
         }
         catch (OperationCanceledException)
@@ -1144,7 +1159,8 @@ public partial class MainPageViewModel : BaseViewModel
                     _copyMgr.Dispose();
                     _copyMgr = null;
                 }
-                sendWhatStr = SendWhatStrFromCopyMsgtosend(msgSvrClAns);
+                sendWhatStr = "confirmation";
+                SetFfInfoStateAndImage(isLast ? FfState.CONNECTED : FfState.INTRANSACTION);
             }
             else if (msgSvrCl is MsgSvrClAbortedInfo)
             {
@@ -1275,11 +1291,12 @@ public partial class MainPageViewModel : BaseViewModel
                 $"copy info; file {_copyMgr?.NumFilesOpenedOnSrc} of {_copyMgr?.ClientTotalNumFilesToCopyFromOrTo}");
         }
 
-        if (msgSvrClAns is MsgSvrClCopyToSvrConfirmation)
-        {
-            SetFfInfoStateAndImage(FfState.CONNECTED);
-            return "confirmation";
-        }
+        //JEEWEE
+        //if (msgSvrClAns is MsgSvrClCopyToSvrConfirmation)
+        //{
+        //    SetFfInfoStateAndImage(FfState.CONNECTED);
+        //    return "confirmation";
+        //}
 
         // should not happen:
         SetFfInfoStateAndImage(FfState.CONNECTED)       ;
@@ -1441,7 +1458,12 @@ public partial class MainPageViewModel : BaseViewModel
         cts.Cancel();
 
         if (!received)
-            throw new Exception("Unable to connect with other side.");
+        {
+            var unregisterTask = Task<string>.Run(() => MauiProgram.PostToCentralServerAsync(
+                "UNREGISTER", true));
+            SetFfInfoStateAndImage(FfState.UNREGISTERED);
+            throw new Exception("Unable to connect with other side; unregistering");
+        }
     }
 
     protected async Task<string> TestStunUdpConnection()

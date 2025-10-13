@@ -20,7 +20,8 @@
         ColumnDefinitions="*"
         ColumnSpacing="5"
         RowDefinitions="60,30,30,30,Auto,60,10,Auto,Auto,*"
-        BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
+        BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}"
+        Margin="5">
 
         <StackLayout Orientation="Horizontal" Grid.Row="0">
             <Image Source="{Binding Ffstate_imgsrc}" WidthRequest="52"></Image>

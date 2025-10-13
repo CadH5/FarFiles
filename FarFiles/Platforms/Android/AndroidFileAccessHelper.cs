@@ -173,7 +173,15 @@ namespace FarFiles.Platforms.Android
             if (null == _uriDir)
             {
                 var context = global::Android.App.Application.Context;
-                _uriDir = DocumentFile.FromTreeUri(context, androidUri);
+                try
+                {
+                    // JWdP 20251012 some completely stupid exception occurs here, introduced try block
+                    _uriDir = DocumentFile.FromTreeUri(context, androidUri);
+                }
+                catch
+                {
+                    _uriDir = null;
+                }
             }
 
             pathCreated = false;
