@@ -34,6 +34,10 @@
                 <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource LabelText}, Dark={StaticResource LabelTextDark}}" />
             </Style>
 
+            <Style x:Key="MsgLabel" BasedOn="{StaticResource BaseLabel}" TargetType="Label">
+                <Setter Property="TextColor" Value="CadetBlue"/>
+            </Style>
+
             <Style x:Key="MicroLabel" BasedOn="{StaticResource BaseLabel}" TargetType="Label">
                 <Setter Property="FontSize" Value="10"/>
             </Style>

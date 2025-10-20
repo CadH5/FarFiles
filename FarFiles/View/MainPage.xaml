@@ -39,10 +39,10 @@
             Style="{StaticResource ButtonOutline}"
             Text="Browse for Root" />
 
-        <Label Grid.Row="2" Grid.Column="0" Text="Root:"></Label>
+        <Label Grid.Row="2" Grid.Column="0" Text="Root:" Style="{StaticResource LargeLabel}"></Label>
         <Label Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding FullPathRoot, Mode=TwoWay}"></Label>
 
-        <Label Grid.Row="4" Grid.Column="0" Text="Connect Mode:"></Label>
+        <Label Grid.Row="4" Grid.Column="0" Text="Connect Mode:" Style="{StaticResource LargeLabel}"></Label>
         <Picker Grid.Row="4" Grid.Column="1"
                 Style="{StaticResource PickerStyle}"
                 SelectedIndex="{Binding SvrClModeAsInt}"
@@ -55,13 +55,8 @@
                 </x:Array>
             </Picker.ItemsSource>
         </Picker>
-        <Label Grid.Row="5" Grid.Column="0" Text="Connect Key:"></Label>
+        <Label Grid.Row="5" Grid.Column="0" Text="Connect Key:" Style="{StaticResource LargeLabel}"></Label>
         <Entry Grid.Row="5" Grid.Column="1" Text="{Binding Settings.ConnectKey}"></Entry>
-
-        <StackLayout Orientation="Vertical" Grid.Row="6" Grid.Column="0">
-            <Label Text="{Binding LblInfo1}"></Label>
-            <Label Text="{Binding LblInfo2}"></Label>
-        </StackLayout>
 
         <Button
             Grid.Row="6"
@@ -108,7 +103,7 @@
         </Grid>-->
         <!--======================== CHECKBOX, CURRENTLY NOT NEEDED ==========-->
 
-        <Label Grid.Row="7" Grid.Column="0" Text="Communication Mode:"
+        <Label Grid.Row="7" Grid.Column="0" Text="Communication Mode:" Style="{StaticResource LargeLabel}"
                 IsVisible="{Binding IsCommunicModeVisible}"></Label>
         <Picker Grid.Row="7" Grid.Column="1"
                 Style="{StaticResource PickerStyle}"
@@ -125,13 +120,23 @@
         </Picker>
 
 
-        <Button
-                Grid.Row="8"
-                Grid.Column="1"
-                Margin="8" WidthRequest="200"
+        <StackLayout Orientation="Vertical" Grid.Row="8" Grid.Column="0">
+            <Label Text="{Binding LblInfo1}" Style="{StaticResource MsgLabel}"></Label>
+            <Label Text="{Binding LblInfo2}" Style="{StaticResource MsgLabel}"></Label>
+        </StackLayout>
+
+        <StackLayout Orientation="Horizontal" Grid.Row="8" Grid.Column="1" HorizontalOptions="Center">
+            <Button
+                Margin="3" WidthRequest="90"
+                Command="{Binding OpenAboutDlgCommand}"
+                Style="{StaticResource ButtonOutline}"
+                Text="About ..." />
+            <Button
+                Margin="3" WidthRequest="100"
                 Command="{Binding OpenAdvancedDlgCommand}"
                 Style="{StaticResource ButtonOutline}"
                 Text="Advanced ..." />
+        </StackLayout>
 
         <Button
                 Grid.Row="9"

@@ -24,7 +24,8 @@ namespace FarFiles.ViewModel;
 public partial class MainPageViewModel : BaseViewModel
 {
     protected int _numSendMsg = 0;
-    protected int _numReceivedAns = 0;
+    protected int _numLogRcvans = 0;
+    protected int _numDispRcvmsg = 0;
     protected CommunicWrapper _communicClient = null;
     protected CommunicWrapper _communicServer = null;
 
@@ -609,7 +610,7 @@ public partial class MainPageViewModel : BaseViewModel
 
                 if (isLast)
                 {
-                    LblInfo2 = "received: path info from server";
+                    LblInfo2 = $"({++_numDispRcvmsg}) received: path info from server";
                     SetFfInfoStateAndImage(FfState.CONNECTED);
                     break;
                 }
@@ -670,7 +671,7 @@ public partial class MainPageViewModel : BaseViewModel
         // should recieve MsgSvrClSwapReqReceivedConfirm; on server now
         // appears a dialog to see whether they agree
 
-        LblInfo2 = "received recieve confirmation from server";
+        LblInfo2 = $"({++_numDispRcvmsg}) received recieve confirmation from server";
         SetFfInfoStateAndImage(FfState.INTRANSACTION);
 
         return true;
@@ -862,7 +863,14 @@ public partial class MainPageViewModel : BaseViewModel
         await Shell.Current.GoToAsync(nameof(AdvancedPage), true);
     }
 
-    
+
+    [RelayCommand]
+    async Task OpenAboutDlg()
+    {
+        await Shell.Current.GoToAsync(nameof(AboutPage), true);
+    }
+
+
     [RelayCommand]
     async Task CloseApp()
     {
@@ -905,7 +913,7 @@ public partial class MainPageViewModel : BaseViewModel
                 byte[] response = await _communicClient.ReceiveBytesAsync(
                         3, MauiProgram.Settings.TimeoutSecsClient);
 
-                Log($"Received from server: answer {++_numReceivedAns}, {response.Length} bytes");
+                Log($"Received from server: answer {++_numLogRcvans}, {response.Length} bytes");
 
                 if (response.Length == 0)
                 {
@@ -1010,7 +1018,7 @@ public partial class MainPageViewModel : BaseViewModel
             if (msgSvrCl is MsgSvrClStringSend)
             {
                 string receivedTxt = ((MsgSvrClStringSend)msgSvrCl).GetString();
-                LblInfo1 = $"received: string: '{receivedTxt}'";
+                LblInfo1 = $"({++_numDispRcvmsg}) received: string: '{receivedTxt}'";
                 msgSvrClAns = new MsgSvrClStringAnswer();
                 sendWhatStr = "answer";
                 SetFfInfoStateAndImage(FfState.CONNECTED);
@@ -1027,7 +1035,7 @@ public partial class MainPageViewModel : BaseViewModel
                     MauiProgram.Info.SvrReceivedClientGuid = connClientGuid;
                 }
 
-                LblInfo1 = "received: path info request, relpath='" +
+                LblInfo1 = $"({++_numDispRcvmsg}) received: path info request, relpath='" +
                             String.Join("/", svrSubParts) + "'";
 
                 if (connClientGuid != MauiProgram.Info.SvrReceivedClientGuid)
@@ -1067,7 +1075,7 @@ public partial class MainPageViewModel : BaseViewModel
             }
             else if (msgSvrCl is MsgSvrClPathInfoAndroidStillBusyInq)
             {
-                LblInfo1 = "received: inquiry 'is Android still busy'";
+                LblInfo1 = $"({++_numDispRcvmsg}) received: inquiry 'is Android still busy'";
                 if (_threadAndroidPathInfo.ThreadState ==
                             System.Threading.ThreadState.Running)
                 {
@@ -1082,7 +1090,7 @@ public partial class MainPageViewModel : BaseViewModel
             }
             else if (msgSvrCl is MsgSvrClPathInfoNextpartRequest)
             {
-                LblInfo1 = "received: request next part path info";
+                LblInfo1 = $"({++_numDispRcvmsg}) received: request next part path info";
                 if (null == _currPathInfoAnswerState)
                 {
                     msgSvrClAns = new MsgSvrClErrorAnswer(
@@ -1104,7 +1112,7 @@ public partial class MainPageViewModel : BaseViewModel
             else if (msgSvrCl is MsgSvrClCopyRequest)
             {
                 // Start of a copy from svr to client operation
-                LblInfo1 = "received: copy request";
+                LblInfo1 = $"({++_numDispRcvmsg}) received: copy request";
                 _copyMgr?.Dispose();
                 _copyMgr = new CopyMgr(_fileDataService);
                 _copyMgr.StartCopyFromOrToSvrOnSvrOrClient(
@@ -1124,7 +1132,7 @@ public partial class MainPageViewModel : BaseViewModel
                 }
                 else
                 {
-                    LblInfo1 = "received: next part copy request";
+                    LblInfo1 = $"({++_numDispRcvmsg}) received: next part copy request";
                     msgSvrClAns = _copyMgr.GetNextPartCopyansFromSrc(false);
                     if (msgSvrClAns is MsgSvrClCopyAnswer &&
                         ((MsgSvrClCopyAnswer)msgSvrClAns).IsLastPart)
@@ -1142,11 +1150,11 @@ public partial class MainPageViewModel : BaseViewModel
                 if (null == _copyMgr)
                 {
                     _copyMgr = new CopyMgr(_fileDataService);
-                    LblInfo1 = "received: start data copy TO server";
+                    LblInfo1 = $"({++_numDispRcvmsg}) received: start data copy TO server";
                 }
                 else
                 {
-                    LblInfo1 = "received: next data copy TO server";
+                    LblInfo1 = $"({++_numDispRcvmsg}) received: next data copy TO server";
                 }
 
                 var msgSvrClCpPart = (MsgSvrClCopyToSvrPart)msgSvrCl;
@@ -1164,7 +1172,7 @@ public partial class MainPageViewModel : BaseViewModel
             }
             else if (msgSvrCl is MsgSvrClAbortedInfo)
             {
-                LblInfo1 = "received: info that client aborted";
+                LblInfo1 = $"({++_numDispRcvmsg}) received: info that client aborted";
                 msgSvrClAns = new MsgSvrClAbortedConfirmation();
                 // JWdP 20250530 _threadAndroidPathInfo.Abort() is obsolete and
                 // raises PlatformNotSupported exception, it says, so I just let it terminating
@@ -1175,7 +1183,7 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 // a yes/no dialog is needed, but we cannot let the client timeout,
                 // so we already send a received confirmation
-                LblInfo1 = "received: request swap server/client";
+                LblInfo1 = $"({++_numDispRcvmsg}) received: request swap server/client";
                 msgSvrClAns = new MsgSvrClSwapReqReceivedConfirm();
                 sendWhatStr = "swap request recieved confirmation";
                 SetFfInfoStateAndImage(FfState.INTRANSACTION);
@@ -1184,7 +1192,7 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 // client had already swapped, but on server user pressed "Cancel":
                 // swap back to Client, and do not send an answer
-                LblInfo1 = "received: swap server/client rejected";
+                LblInfo1 = $"({++_numDispRcvmsg}) received: swap server/client rejected";
                 SwapSvrClient();
                 SetFfInfoStateAndImage(FfState.CONNECTED);
                 return true;
