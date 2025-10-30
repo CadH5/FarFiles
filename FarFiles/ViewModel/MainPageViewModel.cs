@@ -10,6 +10,8 @@ using System;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+
 //JEEWEE
 //using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security.Policy;
@@ -338,19 +340,29 @@ public partial class MainPageViewModel : BaseViewModel
                 MauiProgram.SaveSettings_donotforgettoaddnewsetting();
             }
 
+            // JWdP 20251026 I think maybe better use a new Guid for a one session id for communication through Central Server,
+            // not the persistent Settings.ConnClientGuid, in case there are two simultaneous copy operations on the same device 
+            MauiProgram.Info.IdInsteadOfUdp = Guid.NewGuid()
+                .ToString().ToUpper().Replace("-", "");
+            if (MauiProgram.Info.IdInsteadOfUdp.Length != 32)
+                throw new Exception($"Very weird: length '{MauiProgram.Info.IdInsteadOfUdp}' not 32");
+
             // Sometimes, later on, we need to know how this instance was connected first time, before any swap
             MauiProgram.Info.FirstModeIsServer = MauiProgram.Settings.ModeIsServer;
 
-            // server and client: get udp port from Stun server. Even if communication through
-            // central server is used (udp port is used for identification of files, in that case).
+            // server and client: get udp port from Stun server. But if communication through
+            // central server is used: use MauiProgram.Info.IdInsteadOfUdp
             int udpPort = 0;
-            descrTrying = " obtaining udp port from stun server";
-            var udpIEndPoint = await GetUdpSvrIEndPointFromStun(Settings);
-            if (null == udpIEndPoint)
-                throw new Exception("Unknown error getting data from Stun Server");
-            udpPort = udpIEndPoint.Port;
-            if (udpPort <= 0)
-                throw new Exception("Wrong data from Stun Server");
+            if (MauiProgram.Settings.CommunicModeAsInt != (int)CommunicMode.CENTRALSVR)
+            {
+                descrTrying = " obtaining udp port from stun server";
+                var udpIEndPoint = await GetUdpSvrIEndPointFromStun(Settings);
+                if (null == udpIEndPoint)
+                    throw new Exception("Unknown error getting data from Stun Server");
+                udpPort = udpIEndPoint.Port;
+                if (udpPort <= 0)
+                    throw new Exception("Wrong data from Stun Server");
+            }
 
             MauiProgram.Info.UdpPort = udpPort;
             descrTrying = " obtaining local IP";
@@ -469,6 +481,8 @@ public partial class MainPageViewModel : BaseViewModel
     {
         string errMsg = GetJsonProp(respFromCentralSvr, "errMsg");
         if ("" == errMsg)
+            MauiProgram.Info.RegisteredCode = GetJsonProp(respFromCentralSvr, "registeredCode");
+        if ("" == errMsg)
             errMsg = IpDataToInfo(GetJsonProp(respFromCentralSvr, "ipData"));
 
         //JEEWEE
@@ -497,8 +511,9 @@ public partial class MainPageViewModel : BaseViewModel
             LblInfo1 = $"Inquiring if client connected ({nTimes++}) ...";
             string response = await MauiProgram.PostToCentralServerAsync("GETDATA");
             CentralSvrRespToInfoData(response);
-            if (MauiProgram.Info.UdpPortOtherside > 0)
+            if (MauiProgram.Info.RegisteredCode == "2")
                 return;
+
             //JEEWEE
             //Thread.Sleep(sleepMilliSecs);
             await Task.Delay(sleepMilliSecs);
@@ -1326,16 +1341,16 @@ public partial class MainPageViewModel : BaseViewModel
         if (MauiProgram.Info.FirstModeIsServer)
         {
             MauiProgram.Info.StrPublicIp = parts[0];
-            MauiProgram.Info.UdpPort = Convert.ToInt32(parts[1]);
+            MauiProgram.Info.SetUdpOrId(parts[1], false);
             MauiProgram.Info.StrPublicIpOtherside = parts[3];
-            MauiProgram.Info.UdpPortOtherside = Convert.ToInt32(parts[4]);
+            MauiProgram.Info.SetUdpOrId(parts[4], true);
         }
         else
         {
             MauiProgram.Info.StrPublicIp = parts[3];
-            MauiProgram.Info.UdpPort = Convert.ToInt32(parts[4]);
+            MauiProgram.Info.SetUdpOrId(parts[4], false);
             MauiProgram.Info.StrPublicIpOtherside = parts[0];
-            MauiProgram.Info.UdpPortOtherside = Convert.ToInt32(parts[1]);
+            MauiProgram.Info.SetUdpOrId(parts[1], true);
         }
         MauiProgram.Info.StrLocalIPSvr = parts[2];
 
@@ -1742,7 +1757,9 @@ public partial class MainPageViewModel : BaseViewModel
             //JEEWEE: SECONDS: NEW SETTING?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // no udp communication: poll central server for file
             string pollingFileName = CsvrComposeFileName(
-                    MauiProgram.Info.StrPublicIp, MauiProgram.Info.UdpPort, _rcvNr);
+                    MauiProgram.Info.StrPublicIp,
+                    MauiProgram.Info.UdpPort, MauiProgram.Info.IdInsteadOfUdp,
+                    _rcvNr);
             string urlRcvFile = _csvr_downloadUrl + "?filenameext=" + pollingFileName;
 
             MauiProgram.Log.LogLine($"{svrCl}: downloading: {urlRcvFile}");
@@ -1790,7 +1807,8 @@ public partial class MainPageViewModel : BaseViewModel
                 byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
                             "application/octet-stream");
                 string fileNameExt = CsvrComposeFileName(MauiProgram.Info.StrPublicIpOtherside,
-                            MauiProgram.Info.UdpPortOtherside, _sndNr);
+                            MauiProgram.Info.UdpPortOtherside, MauiProgram.Info.IdInsteadOfUdpOtherSide,
+                            _sndNr);
                 content.Add(byteContent, "filesToUpload[]", fileNameExt);
 
                 string svrCl = MauiProgram.Settings.ModeIsServer ? "server" : "client";
@@ -1819,12 +1837,14 @@ public partial class MainPageViewModel : BaseViewModel
         }
 
 
-        public static string CsvrComposeFileName(string strIp, int udpPort, int seqNr)
+        public static string CsvrComposeFileName(string strIp, int udpPort,
+                                string idInsteadOfUdp, int seqNr)
         {
+            string udpOrId = udpPort != 0 ? udpPort.ToString() : idInsteadOfUdp;
             string[] parts = strIp.Split('.');
             if (parts.Length != 4)
                 throw new Exception($"PROGRAMMERS: CsvrComposeFileName: invalid ip '{strIp}'");
-            return String.Join('-', parts) + $"_{udpPort}_{seqNr}.bin";
+            return String.Join('-', parts) + $"_{udpOrId}_{seqNr}.bin";
         }
     }
 }

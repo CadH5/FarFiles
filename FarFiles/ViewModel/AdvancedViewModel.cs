@@ -8,8 +8,11 @@ public partial class AdvancedViewModel : BaseViewModel
     public string Info
     {
         get =>
+            
             $"UdpPort: {MauiProgram.Info.UdpPort}{nl}" +
             $"UdpPort other side: {MauiProgram.Info.UdpPortOtherside}{nl}" +
+            $"IdInsteadOfUdp: {MauiProgram.Info.IdInsteadOfUdp}{nl}" +
+            $"IdInsteadOfUdp other side: {MauiProgram.Info.IdInsteadOfUdpOtherSide}{nl}" +
             $"Public IP: {MauiProgram.Info.StrPublicIp}{nl}" +
             $"Public IP other side: {MauiProgram.Info.StrPublicIpOtherside}{nl}" +
             $"Local IP: {MauiProgram.Info.StrLocalIP}{nl}" +

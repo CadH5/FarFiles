@@ -188,7 +188,10 @@ public static class MauiProgram
             var url = "https://www.cadh5.com/farfiles/farfiles.php";
 
             var requestData = new { Cmd = strCmd, ConnectKey = Settings.ConnectKey,
-                UdpPort = MauiProgram.Info.UdpPort, LocalIP = MauiProgram.Info.StrLocalIP,
+                LocalIP = MauiProgram.Info.StrLocalIP,
+                UdpPort = MauiProgram.Info.UdpPort,
+                IdInsteadOfUdp = MauiProgram.Info.UdpPort != 0 ? "" :
+                                    MauiProgram.Info.IdInsteadOfUdp,
                 IsSvr0Client1 = MauiProgram.Info.FirstModeIsServer ? 0 : 1,
                 CommunicModeAsInt = MauiProgram.Settings.CommunicModeAsInt,
             };

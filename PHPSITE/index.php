@@ -5,6 +5,7 @@ WriteLogPageOpened($C5pth, "FarFiles index.php");
 ?>
 
     <title>FarFiles</title>
+<body>
 
     FarFiles
 

@@ -1,15 +1,18 @@
 <?php
 
-const UNREGISTERED_CONNKEY = "-";
+//JEEWEE
+//const UNREGISTERED_CONNKEY = "-";
+//const INIT_UDPPORT_OR_ID = "X0" . str_repeat(" ", 30);
 
-function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $CommunicModeAsInt,
-                &$ipData)
+function DoData($cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0Client1, $CommunicModeAsInt,
+                &$ipData, &$registeredCode)
 {
     if ($cmd !== "REGISTER" && $cmd !== "UNREGISTER" && $cmd !== "GETDATA")
         return "Internal server error (GETDATA(CMD))";
 
     $ipData = "";
     $errMsg = "";
+    $registeredCode = 0;
     $ipPubl = $_SERVER['REMOTE_ADDR'];
     // for some reason, if I use localhost and xampp, $_SERVER['REMOTE_ADDR'] results in "::1"
     if (strlen($ipPubl) > 2 && substr($ipPubl, 0, 2) === "::") {
@@ -53,6 +56,7 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
 
                         // this connectKey exists in file and is not unregistered
                         $ipData = $oneData->ToIpData();
+                        $registeredCode = $oneData->nIsRegistered;
 
                         if ($cmd === "GETDATA") {
                             break;
@@ -61,6 +65,7 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
                         if ($isSvr0Client1 === 0) {    // server
                             if ($cmd === "UNREGISTER") {
                                 $oneData->nIsRegistered = 0;
+                                $registeredCode = 0;
                                 fseek($fpData, $prevPos, SEEK_SET);
                                 WriteOneData($fpData, $oneData);
                                 $bSvrUnregistered = TRUE;
@@ -71,26 +76,41 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
                             // for client; found
                             if ($cmd === "UNREGISTER")
                             {
-                                // client UNREGISTER: set udpPort to 0. Maybe client will register again
-                                $oneData->nUdpClientPort = 0;
+                                // client UNREGISTER: set nIsRegistered to also 0
+                                // note: take care not to introduce string length changes in these rewrite codes
+                                $oneData->nIsRegistered = 0;
+                                $registeredCode = 0;
                                 fseek($fpData, $prevPos, SEEK_SET);
                                 WriteOneData($fpData, $oneData);
                             }
-                            else if ($udpPort === 0)
-                            {
-                                $errMsg = "UdpPort 0: invalid value";
-                            }
-                            else if ($oneData->nUdpClientPort !== 0)
+//JEEWEE
+//                            else if ($udpPortOrId === INIT_UDPPORT_OR_ID)   // would be weird
+//                            {
+//                                $errMsg = "UdpPort $udpPortOrId: invalid value";
+//                            }
+//                            else if ($oneData->udpClientPortOrId !== INIT_UDPPORT_OR_ID)
+//                            {
+//                                $errMsg = "Client already registered";
+//                            }
+                            else if ($oneData->nIsRegistered === 2)
                             {
                                 $errMsg = "Client already registered";
                             }
-                            else if ($CommunicModeAsInt != $oneData->nSvrCommunicMode)
+                            else if ($CommunicModeAsInt !== $oneData->nSvrCommunicMode)
                             {
                                 $errMsg = "Different communication modes: server uses '" . GetCommunicModeStr($oneData->nSvrCommunicMode) . "'";
                             }
+                            else if ($oneData->udpSvrPort === 0 && strlen($idInsteadOfUdp) !== 32)
+                            {
+                                // must be a program error from other side, because we checked already that $CommunicModeAsInt is $oneData->nSvrCommunicMode
+                                $errMsg = "Different communication modes: programmers";
+                            }
                             else
                             {
-                                $oneData->nUdpClientPort = $udpPort;
+                                $oneData->nIsRegistered = 2;        // client registered
+                                $registeredCode = 2;
+                                $oneData->udpClientPort = $udpPort;
+                                $oneData->idClientInsteadOfUdp = $idInsteadOfUdp;
                                 $oneData->nIpClientAsInt = StrIpToInt($ipPubl);
                                 fseek($fpData, $prevPos, SEEK_SET);
                                 WriteOneData($fpData, $oneData);
@@ -107,16 +127,29 @@ function DoData($cmd, $connectKey, $udpPort, $localIP, $isSvr0Client1, $Communic
             }
         }
 
-        if ("" === $errMsg && $isSvr0Client1 === 0 && $cmd === "REGISTER") {
-            $ipSvrPubl = $ipPubl;
-            $ipData =  $ipSvrPubl . "," . sprintf("%d", $udpPort) . "," . $localIP . "," .
-                "0.0.0.0" . "," . "0";     // client public ip and udpport (not yet registered)
+        if ("" === $errMsg && $isSvr0Client1 === 0 && $cmd === "REGISTER")
+        {
+            // new register server
+//JEEWEE
+//            $ipData = $ipPubl . "," . $udpPortOrId . "," . $localIP . "," .
+//                "0.0.0.0" . "," . INIT_UDPPORT_OR_ID;     // client public ip and udpportOrId (INIT_UDPPORT_OR_ID means not yet registered)
+
             $oneData = new FfBinConnData();
             $oneData->nIsRegistered = 1;
+            $registeredCode = 1;
             $oneData->strConnKey = $connectKey;
-            $oneData->SetThingsFromIpData($ipData);
+            $oneData->udpSvrPort = $udpPort;
+            $oneData->idSvrInsteadOfUdp = $idInsteadOfUdp;
+            $oneData->nIpSvrAsInt = StrIpToInt($ipPubl);
+            $oneData->nLocalIpSvrAsInt = StrIpToInt($localIP);
+            $oneData->udpClientPort = -1;
+            $oneData->idClientInsteadOfUdp = str_repeat("0", 32);
+            //JEEWEE
+            //$oneData->SetThingsFromIpData($ipData);
             $oneData->nSvrCommunicMode = $CommunicModeAsInt;
             WriteOneData($fpData, $oneData);
+
+            $ipData = $oneData->ToIpData();
         }
 
         if (! is_null($fpData)) {
@@ -598,10 +631,14 @@ function WriteOneData($fpData, FfBinConnData $oneData)
     ELib_FileBinWriteInt($fpData, $oneData->nIsRegistered);
     ELib_FileBinWriteStrlenThenString_Encr($fpData, $oneData->strConnKey);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nIpSvrAsInt);
-    ELib_FileBinWriteInt_Encr($fpData, $oneData->nUdpSvrPort);
+    ELib_FileBinWriteInt_Encr($fpData, $oneData->udpSvrPort);
+    if ($oneData->udpSvrPort === 0)
+        ELib_FileBinWriteStrlenThenString_Encr($fpData, $oneData->idSvrInsteadOfUdp);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nLocalIpSvrAsInt);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nIpClientAsInt);
-    ELib_FileBinWriteInt_Encr($fpData, $oneData->nUdpClientPort);
+    ELib_FileBinWriteInt_Encr($fpData, $oneData->udpClientPort);
+    if ($oneData->udpSvrPort === 0)     // yes, also for client it depends on whether SVR port is 0
+        ELib_FileBinWriteStrlenThenString_Encr($fpData, $oneData->idClientInsteadOfUdp);
     ELib_FileBinWriteInt_Encr($fpData, $oneData->nSvrCommunicMode);
     ELib_FileBinWrite($fpData, DateTimeToBytes($oneData->dtThisCreated), 8);
 }
@@ -618,10 +655,14 @@ function ReadOneData($fpData)
     $retData->nIsRegistered = $nIsRegistered;
     $retData->strConnKey = ELib_FileBinReadStrlenThenString_Decr($fpData);
     $retData->nIpSvrAsInt = ELib_FileBinReadInt_Decr($fpData);
-    $retData->nUdpSvrPort = ELib_FileBinReadInt_Decr($fpData);
+    $retData->udpSvrPort = ELib_FileBinReadInt_Decr($fpData);
+    if ($retData->udpSvrPort === 0)
+        $retData->idSvrInsteadOfUdp = ELib_FileBinReadStrlenThenString_Decr($fpData);
     $retData->nLocalIpSvrAsInt = ELib_FileBinReadInt_Decr($fpData);
     $retData->nIpClientAsInt = ELib_FileBinReadInt_Decr($fpData);
-    $retData->nUdpClientPort = ELib_FileBinReadInt_Decr($fpData);
+    $retData->udpClientPort = ELib_FileBinReadInt_Decr($fpData);
+    if ($retData->udpSvrPort === 0)     // yes, also for client it depends on whether SVR port is 0
+        $retData->idClientInsteadOfUdp = ELib_FileBinReadStrlenThenString_Decr($fpData);
     $retData->nSvrCommunicMode = ELib_FileBinReadInt_Decr($fpData);
     $retData->dtThisCreated = BytesToDateTime(ELib_FileBinRead($fpData, 8));
     return $retData;
@@ -632,11 +673,13 @@ class FfBinConnData
 {
     public $nIsRegistered = 0;
     public $strConnKey = "";
-    public $nIpSvrAsInt;
-    public $nUdpSvrPort = 0;
+    public $nIpSvrAsInt = 0;
+    public $udpSvrPort = 0;         // if 0, then server uses 32-len id and client must do same
+    public $idSvrInsteadOfUdp = "";  // 32-length, or ""
     public $nLocalIpSvrAsInt = 0;
-    public $nIpClientAsInt;
-    public $nUdpClientPort = 0;
+    public $nIpClientAsInt = 0;
+    public $udpClientPort = 0;
+    public $idClientInsteadOfUdp = "";
     public $nSvrCommunicMode = -1;
     public $dtThisCreated;
 
@@ -644,34 +687,87 @@ class FfBinConnData
         $this->dtThisCreated = new DateTime();
     }
 
+    public function UdpOrIdSvrAsStr()
+    {
+        return $this->udpSvrPort !== 0 ? strval($this->udpSvrPort) : $this->idSvrInsteadOfUdp;
+    }
+
+    public function UdpOrIdClientAsStr()
+    {
+        // yes, also for client it depends on whether udpSvrPort is 0
+        return $this->udpSvrPort !== 0 ? strval($this->udpClientPort) : $this->idClientInsteadOfUdp;
+    }
     public function ToIpData()
     {
         return GetStrIpFromInt($this->nIpSvrAsInt) . "," .
-            sprintf("%d", $this->nUdpSvrPort) . "," .
+            $this->UdpOrIdSvrAsStr() . "," .
             GetStrIpFromInt($this->nLocalIpSvrAsInt) . "," .
             GetStrIpFromInt($this->nIpClientAsInt) . "," .
-            sprintf("%d", $this->nUdpClientPort);
+            $this->UdpOrIdClientAsStr();
     }
 
-    public function SetThingsFromIpData($ipData)
-    {
-        $arrParts = explode(",", $ipData);
-        $this->nIpSvrAsInt = StrIpToInt($arrParts[0]);
-        $this->nUdpSvrPort = intval($arrParts[1]);
-        $this->nLocalIpSvrAsInt = StrIpToInt($arrParts[2]);
-        $this->nIpClientAsInt = StrIpToInt($arrParts[3]);
-        $this->nUdpClientPort = intval($arrParts[4]);
-    }
+//JEEWEE
+//    public function SetThingsFromIpData($ipData)
+//    {
+//        $arrParts = explode(",", $ipData);
+//        $this->nIpSvrAsInt = StrIpToInt($arrParts[0]);
+//        if (strlen($arrParts[1]) === 32)
+//        {
+//            $this->udpSvrPort = 0;
+//            $this->idSvrInsteadOfUdp = $arrParts[1];
+//        }
+//        else
+//        {
+//            $this->udpSvrPort = intval($arrParts[1]);
+//            $this->idSvrInsteadOfUdp = "";
+//        }
+//
+//        $this->nLocalIpSvrAsInt = StrIpToInt($arrParts[2]);
+//        $this->nIpClientAsInt = StrIpToInt($arrParts[3]);
+//        if (strlen($arrParts[4]) === 32)
+//        {
+//            $this->udpClientPort = 0;
+//            $this->idClientInsteadOfUdp = $arrParts[4];
+//        }
+//        else
+//        {
+//            $this->udpClientPort = intval($arrParts[4]);
+//            $this->idClientInsteadOfUdp = "";
+//        }
+//    }
+
+    //JEEWEE
+//    function UdpPortOrIdToLen32($udpPortOrIdLen32)
+//    {
+//        if (strlen($udpPortOrIdLen32) >= 32)
+//        {
+//            // it should not be > 32, but anyway that would be fatal because the file counts with always 32-len strings for udpPortOrId
+//            // (because when server registers, client value)
+//            return trim(substr($udpPortOrIdLen32, 1));
+//        }
+//        return $udpPortOrIdLen32;
+//    }
+//
+//    function UdpPortOrIdFromLen32($udpPortOrIdLen32)
+//    {
+//        if ($udpPortOrIdLen32[0] === 'X')   // then follows an int which is the real udp port
+//        {
+//            return trim(substr($udpPortOrIdLen32, 1));
+//        }
+//        return $udpPortOrIdLen32;
+//    }
 
     public function EchoThis()
     {
         echo "nIsRegistered=$this->nIsRegistered<br>";
         echo "strConnKey=$this->strConnKey<br>";
         echo "nIpSvrAsInt=$this->nIpSvrAsInt<br>";
-        echo "nUdpSvrPort=$this->nUdpSvrPort<br>";
+        echo "udpSvrPort=$this->udpSvrPort<br>";
+        echo "idSvrInsteadOfUdp=$this->idSvrInsteadOfUdp<br>";
         echo "nLocalIpSvrAsInt=$this->nLocalIpSvrAsInt<br>";
         echo "nIpClientAsInt=$this->nIpClientAsInt<br>";
-        echo "nUdpClientPort=$this->nUdpClientPort<br>";
+        echo "udpClientPort=$this->udpClientPort<br>";
+        echo "idClientInsteadOfUdp=$this->idClientInsteadOfUdp<br>";
         echo "nSvrCommunicMode=$this->nSvrCommunicMode<br>";
         $diffWithNow = $this->dtThisCreated->diff(new DateTime());
         echo "dtThisCreated={$this->dtThisCreated->format('Y-m-d H:i:s.u')}" .
@@ -686,10 +782,10 @@ class FfBinConnData
             fprintf($fpTxt, "%d ", $i);
         fprintf($fpTxt, "%d ", $this->nIsRegistered);
         fprintf($fpTxt, GetStrIpFromInt($this->nIpSvrAsInt) . " ");
-        fprintf($fpTxt, "%7d ", $this->nUdpSvrPort);
+        fprintf($fpTxt, $this->UdpOrIdSvrAsStr() . " ");
         fprintf($fpTxt, GetStrIpFromInt($this->nLocalIpSvrAsInt) . " ");
         fprintf($fpTxt, GetStrIpFromInt($this->nIpClientAsInt) . " ");
-        fprintf($fpTxt, "%7d ", $this->nUdpClientPort);
+        fprintf($fpTxt, $this->UdpOrIdClientAsStr() . " ");
         fprintf($fpTxt, "%2d ", $this->nSvrCommunicMode);
         fprintf($fpTxt, $this->dtThisCreated->format('Y-m-d H:i:s.u') . " ");
         fprintf($fpTxt, "%4d ", $diffWithNow->days);

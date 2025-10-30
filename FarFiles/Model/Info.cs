@@ -29,10 +29,18 @@ namespace FarFiles.Model
         public bool FirstModeIsServer { get; set; }
 
         /// <summary>
-        /// UdpPort: -1=not set, 0 should not happen, > 0 = udpport from Stunserver;
+        /// UdpPort: -1=not set, 0=no udp but id (communication by Central Server), > 0 = udpport from Stunserver;
         /// </summary>
         public int UdpPort { get; set; } = -1;
         public int UdpPortOtherside { get; set; } = -1;
+        public string IdInsteadOfUdp = "";
+        public string IdInsteadOfUdpOtherSide = "";
+
+        /// <summary>
+        /// RegisteredCode: from Central Server; 0=none, 1=server, 2=server+client
+        /// </summary>
+        public string RegisteredCode = "0";
+
         public string NATType { get; set; } = "";
         public string StrLocalIP { get; set; } = "";
         public string StrLocalIPSvr { get; set; } = "";     // server does not need to know localip of client
@@ -60,9 +68,26 @@ namespace FarFiles.Model
         public Guid SvrReceivedClientGuid { get; set; } = Guid.Empty;
 
 
+        public void SetUdpOrId(string udpOrId, bool otherSide)
+        {
+            int udpPort = udpOrId.Length == 32 ? 0 : Convert.ToInt32(udpOrId);
+            string idInsteadOfUdp = udpOrId.Length == 32 ? udpOrId : "";
+            if (otherSide)
+            {
+                UdpPortOtherside = udpPort;
+                IdInsteadOfUdpOtherSide = udpOrId;
+            }
+            else
+            {
+                UdpPort = udpPort;
+                IdInsteadOfUdp = udpOrId;
+            }
+        }
+
         public void DisconnectOnClient()
         {
             UdpPort = -1;
+            IdInsteadOfUdp = "";
             IpSvrThatClientConnectedTo = "";
             //JEEWEE
             //Connected = false;
