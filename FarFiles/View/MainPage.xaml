@@ -74,7 +74,7 @@
             Margin="8"
             Command="{Binding BackToFilesCommand}"
             Style="{StaticResource ButtonOutline}"
-            Text="Back to files"
+            Text="Back to files >>>>"
             IsVisible="{Binding IsBtnBackToFilesVisible}"/>
 
 

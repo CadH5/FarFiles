@@ -80,6 +80,12 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<AdvancedViewModel>();
 
+        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        builder.Services.AddSingleton<MainPage>();
+        builder.Services.AddSingleton<AdvancedPage>();
+        builder.Services.AddSingleton<ClientPage>();
+        builder.Services.AddSingleton<AboutPage>();
+
         return builder.Build();
     }
 

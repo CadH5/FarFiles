@@ -19,6 +19,8 @@
                HorizontalOptions="Center">
             <Label.GestureRecognizers>
                 <TapGestureRecognizer Tapped="OnLinkTapped" />
+                <!--JEEWEE-->
+                <!--<PointerGestureRecognizer PointerEntered="OnPointerEntered" PointerExited="OnPointerExited"/>-->
             </Label.GestureRecognizers>
         </Label>
 

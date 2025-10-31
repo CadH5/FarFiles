@@ -709,6 +709,9 @@ public partial class MainPageViewModel : BaseViewModel
         _communicClient = _communicServer;
         _communicServer = sav;
 
+        LblInfo1 = "";
+        LblInfo2 = "";
+
         // we restart with empty subpaths
         MauiProgram.Info.SvrPathParts.Clear();
         MauiProgram.Info.LocalPathPartsCl.Clear();
@@ -882,7 +885,15 @@ public partial class MainPageViewModel : BaseViewModel
     [RelayCommand]
     async Task OpenAboutDlg()
     {
-        await Shell.Current.GoToAsync(nameof(AboutPage), true);
+        try
+        {
+            await Shell.Current.GoToAsync(nameof(AboutPage), true);
+        }
+        catch (Exception exc)
+        {
+            await Shell.Current.DisplayAlert("Error",
+                MauiProgram.ExcMsgWithInnerMsgs(exc), "OK");
+        }
     }
 
 
