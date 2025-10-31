@@ -17,13 +17,18 @@ public partial class AboutPage : ContentPage
         lblVersion.Text = $"Version {AppInfo.Current.VersionString}";
     }
 
-    private async void OnLinkTapped(object sender, Microsoft.UI.Input.TappedEventArgs e)
+    //JEEWEE
+    //private async void OnLinkTapped(object sender, Microsoft.UI.Input.TappedEventArgs e)
+    private async void OnLinkTapped(object sender, object e)
     {
         var url = "https://www.cadh5.com/farfiles";
         await Launcher.Default.OpenAsync(url);
     }
 
-    private void OnPointerEntered(object sender, Microsoft.UI.Input.PointerEventArgs e)
+    //JEEWEE
+    //private void OnPointerEntered(object sender, Microsoft.UI.Input.PointerEventArgs e)
+    private void OnPointerEntered(object sender, object e)
+
     {
 #if WINDOWS
         //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -33,7 +38,9 @@ public partial class AboutPage : ContentPage
 #endif
     }
 
-    private void OnPointerExited(object sender, Microsoft.UI.Input.PointerEventArgs e)
+    //JEEWEE
+    //private void OnPointerExited(object sender, Microsoft.UI.Input.PointerEventArgs e)
+    private void OnPointerExited(object sender, object e)
     {
 #if WINDOWS
         //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
