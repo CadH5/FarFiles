@@ -309,6 +309,13 @@ public partial class ClientViewModel : BaseViewModel
 
 
 
+    [RelayCommand]
+    async Task CloseApp()
+    {
+        await MauiProgram.Info.MainPageVwModel.CloseApp();
+    }
+
+
     async Task GotoDirCoreAsync()
     {
         if (CopyToFromSvrMode == CpClientToFromMode.CLIENTTOSVR)

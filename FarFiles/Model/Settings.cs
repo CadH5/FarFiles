@@ -53,6 +53,7 @@ namespace FarFiles.Model
         /// If client app is restarted and the server is still active, it can reconnect because the clientguid is persistent.
         /// </summary>
         public Guid ConnClientGuid { get; set; } = Guid.Empty;
+        public FfState LastKnownState { get; set; } = FfState.UNREGISTERED;
 
 #if ANDROID
 #else

@@ -57,8 +57,7 @@ public static class MauiProgram
                 // JEEWEE LATER: NO, PLAN CHANGED, BECAUSE APP REALLY KEEPS DOING THINGS
                 events.AddAndroid(android => android.OnStop(activity =>
                 {
-                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    OnCloseThingsTotally();
+                    OnStopAndroid(activity);
                 }));
 #endif
 #if IOS || MACCATALYST
@@ -94,6 +93,7 @@ public static class MauiProgram
     public async static void OnCloseThingsTotally()
     {
         MauiProgram.Info.AppIsShuttingDown = true;
+        MauiProgram.Settings.LastKnownState = FfState.UNREGISTERED;     // because we are going to try to unregister
         SaveSettings_donotforgettoaddnewsetting();
 
         try
@@ -122,6 +122,25 @@ public static class MauiProgram
         {
         }
     }
+
+
+#if ANDROID
+    /// <summary>
+    /// On Android, OnStop fires when user minimizes the app, and it seems impossible to capture
+    /// the event that the app is really swiped away. BAD! Because we cannot really know it this point
+    /// whether the app will continue or disappear, we cannot really unregister here.
+    /// Note: it is very well possible that the app is busy copying or so, and user wants to switch
+    /// to other app meanwhile.
+    /// Now: registering the state to display a message at next startup that it is better to close
+    /// by means of Close App button.
+    /// </summary>
+    /// <param name="activity"></param>
+    public static void OnStopAndroid(Android.App.Activity activity)
+    {
+        MauiProgram.Settings.LastKnownState = MauiProgram.Info.FfState;
+        MauiProgram.SaveSettings_donotforgettoaddnewsetting();
+    }
+#endif
 
 
     /// <summary>
@@ -306,6 +325,14 @@ public static class MauiProgram
         {
             Settings.ConnClientGuid = Guid.Empty;
         }
+        try
+        {
+            Settings.LastKnownState = (FfState)Convert.ToInt32(Preferences.Get("LastKnownState", ((int)Settings.LastKnownState).ToString()));
+        }
+        catch
+        {
+            Settings.LastKnownState = FfState.UNREGISTERED;
+        }
     }
     public static void SaveSettings_donotforgettoaddnewsetting()
     {
@@ -326,5 +353,6 @@ public static class MauiProgram
         Preferences.Set("TimeoutSecsClient", Settings.TimeoutSecsClient);
         Preferences.Set("BufSizeMoreOrLess", Settings.BufSizeMoreOrLess);
         Preferences.Set("ConnClientGuid", Settings.ConnClientGuid.ToString());
+        Preferences.Set("LastKnownState", ((int)Settings.LastKnownState).ToString());
     }
 }

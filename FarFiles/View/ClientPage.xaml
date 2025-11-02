@@ -41,10 +41,12 @@
             <Button Margin="5" Text="copy" Command="{Binding CopyCommand}"
                     Style="{StaticResource ButtonOutline}"
                     x:Name="BtnCopy"></Button>
-
             <Button Margin="5" Text="..." Command="{Binding MoreButtonsCommand}"
                     Style="{StaticResource ButtonOutline}"
                     x:Name="BtnMore"></Button>
+            <Button Margin="5" Text="X" Command="{Binding CloseAppCommand}"
+                    Style="{StaticResource ButtonOutlineRed}"
+                    x:Name="BtnCloseApp"></Button>
         </StackLayout>
 
         <StackLayout Orientation="Vertical" Grid.Row="4"

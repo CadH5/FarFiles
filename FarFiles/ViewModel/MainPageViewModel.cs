@@ -47,6 +47,11 @@ public partial class MainPageViewModel : BaseViewModel
         _fileDataService = fileDataService;
         MauiProgram.Info.MainPageVwModel = this;
         MauiProgram.Log.LogLine($"FarFiles: started");
+
+        if (MauiProgram.Settings.LastKnownState != FfState.UNREGISTERED)
+        {
+            LblInfo1 = "Last time, app was still registered in Central Server; consider closing app with red button 'X'";
+        }
     }
 
     // xaml cannot bind to MauiProgram.Settings directly.
@@ -101,6 +106,8 @@ public partial class MainPageViewModel : BaseViewModel
         OnPropertyChanged(nameof(StrFfstate));
     }
 
+
+    //JEEWEE
     protected bool _disableConnect = false;
     public bool IsBtnConnectEnabled { get => IsNotBusy && !_disableConnect; }
 
@@ -299,8 +306,9 @@ public partial class MainPageViewModel : BaseViewModel
         _communicServer = null;
         _communicClient?.Dispose();
         _communicClient = null;
-        _disableConnect = true;
-        OnPropertyChanged(nameof(IsBtnConnectEnabled));
+        //JEEWEE
+        //_disableConnect = true;
+        //OnPropertyChanged(nameof(IsBtnConnectEnabled));
 
         MauiProgram.Log.WriteLogLinesAndroidAsync(_fileDataService);
     }
@@ -913,7 +921,7 @@ public partial class MainPageViewModel : BaseViewModel
 
 
     [RelayCommand]
-    async Task CloseApp()
+    public async Task CloseApp()
     {
         bool accepted = await Shell.Current.DisplayAlert("Shutdown?",
             "OK to shutdown application " + (MauiProgram.Info.FfState == FfState.UNREGISTERED ? "?" :

@@ -63,10 +63,10 @@
             Grid.Column="1"
             Margin="8"
             Command="{Binding ConnectAndDoConversationCommand}"
-            IsEnabled="{Binding IsBtnConnectEnabled}"
             Style="{StaticResource ButtonOutline}"
             Text="Connect"
-            IsVisible="{Binding IsBtnConnectVisible}"/>
+            IsVisible="{Binding IsBtnConnectVisible}"
+            IsEnabled="{Binding IsBtnConnectEnabled}"/>
 
         <Button
             Grid.Row="6"
@@ -143,8 +143,8 @@
                 Grid.Column="1"
                 Margin="8" WidthRequest="200"
                 Command="{Binding CloseAppCommand}"
-                Style="{StaticResource ButtonOutline}"
-                Text="Close App" />
+                Style="{StaticResource ButtonOutlineRed}"
+                Text="X (Close App)" />
 
         <ActivityIndicator
             Grid.RowSpan="2"

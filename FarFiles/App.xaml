@@ -89,6 +89,26 @@
                 </Setter>
             </Style>
 
+            <Style x:Key="ButtonOutlineRed" TargetType="Button"
+               BasedOn="{StaticResource ButtonOutline}">
+                <Setter Property="VisualStateManager.VisualStateGroups">
+                    <VisualStateGroupList>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal">
+                                <VisualState.Setters>
+                                    <!-- Only change the Normal color -->
+                                    <Setter Property="BackgroundColor" Value="#D87878" />
+                                    <Setter Property="TextColor" Value="{StaticResource LightBackground}" />
+                                    <Setter Property="BorderColor" Value="{StaticResource Primary}" />
+                                </VisualState.Setters>
+                            </VisualState>
+
+                            <!-- Let Disabled fall back to the base style -->
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </Setter>
+            </Style>
+            
             <Style x:Key="PickerStyle" TargetType="Picker">
                 <Setter Property="Background" Value="#00FFDD" />
                 <Setter Property="TextColor" Value="Black" />
