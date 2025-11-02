@@ -1,11 +1,13 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using CommunityToolkit.Maui;
 using FarFiles.Services;
 using FarFiles.View;
-using CommunityToolkit.Maui;
+//JEEWEE
+//using Java.Util;
+using Microsoft.Extensions.Logging;
 using Microsoft.Maui.LifecycleEvents;
-using System.Text;
-using System;
 using Microsoft.Maui.Media;
+using System;
+using System.Text;
 //JEEWEE
 //using Android.Provider;
 
@@ -80,7 +82,6 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<AdvancedViewModel>();
 
-        //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         builder.Services.AddSingleton<MainPage>();
         builder.Services.AddSingleton<AdvancedPage>();
         builder.Services.AddSingleton<ClientPage>();
@@ -193,13 +194,19 @@ public static class MauiProgram
 
             var url = "https://www.cadh5.com/farfiles/farfiles.php";
 
+            string localIP = MauiProgram.Info.StrLocalIP;
+            int udpPort = MauiProgram.Info.UdpPort;
+            string idInsteadOfUdp = MauiProgram.Info.UdpPort != 0 ? "" :
+                                    MauiProgram.Info.IdInsteadOfUdp;
+            int isSvr0Client1 = MauiProgram.Info.FirstModeIsServer ? 0 : 1;
+            int communicModeAsInt = MauiProgram.Settings.CommunicModeAsInt;
+
             var requestData = new { Cmd = strCmd, ConnectKey = Settings.ConnectKey,
-                LocalIP = MauiProgram.Info.StrLocalIP,
-                UdpPort = MauiProgram.Info.UdpPort,
-                IdInsteadOfUdp = MauiProgram.Info.UdpPort != 0 ? "" :
-                                    MauiProgram.Info.IdInsteadOfUdp,
-                IsSvr0Client1 = MauiProgram.Info.FirstModeIsServer ? 0 : 1,
-                CommunicModeAsInt = MauiProgram.Settings.CommunicModeAsInt,
+                LocalIP = localIP,
+                UdpPort = udpPort,
+                IdInsteadOfUdp = idInsteadOfUdp,
+                IsSvr0Client1 = isSvr0Client1,
+                CommunicModeAsInt = communicModeAsInt,
             };
 
             var json = JsonSerializer.Serialize(requestData);
@@ -224,7 +231,8 @@ public static class MauiProgram
             else
             {
                 HttpResponseMessage response = await client.PostAsync(url, content);
-                Log.LogLine($"PostToCentralServerAsync: strCmd='{strCmd}', SvrClModeAsInt ={Settings.SvrClModeAsInt}, " +
+                Log.LogLine($"PostToCentralServerAsync: strCmd='{strCmd}', IsSvr0Client1={isSvr0Client1}," +
+                    $" UdpPort={udpPort}, IdInsteadOfUdp='{idInsteadOfUdp}', CommunicModeAsInt={communicModeAsInt}: " +
                     $" {response.StatusCode}");
                 response.EnsureSuccessStatusCode();
 
@@ -236,7 +244,7 @@ public static class MauiProgram
                 if (!retStr.StartsWith('{'))
                 {
                     string start = retStr.Length <= 30 ? retStr : retStr.Substring(30) + " ...";
-                    throw new Exception($"Respomse from central server: not Json format ('{start}')");
+                    throw new Exception($"Response from central server: not Json format ('{start}')");
                 }
 
                 return retStr;

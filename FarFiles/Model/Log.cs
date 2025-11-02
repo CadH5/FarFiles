@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FarFiles.Services;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +12,7 @@ namespace FarFiles.Model
         public const string LOGFILENAME = "_FarFiles.log";
         protected bool _doLogging;
         protected string _fullPathLog;
+        protected List<string> _logLinesAndr = new List<string>();
 
         public Log()
         {
@@ -18,6 +20,11 @@ namespace FarFiles.Model
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     LOGFILENAME);
             _doLogging = File.Exists(_fullPathLog);
+
+#if ANDROID
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            _doLogging = true;
+#endif
         }
 
 
@@ -33,15 +40,13 @@ namespace FarFiles.Model
             string strLog = (withDateTime ? DateTime.Now.ToString("dd-MM-yyyy HH:mm:ss") + " "
                     : "") + str;
 
-#if ANDROID
-#if DEBUG
-            Console.WriteLine(strLog);
-#endif
-#endif
-
             if (! _doLogging)
                 return;
 
+#if ANDROID
+            Console.WriteLine(strLog);
+            _logLinesAndr.Add(strLog);
+#else
             try
             {
                 using (var wrLog = new StreamWriter(_fullPathLog, true))
@@ -54,6 +59,37 @@ namespace FarFiles.Model
                 if (throwExcIfErr)
                     throw;
             }
+#endif
         }
+
+
+        public async void WriteLogLinesAndroidAsync(FileDataService fileDataService)
+        {
+#if ANDROID
+            if (_logLinesAndr.Count > 0)
+            {
+                try
+                {
+                    using (var writer = fileDataService.OpenBinaryWriterGeneric(
+                                MauiProgram.Settings.FullPathRoot, MauiProgram.Settings.AndroidUriRoot,
+                                new string[0], LOGFILENAME, false,
+                                out bool logFileExistedBefore))
+                    {
+                        foreach (string line in _logLinesAndr)
+                        {
+                            writer.Write(Encoding.ASCII.GetBytes(line + Environment.NewLine));
+                        }
+                    }
+                }
+                catch (Exception exc)
+                {
+                    await Shell.Current.DisplayAlert("Error",
+                        $"Error writing Android log lines: {exc.Message}", "OK");
+                }
+            }
+#endif
+        }
+
+
     }
 }

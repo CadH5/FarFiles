@@ -63,7 +63,7 @@
             Grid.Column="1"
             Margin="8"
             Command="{Binding ConnectAndDoConversationCommand}"
-            IsEnabled="{Binding IsNotBusy}"
+            IsEnabled="{Binding IsBtnConnectEnabled}"
             Style="{StaticResource ButtonOutline}"
             Text="Connect"
             IsVisible="{Binding IsBtnConnectVisible}"/>

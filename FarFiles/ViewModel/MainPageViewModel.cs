@@ -101,7 +101,10 @@ public partial class MainPageViewModel : BaseViewModel
         OnPropertyChanged(nameof(StrFfstate));
     }
 
-    public bool _isBtnConnectVisible = true;
+    protected bool _disableConnect = false;
+    public bool IsBtnConnectEnabled { get => IsNotBusy && !_disableConnect; }
+
+    protected bool _isBtnConnectVisible = true;
     public bool IsBtnConnectVisible
     {
         get => _isBtnConnectVisible;
@@ -296,6 +299,10 @@ public partial class MainPageViewModel : BaseViewModel
         _communicServer = null;
         _communicClient?.Dispose();
         _communicClient = null;
+        _disableConnect = true;
+        OnPropertyChanged(nameof(IsBtnConnectEnabled));
+
+        MauiProgram.Log.WriteLogLinesAndroidAsync(_fileDataService);
     }
 
 
@@ -362,6 +369,11 @@ public partial class MainPageViewModel : BaseViewModel
                 udpPort = udpIEndPoint.Port;
                 if (udpPort <= 0)
                     throw new Exception("Wrong data from Stun Server");
+                Log($"udpPort from Stun server={udpPort}");
+            }
+            else
+            {
+                Log($"no udpPort from Stun server (communication by Central Server)");
             }
 
             MauiProgram.Info.UdpPort = udpPort;
@@ -555,7 +567,7 @@ public partial class MainPageViewModel : BaseViewModel
         }
         else
         {
-            DisconnectAndResetOnClient();
+            DisconnectAndDisableOnClient();
             LblInfo2 = "retrieving server path info failed";
         }
     }
@@ -724,10 +736,13 @@ public partial class MainPageViewModel : BaseViewModel
 
 
 
-    protected void DisconnectAndResetOnClient()
+    protected void DisconnectAndDisableOnClient()
     {
+        // JWdP 20251101 it is really a problem to try to make things restartable in a way that
+        // works on Windows as well as Android; disable Connect button. They can close app and restart.
         MauiProgram.Info.DisconnectOnClient();
         IsBtnConnectVisible = true;
+        _disableConnect = true;
         OnPropertyChanged();
     }
 
@@ -921,60 +936,70 @@ public partial class MainPageViewModel : BaseViewModel
     protected async Task<MsgSvrClBase> SndFromClientRecieve_msgbxs_Async(
                 MsgSvrClBase sendMsgSvrCl)
     {
-        try
+        bool retry = true;
+        while (retry)
         {
-            MsgSvrClBase msgSvrClAnswer;
-            while (true)
+            try
             {
-                LblInfo1 = "";
-                LblInfo2 = "";
-                Log($"client: sending to server: {sendMsgSvrCl.GetType()}");
-                int iResult = await _communicClient.SendBytesAsync(sendMsgSvrCl.Bytes, sendMsgSvrCl.Bytes.Length);
-                Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
-
-                //JEEWEE
-                //UdpReceiveResult response = await _udpClient.ReceiveAsync(
-                //        MauiProgram.Settings.TimeoutSecsClient);
-                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! POLLING SECONDS MECHANISM
-                byte[] response = await _communicClient.ReceiveBytesAsync(
-                        3, MauiProgram.Settings.TimeoutSecsClient);
-
-                Log($"Received from server: answer {++_numLogRcvans}, {response.Length} bytes");
-
-                if (response.Length == 0)
+                MsgSvrClBase msgSvrClAnswer;
+                while (true)
                 {
-                    SetFfInfoStateAndImage(FfState.CONNECTED);
-                    throw new Exception($"Answer from server seems empty for unknown reason");
+                    LblInfo1 = "";
+                    LblInfo2 = "";
+                    Log($"client: sending to server: {sendMsgSvrCl.GetType()}");
+                    int iResult = await _communicClient.SendBytesAsync(sendMsgSvrCl.Bytes, sendMsgSvrCl.Bytes.Length);
+                    Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
+
+                    //JEEWEE
+                    //UdpReceiveResult response = await _udpClient.ReceiveAsync(
+                    //        MauiProgram.Settings.TimeoutSecsClient);
+                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! POLLING SECONDS MECHANISM
+                    byte[] response = await _communicClient.ReceiveBytesAsync(
+                            3, MauiProgram.Settings.TimeoutSecsClient);
+
+                    Log($"Received from server: answer {++_numLogRcvans}, {response.Length} bytes");
+
+                    if (response.Length == 0)
+                    {
+                        SetFfInfoStateAndImage(FfState.CONNECTED);
+                        throw new Exception($"Answer from server seems empty for unknown reason");
+                    }
+
+                    msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response);
+                    Log($"client: received from server: type '{msgSvrClAnswer?.GetType()}'");
+                    if (null == msgSvrClAnswer)     // message should be ignored
+                        continue;
+
+                    if (await OthersideIsDisconnected_msgbox_Async(msgSvrClAnswer))
+                        return null;
+
+                    break;
                 }
 
-                msgSvrClAnswer = MsgSvrClBase.CreateFromBytes(response);
-                Log($"client: received from server: type '{msgSvrClAnswer?.GetType()}'");
-                if (null == msgSvrClAnswer)     // message should be ignored
-                    continue;
-
-                if (await OthersideIsDisconnected_msgbox_Async(msgSvrClAnswer))
-                    return null;
-
-                break;
+                //JEEWEE
+                //SetFfInfoStateAndImage(FfState.CONNECTED);
+                return msgSvrClAnswer;
+            }
+            catch (OperationCanceledException)
+            {
+                string errMsg = $"Response from server timed out";
+                Log($"client: {errMsg}");
+                await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+            }
+            catch (Exception exc)
+            {
+                string errMsg = $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
+                Log($"client: exception, LblInfo1='{LblInfo1}', LblInfo2='{LblInfo2}', errMsg='{errMsg}'");
+                await Shell.Current.DisplayAlert("Error", errMsg, "OK");
             }
 
-            //JEEWEE
-            //SetFfInfoStateAndImage(FfState.CONNECTED);
-            return msgSvrClAnswer;
-        }
-        catch (OperationCanceledException)
-        {
-            string errMsg = $"Response from server timed out";
             SetFfInfoStateAndImage(FfState.REGISTERED);
-            await Shell.Current.DisplayAlert("Error", errMsg, "OK");
+            retry = await Shell.Current.DisplayAlert("Again?",
+                $"Do you want to retry?",
+                "Yes", "No");
         }
-        catch (Exception exc)
-        {
-            string errMsg = $"Unable to receive from server: {MauiProgram.ExcMsgWithInnerMsgs(exc)}";
-            Log($"client: exception, LblInfo1='{LblInfo1}', LblInfo2='{LblInfo2}', errMsg='{errMsg}'");
-            await Shell.Current.DisplayAlert("Error", errMsg, "OK");
-            DisconnectAndResetOnClient();
-        }
+
+        DisconnectAndDisableOnClient();
 
         return null;
     }
@@ -1023,6 +1048,8 @@ public partial class MainPageViewModel : BaseViewModel
             }
 
             msgSvrCl = MsgSvrClBase.CreateFromBytes(received);
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+            Log($"server: received: {received.Length} bytes: msgSvrCl is '{msgSvrCl}'");
             if (null == msgSvrCl)   // message should be ignored
             {
                 return false;       // stay in loop
