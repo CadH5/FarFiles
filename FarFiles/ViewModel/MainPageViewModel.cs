@@ -108,8 +108,12 @@ public partial class MainPageViewModel : BaseViewModel
 
 
     //JEEWEE
-    protected bool _disableConnect = false;
-    public bool IsBtnConnectEnabled { get => IsNotBusy && !_disableConnect; }
+    protected bool _enableConnect = true;
+    public bool IsBtnConnectEnabled
+    {
+        get => IsNotBusy && _enableConnect;
+        set => _enableConnect = value;       // in this app implicates:
+    }
 
     protected bool _isBtnConnectVisible = true;
     public bool IsBtnConnectVisible
@@ -307,8 +311,8 @@ public partial class MainPageViewModel : BaseViewModel
         _communicClient?.Dispose();
         _communicClient = null;
         //JEEWEE
-        //_disableConnect = true;
-        //OnPropertyChanged(nameof(IsBtnConnectEnabled));
+        IsBtnConnectEnabled = false;
+        OnPropertyChanged(nameof(IsBtnConnectEnabled));
 
         MauiProgram.Log.WriteLogLinesAndroidAsync(_fileDataService);
     }
@@ -750,7 +754,7 @@ public partial class MainPageViewModel : BaseViewModel
         // works on Windows as well as Android; disable Connect button. They can close app and restart.
         MauiProgram.Info.DisconnectOnClient();
         IsBtnConnectVisible = true;
-        _disableConnect = true;
+        IsBtnConnectEnabled = false;
         OnPropertyChanged();
     }
 
