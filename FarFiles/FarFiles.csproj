@@ -18,6 +18,7 @@
   
   <PropertyGroup>
     <ApplicationIcon>Resources\Images\farfilesico.ico</ApplicationIcon>
+    <DefaultLanguage>en-us</DefaultLanguage>
   </PropertyGroup>
     
   <ItemGroup>

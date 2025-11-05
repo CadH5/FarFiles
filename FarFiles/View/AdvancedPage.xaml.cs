@@ -10,4 +10,12 @@ public partial class AdvancedPage : ContentPage
 		InitializeComponent();
 		BindingContext = viewModel;
 	}
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+
+        if (BindingContext is AdvancedViewModel vm)
+            vm.OnPageAppearing();
+    }
 }

@@ -7,50 +7,26 @@
     Title="Advanced info and settings"
     x:DataType="viewmodel:AdvancedViewModel">
     <ScrollView BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
-        <Grid RowDefinitions="Auto,40,40,40,40,40"
+        <Grid RowDefinitions="Auto,40,40,40,40,40,40"
               ColumnDefinitions="200,*"
               Margin="5">
 
             <Editor Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" IsReadOnly="True"
                    Text="{Binding Info}"></Editor>
 
+            <!--Server settings (invisible if client):-->
             <Label Grid.Row="1" Grid.Column="0" IsVisible="{Binding SettingsSvrVis}"
                 Text="Server settings:" FontAttributes="Bold" VerticalTextAlignment="Center"></Label>
-            <Label Grid.Row="1" Grid.Column="0" IsVisible="{Binding SettingsClientVis}"
-                Text="Client settings:" FontAttributes="Bold" VerticalTextAlignment="Center"></Label>
-
-            <!--Server settings:-->
             <Label Grid.Row="2" Grid.Column="0" IsVisible="{Binding SettingsSvrVis}"
-                Text="Sunserver:" VerticalTextAlignment="Center"></Label>
-            <StackLayout Orientation="Horizontal" Grid.Row="2" Grid.Column="1"
-                            IsVisible="{Binding SettingsSvrVis}">
-                <Label Text="server:" WidthRequest="100" VerticalTextAlignment="Center"></Label>
-                <Entry Text="{Binding StunServer}"></Entry>
-            </StackLayout>
-            <StackLayout Orientation="Horizontal" Grid.Row="3" Grid.Column="1"
-                            IsVisible="{Binding SettingsSvrVis}">
-                <Label Text="port:" WidthRequest="100" VerticalTextAlignment="Center"></Label>
-                <Entry Text="{Binding StunPort}"></Entry>
-            </StackLayout>
-            <StackLayout Orientation="Horizontal" Grid.Row="4" Grid.Column="1"
-                            IsVisible="{Binding SettingsSvrVis}">
-                <Button Margin="5,0,0,0" HeightRequest="30"
-                    Command="{Binding SetStunSipgateCommand}"
-                    Style="{StaticResource ButtonOutline}"
-                    Text="sipgate" />
-                <Button Margin="5,0,0,0" HeightRequest="30"
-                    Command="{Binding SetStunGoogleCommand}"
-                    Style="{StaticResource ButtonOutline}"
-                    Text="google" />
-            </StackLayout>
-            <Label Grid.Row="5" Grid.Column="0" IsVisible="{Binding SettingsSvrVis}"
                 Text="Buffer (default 20000 bytes):" VerticalTextAlignment="Center"></Label>
-            <StackLayout Orientation="Horizontal" Grid.Row="5" Grid.Column="1"
+            <StackLayout Orientation="Horizontal" Grid.Row="2" Grid.Column="1"
                             IsVisible="{Binding SettingsSvrVis}">
                 <Entry Text="{Binding BufSizeMoreOrLess}"></Entry>
             </StackLayout>
 
-            <!--Client settings:-->
+            <!--Client settings (invisible if server):-->
+            <Label Grid.Row="1" Grid.Column="0" IsVisible="{Binding SettingsClientVis}"
+                Text="Client settings:" FontAttributes="Bold" VerticalTextAlignment="Center"></Label>
             <Label Grid.Row="2" Grid.Column="0" IsVisible="{Binding SettingsClientVis}"
                 Text="Timeout waiting server:" VerticalTextAlignment="Center"></Label>
             <StackLayout Orientation="Horizontal" Grid.Row="2" Grid.Column="1"
@@ -58,6 +34,35 @@
                 <Entry Text="{Binding TimeoutSecsClient}"></Entry>
                 <Label Text="(seconds)" Margin="5" VerticalTextAlignment="Center"></Label>
             </StackLayout>
+
+            <!--Udp settings (only visible if not Central Server):-->
+            <Label Grid.Row="3" Grid.Column="0" IsVisible="{Binding SettingsUdpVis}"
+                Text="Settings for udp:" FontAttributes="Bold" VerticalTextAlignment="Center"></Label>
+
+            <Label Grid.Row="4" Grid.Column="0" IsVisible="{Binding SettingsUdpVis}"
+                Text="Stunserver:" VerticalTextAlignment="Center"></Label>
+            <StackLayout Orientation="Horizontal" Grid.Row="5" Grid.Column="0"
+                            IsVisible="{Binding SettingsUdpVis}">
+                <Button Margin="2,0,0,0" HeightRequest="33"
+                    Command="{Binding SetStunSipgateCommand}"
+                    Style="{StaticResource ButtonOutline}"
+                    Text="sipgate" />
+                <Button Margin="2,0,0,0" HeightRequest="33"
+                    Command="{Binding SetStunGoogleCommand}"
+                    Style="{StaticResource ButtonOutline}"
+                    Text="google" />
+            </StackLayout>
+            <StackLayout Orientation="Horizontal" Grid.Row="4" Grid.Column="1"
+                            IsVisible="{Binding SettingsUdpVis}">
+                <Label Text="server:" WidthRequest="100" VerticalTextAlignment="Center"></Label>
+                <Entry Text="{Binding StunServer}"></Entry>
+            </StackLayout>
+            <StackLayout Orientation="Horizontal" Grid.Row="5" Grid.Column="1"
+                            IsVisible="{Binding SettingsUdpVis}">
+                <Label Text="port:" WidthRequest="100" VerticalTextAlignment="Center"></Label>
+                <Entry Text="{Binding StunPort}"></Entry>
+            </StackLayout>
+
 
         </Grid>
     </ScrollView>

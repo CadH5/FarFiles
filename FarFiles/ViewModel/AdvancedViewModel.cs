@@ -7,27 +7,39 @@ public partial class AdvancedViewModel : BaseViewModel
     string nl = Environment.NewLine;
     public string Info
     {
-        get =>
+        get
+        {
+            bool udp = MauiProgram.Settings.CommunicModeAsInt != (int)CommunicMode.CENTRALSVR;
+            bool svr = MauiProgram.Settings.ModeIsServer;
             
+            return
+            (udp ?
             $"UdpPort: {MauiProgram.Info.UdpPort}{nl}" +
-            $"UdpPort other side: {MauiProgram.Info.UdpPortOtherside}{nl}" +
+            $"UdpPort other side: {MauiProgram.Info.UdpPortOtherside}{nl}"
+            :
             $"IdInsteadOfUdp: {MauiProgram.Info.IdInsteadOfUdp}{nl}" +
-            $"IdInsteadOfUdp other side: {MauiProgram.Info.IdInsteadOfUdpOtherSide}{nl}" +
+            $"IdInsteadOfUdp other side: {MauiProgram.Info.IdInsteadOfUdpOtherSide}{nl}"
+            ) +
             $"Public IP: {MauiProgram.Info.StrPublicIp}{nl}" +
             $"Public IP other side: {MauiProgram.Info.StrPublicIpOtherside}{nl}" +
             $"Local IP: {MauiProgram.Info.StrLocalIP}{nl}" +
             $"Local IP server: {MauiProgram.Info.StrLocalIPSvr}{nl}" +
             $"Communication mode: {MauiProgram.IntEnumValToString<CommunicMode>(MauiProgram.Settings.CommunicModeAsInt)}{nl}" +
-            (MauiProgram.Settings.ModeIsServer ? "" :
-            $"IP Svr That Client Connected To: {MauiProgram.Info.IpSvrThatClientConnectedTo}{nl}") +
-            $"NATtype from stun server: {MauiProgram.Info.NATType}{nl}" +
+            (! svr ?
+            $"IP Svr That Client Connected To: {MauiProgram.Info.IpSvrThatClientConnectedTo}{nl}"
+            : "") +
+            (udp ?
+            $"NATtype from stun server: {MauiProgram.Info.NATType}{nl}"
+            : "") +
             $"State: {MauiProgram.Info.FfState}";
+        }
     }
 
     public Settings Settings { get; protected set; } = MauiProgram.Settings;
 
     public bool SettingsSvrVis { get => MauiProgram.Settings.ModeIsServer; }
     public bool SettingsClientVis { get => !MauiProgram.Settings.ModeIsServer; }
+    public bool SettingsUdpVis { get => MauiProgram.Settings.CommunicModeAsInt != (int)CommunicMode.CENTRALSVR; }
 
     public string StunServer
     {
@@ -94,4 +106,15 @@ public partial class AdvancedViewModel : BaseViewModel
         StunServer = "stun.l.google.com";
         StunPort = 19302;
     }
+
+    public void OnPageAppearing()
+    {
+        OnPropertyChanged();
+        OnPropertyChanged(nameof(SettingsSvrVis));
+        OnPropertyChanged(nameof(SettingsClientVis));
+        OnPropertyChanged(nameof(SettingsUdpVis));
+        OnPropertyChanged(nameof(Info));
+    }
+
+
 }

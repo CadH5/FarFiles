@@ -31,6 +31,9 @@ public partial class AboutPage : ContentPage
 
     {
 #if WINDOWS
+        var lbl = (Label)sender;
+        lbl.TextColor = Colors.Violet;
+
         //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         //var platformView = (FrameworkElement)((View)sender).Handler.PlatformView;
         //var cursor = InputSystemCursor.CreateFromSystemCursor(InputSystemCursorShape.Hand);
@@ -43,6 +46,9 @@ public partial class AboutPage : ContentPage
     private void OnPointerExited(object sender, object e)
     {
 #if WINDOWS
+        var lbl = (Label)sender;
+        lbl.TextColor = Colors.Blue;
+
         //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         //var platformView = (FrameworkElement)((View)sender).Handler.PlatformView;
         //platformView.ProtectedCursor = null;

@@ -69,7 +69,6 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 MauiProgram.Settings.SvrClModeAsInt = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(IsCommunicModeVisible));
             }
         }
     }
@@ -112,7 +111,11 @@ public partial class MainPageViewModel : BaseViewModel
     public bool IsBtnConnectEnabled
     {
         get => IsNotBusy && _enableConnect;
-        set => _enableConnect = value;       // in this app implicates:
+        set
+        {
+            _enableConnect = value;
+            OnPropertyChanged();
+        }
     }
 
     protected bool _isBtnConnectVisible = true;
@@ -126,7 +129,6 @@ public partial class MainPageViewModel : BaseViewModel
                 _isBtnConnectVisible = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsBtnBackToFilesVisible));
-                OnPropertyChanged(nameof(IsCommunicModeVisible));
             }
         }
     }
@@ -135,13 +137,6 @@ public partial class MainPageViewModel : BaseViewModel
     {
         get => ! IsBtnConnectVisible;
     }
-
-    public bool IsCommunicModeVisible
-    {
-        // currently always true
-        get => true;
-    }
-
 
     public string FullPathRoot
     {
@@ -381,7 +376,7 @@ public partial class MainPageViewModel : BaseViewModel
                 udpPort = udpIEndPoint.Port;
                 if (udpPort <= 0)
                     throw new Exception("Wrong data from Stun Server");
-                Log($"udpPort from Stun server={udpPort}");
+                Log($"{MauiProgram.Settings.SvrClStr}: udpPort from Stun server={udpPort}");
             }
             else
             {
@@ -423,7 +418,7 @@ public partial class MainPageViewModel : BaseViewModel
                                 null : new UdpClient(udpPort);
                     _communicServer = new CommunicWrapper(udpClientOrNull);
                     Log($"server: created CommunicWrapper with udpClientOrNull=" +
-                        (null == udpClientOrNull ? "null" : $"udpPort={udpPort}"));
+                        (null == udpClientOrNull ? "null" : $"udpPort:{udpPort}"));
                 }
                 catch
                 {
@@ -744,6 +739,8 @@ public partial class MainPageViewModel : BaseViewModel
         if (null != MauiProgram.Info.ClientPageVwModel)
             MauiProgram.Info.ClientPageVwModel.MoreButtonsMode = false;
         IsBtnConnectVisible = MauiProgram.Settings.ModeIsServer;    // sets also IsBtnBackToFilesVisible
+        IsBtnConnectEnabled = false;
+        SetFfInfoStateAndImage(FfState.CONNECTED);
     }
 
 
@@ -1053,14 +1050,14 @@ public partial class MainPageViewModel : BaseViewModel
             // Client can restart, and connect another time; in that case its IPEndPoint changes.
             // If _udpServer.IPEndPoint is null, client/server were swapped and then the
             // receiver's IPEndPoint must NOT be used
-            if (_rememberClientRemoteEnd || _communicServer.UdpWrapper?.IPEndPointClient != null)
+            if (_rememberClientRemoteEnd ||
+                _communicServer.UdpWrapper != null && _communicServer.UdpWrapper.IPEndPointClient != null)
             {
                 _communicServer.SetClientRemoteEnd(_communicServer.LastReceivedRemoteEndPoint);
                 _rememberClientRemoteEnd = false;
             }
 
             msgSvrCl = MsgSvrClBase.CreateFromBytes(received);
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
             Log($"server: received: {received.Length} bytes: msgSvrCl is '{msgSvrCl}'");
             if (null == msgSvrCl)   // message should be ignored
             {
@@ -1074,9 +1071,6 @@ public partial class MainPageViewModel : BaseViewModel
             // React on different types of messages:
             if (await OthersideIsDisconnected_msgbox_Async(msgSvrCl))
             {
-                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IF CENTRAL SERVER THEN SVR MUST GO BACK INQUIRING
-                //return false;       // stay in loop
-                //JEEWEE volgens mij niet
                 return true;        // quit loop
             }
 
@@ -1255,11 +1249,11 @@ public partial class MainPageViewModel : BaseViewModel
             }
             else if (msgSvrCl is MsgSvrClSwapRejectedBySvr)
             {
-                // client had already swapped, but on server user pressed "Cancel":
+                // for this moment we are server, because we as client had already swapped,
+                // but on the then server user pressed "Cancel":
                 // swap back to Client, and do not send an answer
-                LblInfo1 = $"({++_numDispRcvmsg}) received: swap server/client rejected";
                 SwapSvrClient();
-                SetFfInfoStateAndImage(FfState.CONNECTED);
+                LblInfo1 = $"({++_numDispRcvmsg}) received: swap server/client rejected";
                 return true;
             }
             else
@@ -1294,6 +1288,7 @@ public partial class MainPageViewModel : BaseViewModel
                 // switches back to client
                 msgSvrClAns = new MsgSvrClSwapRejectedBySvr();
                 await _communicServer.SendBytesAsync(msgSvrClAns.Bytes, msgSvrClAns.Bytes.Length);
+                SetFfInfoStateAndImage(FfState.CONNECTED);
             }
         }
         catch (Exception exc)
@@ -1468,7 +1463,6 @@ public partial class MainPageViewModel : BaseViewModel
                 Log("client: ConnectToServerFromClient with server enpoint: " + ipEndPoint);
             }
 
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! LETS SEE HOW TO BEST DISPLAY THINGS
             LblInfo2 = "Trying to connect to server" + (useLocalIP ? " (localIP)" : "");
             MauiProgram.Info.IpSvrThatClientConnectedTo = ipAddressSvr;
 
@@ -1772,12 +1766,14 @@ public partial class MainPageViewModel : BaseViewModel
         {
             if (null != udpClientOrNull)
                 UdpWrapper = new UdpWrapper(udpClientOrNull);
+            LogPlus($"new CommunicWrapper");
         }
 
         public void ConnectToServerFromClient(IPEndPoint ipEndPoint)
         {
             if (null != UdpWrapper)
                 UdpWrapper.ConnectToServerFromClient(ipEndPoint);
+            LogPlus($"ConnectToServerFromClient, ipEndPoint={ipEndPoint}");
         }
 
 
@@ -1785,6 +1781,7 @@ public partial class MainPageViewModel : BaseViewModel
         {
             if (null != UdpWrapper)
                 UdpWrapper.SetClientRemoteEnd(ipEndPointClient);
+            LogPlus($"SetClientRemoteEnd, ipEndPointClient={ipEndPointClient}");
         }
 
 
@@ -1795,11 +1792,14 @@ public partial class MainPageViewModel : BaseViewModel
         /// <returns></returns>
         public async Task<byte[]> ReceiveBytesAsync(int pollSleepSeconds, int timeOutSeconds = -1)
         {
-            string svrCl = MauiProgram.Settings.ModeIsServer ? "server" : "client";
+            string svrCl = MauiProgram.Settings.SvrClStr;
             if (null != UdpWrapper)
             {
                 UdpReceiveResult result = await UdpWrapper.ReceiveAsync(timeOutSeconds);
                 LastReceivedRemoteEndPoint = result.RemoteEndPoint;
+                // note that udpPort in RemoteEndPoint is not same as what other side got from Stunserver,
+                // and I suppose that is because router is messing with port numbers
+
                 MauiProgram.Log.LogLine($"{svrCl}: ReceiveBytesAsync: received {result.Buffer.Length} byte(s)");
                 return result.Buffer;
             }
@@ -1841,11 +1841,15 @@ public partial class MainPageViewModel : BaseViewModel
         }
 
 
-        public async Task<int> SendBytesAsync(byte[] bytes, int numBytesToSend, IPEndPoint ipEndPointOverride = null)
+        //JEEWEE
+        //public async Task<int> SendBytesAsync(byte[] bytes, int numBytesToSend, IPEndPoint ipEndPointOverride = null)
+        public async Task<int> SendBytesAsync(byte[] bytes, int numBytesToSend)
         {
             if (null != UdpWrapper)
             {
-                return await UdpWrapper.SendAsync(bytes, numBytesToSend, ipEndPointOverride);
+                //JEEWEE
+                //return await UdpWrapper.SendAsync(bytes, numBytesToSend, ipEndPointOverride);
+                return await UdpWrapper.SendAsync(bytes, numBytesToSend);
             }
 
             // no udp communication: upload to central server as a file
@@ -1861,8 +1865,7 @@ public partial class MainPageViewModel : BaseViewModel
                             _sndNr);
                 content.Add(byteContent, "filesToUpload[]", fileNameExt);
 
-                string svrCl = MauiProgram.Settings.ModeIsServer ? "server" : "client";
-                MauiProgram.Log.LogLine($"{svrCl}: uploading: {fileNameExt}");
+                MauiProgram.Log.LogLine($"{MauiProgram.Settings.SvrClStr}: uploading: {fileNameExt}");
 
                 HttpResponseMessage response = await client.PostAsync(_csvr_uploadUrl, content);
                 if (!response.IsSuccessStatusCode)
@@ -1882,6 +1885,7 @@ public partial class MainPageViewModel : BaseViewModel
 
         public void Dispose()
         {
+            LogPlus($"Dispose");
             if (null != UdpWrapper)
                 UdpWrapper.Dispose();
         }
@@ -1895,6 +1899,13 @@ public partial class MainPageViewModel : BaseViewModel
             if (parts.Length != 4)
                 throw new Exception($"PROGRAMMERS: CsvrComposeFileName: invalid ip '{strIp}'");
             return String.Join('-', parts) + $"_{udpOrId}_{seqNr}.bin";
+        }
+
+
+        protected void LogPlus(string str)
+        {
+            string udpWr = "udpwr:" + (null == UdpWrapper ? "null" : $"endpclient={UdpWrapper.IPEndPointClient}");
+            MauiProgram.Log.LogLine($"{MauiProgram.Settings.SvrClStr},{udpWr}: {str}");
         }
     }
 }

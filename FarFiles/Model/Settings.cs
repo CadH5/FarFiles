@@ -38,6 +38,8 @@ namespace FarFiles.Model
         /// </summary>
         public bool ModeIsServer { get => SvrClModeAsInt == (int)SvrClMode.SERVER ||
                         SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE; }
+        public string SvrClStr { get => ModeIsServer ? "server" : "client"; }
+
         public int Idx0isOverwr1isSkip { get; set; } = 0;
         public string ConnectKey { get; set; } = "";
 

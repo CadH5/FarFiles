@@ -103,12 +103,11 @@
         </Grid>-->
         <!--======================== CHECKBOX, CURRENTLY NOT NEEDED ==========-->
 
-        <Label Grid.Row="7" Grid.Column="0" Text="Communication Mode:" Style="{StaticResource LargeLabel}"
-                IsVisible="{Binding IsCommunicModeVisible}"></Label>
+        <Label Grid.Row="7" Grid.Column="0" Text="Communication Mode:" Style="{StaticResource LargeLabel}">
+        </Label>
         <Picker Grid.Row="7" Grid.Column="1"
                 Style="{StaticResource PickerStyle}"
                 SelectedIndex="{Binding CommunicModeAsInt}"
-                IsVisible="{Binding IsCommunicModeVisible}"
                 IsEnabled="{Binding IsNotBusy}">
             <Picker.ItemsSource>
                 <x:Array Type="{x:Type x:String}">
