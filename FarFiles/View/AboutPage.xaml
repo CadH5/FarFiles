@@ -19,10 +19,10 @@
                HorizontalOptions="Center">
             <Label.GestureRecognizers>
                 <TapGestureRecognizer Tapped="OnLinkTapped" />
-                <!--JEEWEE-->
                 <PointerGestureRecognizer PointerEntered="OnPointerEntered" PointerExited="OnPointerExited"/>
             </Label.GestureRecognizers>
         </Label>
+        <Image x:Name="imgHand" Source="cursor_hand.gif" WidthRequest="25" HorizontalOptions="Center"></Image>
 
     </VerticalStackLayout>
 </ContentPage>
