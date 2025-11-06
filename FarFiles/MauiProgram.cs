@@ -1,15 +1,11 @@
 ﻿using CommunityToolkit.Maui;
 using FarFiles.Services;
 using FarFiles.View;
-//JEEWEE
-//using Java.Util;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.LifecycleEvents;
 using Microsoft.Maui.Media;
 using System;
 using System.Text;
-//JEEWEE
-//using Android.Provider;
 
 namespace FarFiles;
 
@@ -54,7 +50,7 @@ public static class MauiProgram
                 // b resume the app (open it again)
                 // So I now disable and close everything and display a message in mainview that user
                 // can only restart
-                // JEEWEE LATER: NO, PLAN CHANGED, BECAUSE APP REALLY KEEPS DOING THINGS
+                // JWdP LATER: NO, PLAN CHANGED, BECAUSE APP REALLY KEEPS DOING THINGS
                 events.AddAndroid(android => android.OnStop(activity =>
                 {
                     OnStopAndroid(activity);
@@ -98,9 +94,6 @@ public static class MauiProgram
 
         try
         {
-            //JEEWEE
-            //if (MauiProgram.Info.FirstModeIsServer)           // originally the server, but svr/client may have swapped
-            //{
             if (MauiProgram.Info.FfState != FfState.UNREGISTERED)
             {
                 // do not change MauiProgram.Info.FfState yet!! MainPageVwModel.OnCloseThings() needs it
@@ -113,8 +106,6 @@ public static class MauiProgram
 
             // (Note: if UNREGISTER fails somehow, then after a day the registration
             // also becomes invalid; see PHP).
-            //JEEWEE
-            //}
 
             Info.MainPageVwModel.OnCloseThings();
         }

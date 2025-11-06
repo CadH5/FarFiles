@@ -22,8 +22,9 @@ namespace FarFiles.Model
             _doLogging = File.Exists(_fullPathLog);
 
 #if ANDROID
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            _doLogging = true;
+            //JWdP oct 2025: Android logging: will write logfile in browsed root folder at the end;
+            //for this, you must set _doLogging to true
+            //_doLogging = true;
 #endif
         }
 

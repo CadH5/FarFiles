@@ -49,11 +49,7 @@ namespace FarFiles.Model
         public string IpSvrThatClientConnectedTo { get; set; } = "";
         public bool IsSvrWritableReportedToClient { get; set; } = false;
         public CpClientToFromMode CpClientToFromMode { get; set; } = CpClientToFromMode.CLIENTFROMSVR;
-        //JEEWEE
-        //public bool Connected { get; set; } = false;
         public bool AppIsShuttingDown { get; set; } = false;
-        //JEEWEE
-        //public bool AppIsInResetState { get; set; } = false;
         public int NumAnswersSent { get; set; } = 0;
         public List<string> SvrPathParts { get; set; } = new List<string>();
         public List<string> LocalPathPartsCl { get; set; } = new List<string>();
@@ -89,8 +85,6 @@ namespace FarFiles.Model
             UdpPort = -1;
             IdInsteadOfUdp = "";
             IpSvrThatClientConnectedTo = "";
-            //JEEWEE
-            //Connected = false;
             FfState = FfState.UNREGISTERED;
             SvrPathParts.Clear();
             LocalPathPartsCl.Clear();

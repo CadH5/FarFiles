@@ -12,14 +12,10 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 
-//JEEWEE
-//using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
-//JEEWEE
-//using Windows.Media.Protection.PlayReady;
 
 namespace FarFiles.ViewModel;
 
@@ -106,7 +102,6 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    //JEEWEE
     protected bool _enableConnect = true;
     public bool IsBtnConnectEnabled
     {
@@ -285,8 +280,6 @@ public partial class MainPageViewModel : BaseViewModel
 
     public void OnCloseThings()
     {
-        //JEEWEE
-        //if (MauiProgram.Info.Connected)
         if (MauiProgram.Info.FfState == FfState.CONNECTED)
         {
             CommunicWrapper communicWr = _communicClient ?? _communicServer;
@@ -305,7 +298,6 @@ public partial class MainPageViewModel : BaseViewModel
         _communicServer = null;
         _communicClient?.Dispose();
         _communicClient = null;
-        //JEEWEE
         IsBtnConnectEnabled = false;
         OnPropertyChanged(nameof(IsBtnConnectEnabled));
 
@@ -325,8 +317,7 @@ public partial class MainPageViewModel : BaseViewModel
         //return;
         //====================================================================================
 
-        //await TestUpldDwnldJEEWEE();
-        //OpenClientJEEWEE();
+        //OpenClientJEEWEE();   // to test the collectionview
         //return;
 
         if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
@@ -438,12 +429,6 @@ public partial class MainPageViewModel : BaseViewModel
                 LblInfo1 = $"Listening for client contact ...";
                 await DoListenLoopAsSvrAsync();
 
-                //JEEWEE
-                //if (MauiProgram.Info.AppIsInResetState)
-                //{
-                //    MauiProgram.Info.AppIsInResetState = false;
-                //    return;
-                //}
                 if (MauiProgram.Info.AppIsShuttingDown)
                     return;
 
@@ -463,16 +448,11 @@ public partial class MainPageViewModel : BaseViewModel
                     throw new Exception(errMsg);
                 }
 
-                //JEEWEE: THIS IS TOTALLY WRONG, BUT HELPS IF SERVER POLLS AT 5 SECS (not necessary any more)
-                //await Task.Delay(6 * 1000);
-
                 descrTrying = " starting to act as a client";
                 _rememberClientRemoteEnd = false;   // also after swap: do not remember RemoteEndPoint
                 await RetrieveServerPathInfoOnClientAndOpenClientPageAsync();
             }
 
-            //JEEWEE
-            //MauiProgram.Info.Connected = true;
             SetFfInfoStateAndImage(FfState.CONNECTED);
         }
         catch (Exception exc)
@@ -504,16 +484,6 @@ public partial class MainPageViewModel : BaseViewModel
         if ("" == errMsg)
             errMsg = IpDataToInfo(GetJsonProp(respFromCentralSvr, "ipData"));
 
-        //JEEWEE
-        //if ("" == errMsg && MauiProgram.Settings.ModeIsServer)
-        //{
-        //    string clientCommunicModeAsStr = GetJsonProp(respFromCentralSvr, "clientCommunicMode");
-        //    if (MauiProgram.ParseIntEnum<CommunicMode>(clientCommunicModeAsStr, out int modeAsInt))
-        //    {
-        //        MauiProgram.Settings.CommunicModeAsInt = modeAsInt;
-        //    }
-        //}
-
         if ("" != errMsg)
         {
             throw new Exception(errMsg);
@@ -533,8 +503,6 @@ public partial class MainPageViewModel : BaseViewModel
             if (MauiProgram.Info.RegisteredCode == "2")
                 return;
 
-            //JEEWEE
-            //Thread.Sleep(sleepMilliSecs);
             await Task.Delay(sleepMilliSecs);
         }
     }
@@ -614,7 +582,7 @@ public partial class MainPageViewModel : BaseViewModel
             MsgSvrClBase msgSvrClAnswer = await SndFromClientRecieve_msgbxs_Async(
                                 msgSvrClToSend);
             if (msgSvrClAnswer == null)
-                return false;   //JEEWEE
+                return false;
             if (msgSvrClAnswer is MsgSvrClAbortedConfirmation)
             {
                 SetFfInfoStateAndImage(FfState.CONNECTED);
@@ -959,10 +927,6 @@ public partial class MainPageViewModel : BaseViewModel
                     int iResult = await _communicClient.SendBytesAsync(sendMsgSvrCl.Bytes, sendMsgSvrCl.Bytes.Length);
                     Log($"client: sent to server: msg {++_numSendMsg}, {iResult} bytes, waiting for server...");
 
-                    //JEEWEE
-                    //UdpReceiveResult response = await _udpClient.ReceiveAsync(
-                    //        MauiProgram.Settings.TimeoutSecsClient);
-                    //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! POLLING SECONDS MECHANISM
                     byte[] response = await _communicClient.ReceiveBytesAsync(
                             3, MauiProgram.Settings.TimeoutSecsClient);
 
@@ -985,8 +949,6 @@ public partial class MainPageViewModel : BaseViewModel
                     break;
                 }
 
-                //JEEWEE
-                //SetFfInfoStateAndImage(FfState.CONNECTED);
                 return msgSvrClAnswer;
             }
             catch (OperationCanceledException)
@@ -1038,8 +1000,6 @@ public partial class MainPageViewModel : BaseViewModel
             try
             {
                 // use timeouts of 1 minute
-                //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! POLLING MECHANISM
-                //received = await _udpServer.ReceiveAsync(60);
                 received = await _communicServer.ReceiveBytesAsync(3, 60);
             }
             catch (OperationCanceledException)
@@ -1358,13 +1318,6 @@ public partial class MainPageViewModel : BaseViewModel
                 (isLastPart ? "last part" :
                 $"copy info; file {_copyMgr?.NumFilesOpenedOnSrc} of {_copyMgr?.ClientTotalNumFilesToCopyFromOrTo}");
         }
-
-        //JEEWEE
-        //if (msgSvrClAns is MsgSvrClCopyToSvrConfirmation)
-        //{
-        //    SetFfInfoStateAndImage(FfState.CONNECTED);
-        //    return "confirmation";
-        //}
 
         // should not happen:
         SetFfInfoStateAndImage(FfState.CONNECTED)       ;
@@ -1804,7 +1757,6 @@ public partial class MainPageViewModel : BaseViewModel
                 return result.Buffer;
             }
 
-            //JEEWEE: SECONDS: NEW SETTING?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // no udp communication: poll central server for file
             string pollingFileName = CsvrComposeFileName(
                     MauiProgram.Info.StrPublicIp,
@@ -1841,14 +1793,10 @@ public partial class MainPageViewModel : BaseViewModel
         }
 
 
-        //JEEWEE
-        //public async Task<int> SendBytesAsync(byte[] bytes, int numBytesToSend, IPEndPoint ipEndPointOverride = null)
         public async Task<int> SendBytesAsync(byte[] bytes, int numBytesToSend)
         {
             if (null != UdpWrapper)
             {
-                //JEEWEE
-                //return await UdpWrapper.SendAsync(bytes, numBytesToSend, ipEndPointOverride);
                 return await UdpWrapper.SendAsync(bytes, numBytesToSend);
             }
 

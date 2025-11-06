@@ -1,9 +1,3 @@
-//JEEWEE
-//using Microsoft.Maui.Controls;
-//using Microsoft.Maui.Controls.Platform;
-//JEEWEE
-//using Microsoft.UI.Input;
-//using Microsoft.UI.Xaml;
 
 namespace FarFiles;
 

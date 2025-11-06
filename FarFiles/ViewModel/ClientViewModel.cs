@@ -332,10 +332,6 @@ public partial class ClientViewModel : BaseViewModel
         else
         {
             // GotoDir on server, by sending and receiving messages
-            //JEEWEE
-            //var savSvrPathParts = new List<string>();
-            //savSvrPathParts.AddRange(MauiProgram.Info.SvrPathParts);
-
             Exception excSendRcv = null;
             try
             {
@@ -349,9 +345,6 @@ public partial class ClientViewModel : BaseViewModel
 
             if (_abortProgress || null != excSendRcv)
             {
-                //JEEWEE
-                //MauiProgram.Info.SvrPathParts.Clear();
-                //MauiProgram.Info.SvrPathParts.AddRange(savSvrPathParts);
                 if (null != _savSvrInfoPathParts)
                     MauiProgram.Info.SvrPathParts = MauiProgram.CopyList(_savSvrInfoPathParts);
             }
