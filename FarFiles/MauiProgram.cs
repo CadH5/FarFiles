@@ -172,7 +172,7 @@ public static class MauiProgram
 
 
     /// <summary>
-    /// Returns a string to display bytes as ascii chars, replacing bytes < 32 by dot
+    /// Returns a string to display bytes as ascii chars, replacing bytes lt 32 by dot
     /// </summary>
     /// <param name="byArr"></param>
     /// <param name="startIdx"></param>

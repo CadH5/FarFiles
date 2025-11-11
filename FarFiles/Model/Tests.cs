@@ -20,8 +20,7 @@ namespace FarFiles.Model
         {
 #if ANDROID
             throw new Exception("DoTestsWindowsAsync: not for Android!");
-#endif
-
+#else
             _fileDataService = fileDataService;
             _numPassed = 0;
             _numFailed = 0;
@@ -36,6 +35,7 @@ namespace FarFiles.Model
 
             await Shell.Current.DisplayAlert("Info",
                 $"Created: {fullPathLog}\nnumPassed={_numPassed}\nnumFailed={_numFailed}\nnumExceptions={_numExceptions}", "OK");
+#endif
         }
 
 

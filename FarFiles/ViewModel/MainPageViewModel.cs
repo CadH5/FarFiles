@@ -102,14 +102,26 @@ public partial class MainPageViewModel : BaseViewModel
     }
 
 
-    protected bool _enableConnect = true;
-    public bool IsBtnConnectEnabled
+    protected bool _connSettsEnabled = true;
+    public bool ConnSettsEnabled
     {
-        get => IsNotBusy && _enableConnect;
+        get => IsNotBusy && _connSettsEnabled;
         set
         {
-            _enableConnect = value;
+            _connSettsEnabled = value;
             OnPropertyChanged();
+        }
+    }
+
+    public bool OurIsBusy
+    {
+        get => IsBusy;
+        set
+        {
+            IsBusy = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsNotBusy));
+            OnPropertyChanged(nameof(ConnSettsEnabled));
         }
     }
 
@@ -187,12 +199,12 @@ public partial class MainPageViewModel : BaseViewModel
     [RelayCommand]
     async Task Browse()
     {
-        if (IsBusy)
+        if (OurIsBusy)
             return;
 
         try
         {
-            IsBusy = true;
+            OurIsBusy = true;
 
 #if ANDROID
             MauiProgram.SaveSettings_donotforgettoaddnewsetting();     // is necessary
@@ -228,7 +240,7 @@ public partial class MainPageViewModel : BaseViewModel
         }
         finally
         {
-            IsBusy = false;
+            OurIsBusy = false;
         }
     }
 
@@ -298,8 +310,8 @@ public partial class MainPageViewModel : BaseViewModel
         _communicServer = null;
         _communicClient?.Dispose();
         _communicClient = null;
-        IsBtnConnectEnabled = false;
-        OnPropertyChanged(nameof(IsBtnConnectEnabled));
+        ConnSettsEnabled = false;
+        OnPropertyChanged(nameof(ConnSettsEnabled));
 
         MauiProgram.Log.WriteLogLinesAndroidAsync(_fileDataService);
     }
@@ -308,7 +320,7 @@ public partial class MainPageViewModel : BaseViewModel
     [RelayCommand]
     async Task ConnectAndDoConversation()
     {
-        if (IsBusy)
+        if (OurIsBusy)
             return;
 
         //JWdP 20250507 Introduced "unittests", to be executed from this button if incommented
@@ -336,7 +348,7 @@ public partial class MainPageViewModel : BaseViewModel
         string descrTrying = "";
         try
         {
-            IsBusy = true;
+            OurIsBusy = true;
 
             // if ConnClientGuid is not yet in settings, determine it for this device.
             if (Guid.Empty == MauiProgram.Settings.ConnClientGuid)
@@ -386,7 +398,7 @@ public partial class MainPageViewModel : BaseViewModel
             // no exception, so:
             SetFfInfoStateAndImage(FfState.REGISTERED);
 
-            IsBusy = true;
+            OurIsBusy = true;
 
             if (MauiProgram.Settings.ModeIsServer)
             {
@@ -425,6 +437,9 @@ public partial class MainPageViewModel : BaseViewModel
                     await DoHolePunchingAsync(_communicServer.UdpWrapper);
                 }
 
+                // now that we are connected, let them not connect again, or change connect settings
+                ConnSettsEnabled = false;
+
                 // Do the big listen-answer loop
                 LblInfo1 = $"Listening for client contact ...";
                 await DoListenLoopAsSvrAsync();
@@ -448,6 +463,9 @@ public partial class MainPageViewModel : BaseViewModel
                     throw new Exception(errMsg);
                 }
 
+                // now that we are connected, let them not connect again, or change connect settings
+                ConnSettsEnabled = false;
+
                 descrTrying = " starting to act as a client";
                 _rememberClientRemoteEnd = false;   // also after swap: do not remember RemoteEndPoint
                 await RetrieveServerPathInfoOnClientAndOpenClientPageAsync();
@@ -464,7 +482,7 @@ public partial class MainPageViewModel : BaseViewModel
         }
         finally
         {
-            IsBusy = false;
+            OurIsBusy = false;
         }
     }
 
@@ -518,7 +536,7 @@ public partial class MainPageViewModel : BaseViewModel
     /// <returns>true if we must go on as a client, false if something weird ended the loop</returns>
     public async Task DoListenLoopAsSvrAsync()
     {
-        IsBusy = true;
+        OurIsBusy = true;
         while (true)
         {
             if (await ListenMsgAndSendMsgOnSvrAsync())
@@ -707,7 +725,6 @@ public partial class MainPageViewModel : BaseViewModel
         if (null != MauiProgram.Info.ClientPageVwModel)
             MauiProgram.Info.ClientPageVwModel.MoreButtonsMode = false;
         IsBtnConnectVisible = MauiProgram.Settings.ModeIsServer;    // sets also IsBtnBackToFilesVisible
-        IsBtnConnectEnabled = false;
         SetFfInfoStateAndImage(FfState.CONNECTED);
     }
 
@@ -719,7 +736,7 @@ public partial class MainPageViewModel : BaseViewModel
         // works on Windows as well as Android; disable Connect button. They can close app and restart.
         MauiProgram.Info.DisconnectOnClient();
         IsBtnConnectVisible = true;
-        IsBtnConnectEnabled = false;
+        ConnSettsEnabled = false;
         OnPropertyChanged();
     }
 
@@ -1590,7 +1607,7 @@ public partial class MainPageViewModel : BaseViewModel
             "UNREGISTER", true));
         SetFfInfoStateAndImage(FfState.UNREGISTERED);
 
-        IsBusy = false;
+        OurIsBusy = false;
         OnPropertyChanged();
         MauiProgram.OnCloseThingsTotally();     // this calls Info.MainPageVwModel.OnCloseThings()
         Application.Current.Quit();

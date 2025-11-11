@@ -501,7 +501,7 @@ namespace FarFiles.Model
 
 
         /// <summary>
-        /// returns int that is >= 0 and < 256, based on connectkey which is same for client and server
+        /// returns int that is ge 0 and lt 256, based on connectkey which is same for client and server
         /// </summary>
         /// <returns></returns>
         protected int GetEncval()

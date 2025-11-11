@@ -12,7 +12,7 @@
     <ApplicationId>com.CadH5.FarFiles</ApplicationId>
     <WindowsPackageType>None</WindowsPackageType>
 
-    <ApplicationDisplayVersion>1.0.1</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>1.0.2</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
   </PropertyGroup>
   
