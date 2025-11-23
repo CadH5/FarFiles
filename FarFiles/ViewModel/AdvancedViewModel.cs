@@ -11,7 +11,7 @@ public partial class AdvancedViewModel : BaseViewModel
         {
             bool udp = MauiProgram.Settings.CommunicModeAsInt != (int)CommunicMode.CENTRALSVR;
             bool svr = MauiProgram.Settings.ModeIsServer;
-            
+
             return
             (udp ?
             $"UdpPort: {MauiProgram.Info.UdpPort}{nl}" +

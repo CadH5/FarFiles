@@ -53,6 +53,17 @@
                         Margin="0,5,0,0"
                         IsVisible="{Binding MoreButtonsMode}">
             <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
+                        Text="select all files" Command="{Binding SelectAllCommand}"
+                            Style="{StaticResource ButtonOutline}"></Button>
+            <StackLayout Orientation="Horizontal" Margin="0,5,0,0">
+                <Button HorizontalOptions="Start" Margin="5,2,0,2" WidthRequest="200"
+                        Text="select filtered files" Command="{Binding SelectFltrCommand}"
+                            Style="{StaticResource ButtonOutline}"></Button>
+                <Label Margin="5,0,0,0" VerticalTextAlignment="Center"
+                        Text="filename contains:" />
+                <Entry Margin="5,0,0,0" Text="{Binding TxtSelectFltr}"></Entry>
+            </StackLayout>
+            <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
                         Text="Swap server/client" Command="{Binding SwapCommand}"
                             Style="{StaticResource ButtonOutline}"
                             x:Name="BtnSwap"></Button>
@@ -61,18 +72,6 @@
                         Text="{Binding TxtBtnCopyToFromSvr}" Command="{Binding CopyToFromSvrCommand}"
                             Style="{StaticResource ButtonOutline}"
                             x:Name="BtnCopyToFromSvr"></Button>
-            <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
-                        Text="select all files" Command="{Binding SelectAllCommand}"
-                            Style="{StaticResource ButtonOutline}"></Button>
-            <StackLayout Orientation="Horizontal"
-                                        Margin="0,5,0,0">
-                <Button HorizontalOptions="Start" Margin="5,2,0,2" WidthRequest="200"
-                        Text="select filtered files" Command="{Binding SelectFltrCommand}"
-                            Style="{StaticResource ButtonOutline}"></Button>
-                <Label Margin="5,0,0,0" VerticalTextAlignment="Center"
-                        Text="filename contains:" />
-                <Entry Margin="5,0,0,0" Text="{Binding TxtSelectFltr}"></Entry>
-            </StackLayout>
         </StackLayout>
 
         <StackLayout Orientation="Horizontal" Grid.Row="5"

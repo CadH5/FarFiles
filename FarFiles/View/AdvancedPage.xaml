@@ -12,7 +12,7 @@
               Margin="5">
 
             <Editor Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" IsReadOnly="True"
-                   Text="{Binding Info}"></Editor>
+            Text="{Binding Info}"></Editor>
 
             <!--Server settings (invisible if client):-->
             <Label Grid.Row="1" Grid.Column="0" IsVisible="{Binding SettingsSvrVis}"
