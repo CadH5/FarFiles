@@ -15,22 +15,25 @@ namespace FarFiles.Model
         protected string[] _folderNames;
         protected string[] _fileNames;
         protected long[] _fileSizes;
+        protected DateTime[] _dtLastWrites;
 
         protected int _idx0isFolders1isFiles;
         protected int _idxInArray;
 
         public bool EndReached { get => 1 == _idx0isFolders1isFiles &&
                     _idxInArray >= _fileNames.Length; }
-        public PathInfoAnswerState(string[] folderNames, string[] fileNames, long[] fileSizes)
+        public PathInfoAnswerState(string[] folderNames, string[] fileNames, long[] fileSizes,
+                        DateTime[] dtLastWrites)
         {
-            if (fileNames.Length != fileSizes.Length)
+            if (fileNames.Length != fileSizes.Length || fileNames.Length != dtLastWrites.Length)
                 throw new Exception(
                     $"PROGRAMMERS: PathInfoAnswerState ctor: fileNames.Length={fileNames.Length}" +
-                    $", fileSizes.Length={fileSizes.Length}");
+                    $", fileSizes.Length={fileSizes.Length}, dtLastWrites.Length={dtLastWrites.Length}, ");
 
             _folderNames = folderNames;
             _fileNames = fileNames;
             _fileSizes = fileSizes;
+            _dtLastWrites = dtLastWrites;
             _idx0isFolders1isFiles = 0;
             _idxInArray = 0;
         }
@@ -43,7 +46,8 @@ namespace FarFiles.Model
         /// <param name="name"></param>
         /// <param name="fileSize"></param>
         /// <returns>true if data valid, false if there is no next</returns>
-        public bool GetNextFileOrFolder(out bool isDir, out string name, out long fileSize)
+        public bool GetNextFileOrFolder(out bool isDir, out string name, out long fileSize,
+                out DateTime dtLastWrite)
         {
             if (0 == _idx0isFolders1isFiles)
             {
@@ -52,6 +56,7 @@ namespace FarFiles.Model
                     isDir = true;
                     name = _folderNames[_idxInArray++];
                     fileSize = 0;
+                    dtLastWrite = FileOrFolderData.MINDT2000;
                     return true;
                 }
 
@@ -63,13 +68,15 @@ namespace FarFiles.Model
             {
                 isDir = false;
                 name = _fileNames[_idxInArray];
-                fileSize = _fileSizes[_idxInArray++];
+                fileSize = _fileSizes[_idxInArray];
+                dtLastWrite = _dtLastWrites[_idxInArray++];
                 return true;
             }
 
             isDir = false;
             name = "";
             fileSize = 0;
+            dtLastWrite = FileOrFolderData.MINDT2000;
             return false;
         }
     }

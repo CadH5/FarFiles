@@ -127,14 +127,18 @@ namespace FarFiles.Model
                         "fi1", "file2", "f3", "", "f5" };
                 long[] filesSizes = new long[] {
                         0, 4000, 5000000, 0, 5 };
-                var pathInfoAnswerState = new PathInfoAnswerState(folderNames, fileNames, filesSizes);
+                DateTime dtNow = DateTime.Now;
+                DateTime[] dtLastWrites = new DateTime[] {
+                        dtNow, dtNow, dtNow, dtNow, dtNow };
+                var pathInfoAnswerState = new PathInfoAnswerState(folderNames, fileNames, filesSizes, dtLastWrites);
                 msgSvrCl = new MsgSvrClPathInfoAnswer(seqNrIn, true, pathInfoAnswerState,
                             20000);
                 AssertEq(wrLog, MsgSvrClType.PATHINFO_ANS, msgSvrCl.Type,
                         "MsgSvrClPathInfoAnswer.Type");
-                ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizes(
+                ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizesAndDts(
                         out int seqNrOut, out bool isSvrWritable, out bool isLastOut,
-                        out string[] foldersOut, out string[] filesOut, out long[] filesSizesOut);
+                        out string[] foldersOut, out string[] filesOut,
+                        out long[] filesSizesOut, out DateTime[] dtLastWritesOut);
                 AssertEq(wrLog, seqNrIn, seqNrOut,
                         "MsgSvrClPathInfoAnswer seqNr");
                 AssertEq(wrLog, true, isSvrWritable,
@@ -147,16 +151,19 @@ namespace FarFiles.Model
                         "MsgSvrClPathInfoAnswer fileNames");
                 AssertEq(wrLog, filesSizes, filesSizesOut,
                         "MsgSvrClPathInfoAnswer filesSizes");
+                AssertEq(wrLog, dtLastWrites, dtLastWritesOut,
+                        "MsgSvrClPathInfoAnswer dtLastWrites");
 
                 folderNames = new string[0];
                 fileNames = new string[0];
                 filesSizes = new long[0];
-                pathInfoAnswerState = new PathInfoAnswerState(folderNames, fileNames, filesSizes);
+                dtLastWrites = new DateTime[0];
+                pathInfoAnswerState = new PathInfoAnswerState(folderNames, fileNames, filesSizes, dtLastWrites);
                 msgSvrCl = new MsgSvrClPathInfoAnswer(seqNrIn, false, pathInfoAnswerState,
                                     20000);
-                ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizes(
+                ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizesAndDts(
                         out seqNrOut, out isSvrWritable, out isLastOut,
-                        out foldersOut, out filesOut, out filesSizesOut);
+                        out foldersOut, out filesOut, out filesSizesOut, out dtLastWritesOut);
                 AssertEq(wrLog, true, isLastOut,
                         "MsgSvrClPathInfoAnswer empty isLast");
                 AssertEq(wrLog, folderNames, foldersOut,
@@ -165,13 +172,17 @@ namespace FarFiles.Model
                         "MsgSvrClPathInfoAnswer empty fileNames");
                 AssertEq(wrLog, filesSizes, filesSizesOut,
                         "MsgSvrClPathInfoAnswer empty filesSizes");
+                AssertEq(wrLog, dtLastWrites, dtLastWritesOut,
+                        "MsgSvrClPathInfoAnswer empty dtLastWrites");
 
                 var testNames = new string[1000];
                 var testSizes = new long[1000];
+                var testDtLastWrites = new DateTime[1000];
                 for (int i=0; i < 1000; i++)
                 {
                     testNames[i] = $"f{i}";
                     testSizes[i] = i;
+                    testDtLastWrites[i] = new DateTime(2000, 1, i / 40);
                 }
 
                 int smallBufSizeMoreOrLess = 2000;
@@ -182,17 +193,18 @@ namespace FarFiles.Model
                     folderNames = 0 == i ? testNames : new string[0];
                     fileNames = 1 == i ? testNames : new string[0];
                     filesSizes = 1 == i ? testSizes : new long[0];
+                    dtLastWrites = 1 == i ? testDtLastWrites : new DateTime[0];
 
                     pathInfoAnswerState = new PathInfoAnswerState(
-                                folderNames, fileNames, filesSizes);
+                                folderNames, fileNames, filesSizes, dtLastWrites);
                     int prevCounterNum = 0;
                     do
                     {
                         msgSvrCl = new MsgSvrClPathInfoAnswer(seqNr, false,
                                     pathInfoAnswerState, smallBufSizeMoreOrLess);
-                        ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizes(
+                        ((MsgSvrClPathInfoAnswer)msgSvrCl).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizesAndDts(
                                 out seqNrOut, out isSvrWritable, out isLastOut,
-                                out foldersOut, out filesOut, out filesSizesOut);
+                                out foldersOut, out filesOut, out filesSizesOut, out dtLastWritesOut);
                         AssertEq(wrLog, seqNr, seqNrOut,
                                 "MsgSvrClPathInfoAnswer big seqNr");
                         AssertEq(wrLog, false, isSvrWritable,
@@ -208,6 +220,8 @@ namespace FarFiles.Model
                                     "MsgSvrClPathInfoAnswer big zero files");
                             AssertEq(wrLog, 0, filesSizesOut.Length,
                                     "MsgSvrClPathInfoAnswer big zero sizes");
+                            AssertEq(wrLog, 0, dtLastWritesOut.Length,
+                                    "MsgSvrClPathInfoAnswer big zero dtLastWrites");
                             // I don't want to log all array members:
                             AssertEq(wrLog, true,
                                 AssertEq(wrLog, folderNames, foldersOut, "",
@@ -233,6 +247,8 @@ namespace FarFiles.Model
                                         $" [{prevCounterNum} to {till}]");
                             AssertEq(wrLog, filesOut.Length, filesSizesOut.Length,
                                 "MsgSvrClPathInfoAnswer num files, sizes");
+                            AssertEq(wrLog, filesOut.Length, dtLastWritesOut.Length,
+                                "MsgSvrClPathInfoAnswer num files, dtLastWrites");
 
                             prevCounterNum += filesOut.Length;
                         }
@@ -602,6 +618,11 @@ namespace FarFiles.Model
                 arrExpected = (long[])oExpected;
                 arrResult = (long[])oResult;
             }
+            else if (oExpected is DateTime[])
+            {
+                arrExpected = (DateTime[])oExpected;
+                arrResult = (DateTime[])oResult;
+            }
 
             if (null != arrExpected && null != arrResult)
             {
@@ -626,6 +647,11 @@ namespace FarFiles.Model
                         {
                             eq = AssertEq(wrLogArraymemsOrNull, ((long[])arrExpected)[i],
                                     ((long[])arrResult)[j], $"   array[{i}],[{j}]");
+                        }
+                        else if (oExpected is DateTime[])
+                        {
+                            eq = AssertEq(wrLogArraymemsOrNull, ((DateTime[])arrExpected)[i],
+                                    ((DateTime[])arrResult)[j], $"   array[{i}],[{j}]");
                         }
                         else
                         {

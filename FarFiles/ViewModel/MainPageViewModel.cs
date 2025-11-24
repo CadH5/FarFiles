@@ -325,8 +325,8 @@ public partial class MainPageViewModel : BaseViewModel
 
         //JWdP 20250507 Introduced "unittests", to be executed from this button if incommented
         //====================================================================================
-        //await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
-        //return;
+        await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
+        return;
         //====================================================================================
 
         //OpenClientJEEWEE();   // to test the collectionview
@@ -587,6 +587,7 @@ public partial class MainPageViewModel : BaseViewModel
         var lisFolders = new List<string>();
         var lisFiles = new List<string>();
         var lisSizes = new List<long>();
+        var lisDtLastWrites = new List<DateTime>();
 
         bool abort = false;
         int sleepMilliSecs = 1000;
@@ -620,11 +621,13 @@ public partial class MainPageViewModel : BaseViewModel
             {
                 msgSvrClAnswer.CheckExpectedTypeMaybeThrow(typeof(MsgSvrClPathInfoAnswer));
 
-                ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizes(
-                        out seqNr, out bool isSvrWritable, out bool isLast, out string[] folderNames, out string[] fileNames, out long[] fileSizes);
+                ((MsgSvrClPathInfoAnswer)msgSvrClAnswer).GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizesAndDts(
+                        out seqNr, out bool isSvrWritable, out bool isLast, out string[] folderNames,
+                        out string[] fileNames, out long[] fileSizes, out DateTime[] dtLastWrites);
                 lisFolders.AddRange(folderNames);
                 lisFiles.AddRange(fileNames);
                 lisSizes.AddRange(fileSizes);
+                lisDtLastWrites.AddRange(dtLastWrites);
 
                 MauiProgram.Info.IsSvrWritableReportedToClient = isSvrWritable;
 
@@ -663,8 +666,10 @@ public partial class MainPageViewModel : BaseViewModel
             MauiProgram.Info.CurrSvrFolders = lisFolders.Order().Select(
                 f => new FileOrFolderData(f, true, 0)).ToArray();
             int i = 0;
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! FileAttributes.None ? 
             MauiProgram.Info.CurrSvrFiles = lisFiles.Select(
-                f => new FileOrFolderData(f, false, lisSizes[i++]))
+                f => new FileOrFolderData(f, false, lisSizes[i], FileAttributes.None,
+                lisDtLastWrites[i], lisDtLastWrites[i++]))
                 .OrderBy(f => f.Name)
                 .ToArray();
         }
@@ -1303,8 +1308,10 @@ public partial class MainPageViewModel : BaseViewModel
                     d => !d.IsDir).Select(d => d.Name).ToArray();
         long[] fileSizes = _fileOrFolderDataArrayOnSvr.Where(
                     d => !d.IsDir).Select(d => d.FileSize).ToArray();
+        DateTime[] dtLastWrites = _fileOrFolderDataArrayOnSvr.Where(
+                    d => !d.IsDir).Select(d => d.DtLastWrite).ToArray();
         _currPathInfoAnswerState = new PathInfoAnswerState(folderNames,
-                    fileNames, fileSizes);
+                    fileNames, fileSizes, dtLastWrites);
 
         msgSvrClAns = new MsgSvrClPathInfoAnswer(_seqNrPathInfoAns++,
 				Settings.SvrClModeAsInt == (int)SvrClMode.SERVERWRITABLE,

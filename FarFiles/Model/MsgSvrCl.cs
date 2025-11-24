@@ -366,7 +366,8 @@ namespace FarFiles.Model
         /// </summary>
         /// <param name="idx">after this, is at start next part of Bytes</param>
         /// <returns></returns>
-        public string[] GetFileNamesAndSizesAtIndex(ref int idx, out long[] fileSizes)
+        public string[] GetFileNamesAndSizesAndDtsAtIndex(ref int idx,
+                    out long[] fileSizes, out DateTime[] dtLastWrites)
         {
             int num = BitConverter.ToInt32(Bytes, idx);
             idx += sizeof(int);
@@ -375,11 +376,14 @@ namespace FarFiles.Model
                     $"invalid in bytes: found num {num} for arrays");
 
             fileSizes = new long[num];
+            dtLastWrites = new DateTime[num];
             var fileNames = new string[num];
 
             for (int i = 0; i < num; i++)
             {
                 fileSizes[i] = BitConverter.ToInt64(Bytes, idx);
+                idx += sizeof(long);
+                dtLastWrites[i] = DateTime.FromBinary(BitConverter.ToInt64(Bytes, idx));
                 idx += sizeof(long);
                 fileNames[i] = StrPlusLenFromBytes(Bytes, ref idx);
             }
@@ -604,7 +608,7 @@ namespace FarFiles.Model
 
             bool prevIsDir = true;
             while (pathInfoAnswerState.GetNextFileOrFolder(out bool isDir,
-                            out string name, out long fileSize))
+                            out string name, out long fileSize, out DateTime dtLastWrite))
             {
                 if (prevIsDir && !isDir)
                 {
@@ -617,6 +621,7 @@ namespace FarFiles.Model
                 {
                     numFiles++;
                     lisBytes.AddRange(BitConverter.GetBytes(fileSize));
+                    lisBytes.AddRange(BitConverter.GetBytes(dtLastWrite.ToBinary()));
                 }
                 else
                 {
@@ -652,9 +657,10 @@ namespace FarFiles.Model
         }
 
 
-        public void GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizes(
+        public void GetSeqnrAndIswrAndIslastAndFolderAndFileNamesAndSizesAndDts(
                     out int seqNr, out bool isSvrWritable, out bool isLast,
-                    out string[] folderNames, out string[] fileNames, out long[] fileSizes)
+                    out string[] folderNames, out string[] fileNames, out long[] fileSizes,
+                    out DateTime[] dtLastWrites)
         {
             try
             {
@@ -665,7 +671,7 @@ namespace FarFiles.Model
                 isSvrWritable = BitConverter.ToBoolean(Bytes, idx);
                 idx += sizeof(bool);
                 folderNames = GetStringsAtIndex(ref idx);
-                fileNames = GetFileNamesAndSizesAtIndex(ref idx, out fileSizes);
+                fileNames = GetFileNamesAndSizesAndDtsAtIndex(ref idx, out fileSizes, out dtLastWrites);
                 isLast = BitConverter.ToBoolean(Bytes, idx);
                 idx += sizeof(bool);
             }

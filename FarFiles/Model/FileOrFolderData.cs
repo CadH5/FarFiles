@@ -4,6 +4,7 @@ namespace FarFiles.Model;
 
 public class FileOrFolderData
 {
+    public readonly static DateTime MINDT2000 = new DateTime(2000, 1, 1);
     public string Name { get; set; } = "";
     public FileAttributes Attrs { get; set; }
     public DateTime DtCreation { get; set; }
@@ -32,7 +33,7 @@ public class FileOrFolderData
         IsDir = isDir;
         FileSize = isDir ? 0 : fileSize;
         Attrs = isDir ? FileAttributes.Directory : FileAttributes.None;
-        var dt = new DateTime(2000, 1, 1);
+        var dt = MINDT2000;
         DtCreation = dt;
         DtLastWrite = dt;
     }
