@@ -36,6 +36,8 @@ public partial class MainPageViewModel : BaseViewModel
     protected Thread _threadAndroidPathInfo = null;
     protected FileOrFolderData[] _fileOrFolderDataArrayOnSvr = null;
 
+    protected bool _DOTESTS = false;
+
 
     public MainPageViewModel(FileDataService fileDataService)
     {
@@ -124,6 +126,8 @@ public partial class MainPageViewModel : BaseViewModel
             OnPropertyChanged(nameof(ConnSettsEnabled));
         }
     }
+
+    public string TextBtnConnect { get => _DOTESTS ? "DO TESTS" : "Connect"; }
 
     protected bool _isBtnConnectVisible = true;
     public bool IsBtnConnectVisible
@@ -325,8 +329,11 @@ public partial class MainPageViewModel : BaseViewModel
 
         //JWdP 20250507 Introduced "unittests", to be executed from this button if incommented
         //====================================================================================
-        await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
-        return;
+        if (_DOTESTS)
+        {
+            await MauiProgram.Tests.DoTestsWindowsAsync(_fileDataService);
+            return;
+        }
         //====================================================================================
 
         //OpenClientJEEWEE();   // to test the collectionview

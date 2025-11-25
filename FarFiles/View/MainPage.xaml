@@ -55,7 +55,7 @@
             Margin="8"
             Command="{Binding ConnectAndDoConversationCommand}"
             Style="{StaticResource ButtonOutline}"
-            Text="Connect"
+            Text="{Binding TextBtnConnect}"
             IsVisible="{Binding IsBtnConnectVisible}"
             IsEnabled="{Binding ConnSettsEnabled}"/>
 

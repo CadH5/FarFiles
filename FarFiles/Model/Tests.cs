@@ -182,7 +182,7 @@ namespace FarFiles.Model
                 {
                     testNames[i] = $"f{i}";
                     testSizes[i] = i;
-                    testDtLastWrites[i] = new DateTime(2000, 1, i / 40);
+                    testDtLastWrites[i] = new DateTime(2000, 1, (i+40) / 40);
                 }
 
                 int smallBufSizeMoreOrLess = 2000;
