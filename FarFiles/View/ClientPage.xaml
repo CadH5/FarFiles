@@ -52,6 +52,40 @@
         <StackLayout Orientation="Vertical" Grid.Row="4"
                         Margin="0,5,0,0"
                         IsVisible="{Binding MoreButtonsMode}">
+            <StackLayout Orientation="Horizontal" Margin="0,5,0,0">
+                <Label Margin="5,0,0,0" VerticalTextAlignment="Center"
+                        Text="see:" WidthRequest="200" />
+                <Picker Style="{StaticResource PickerStyle}"
+                    SelectedIndex="{Binding SeeClientExtraAsInt}">
+                    <Picker.ItemsSource>
+                        <x:Array Type="{x:Type x:String}">
+                            <x:String>Name - Size</x:String>
+                            <x:String>Name - Date</x:String>
+                        </x:Array>
+                    </Picker.ItemsSource>
+                </Picker>
+            </StackLayout>
+            <StackLayout Orientation="Horizontal" Margin="0,5,0,0">
+                <Label Margin="5,0,0,0" VerticalTextAlignment="Center"
+                        Text="order by:" WidthRequest="200" />
+                <Picker Style="{StaticResource PickerStyle}"
+                    SelectedIndex="{Binding OrderClientExtraAsInt}">
+                    <Picker.ItemsSource>
+                        <x:Array Type="{x:Type x:String}">
+                            <x:String>Name</x:String>
+                            <x:String>Size</x:String>
+                            <x:String>Date</x:String>
+                        </x:Array>
+                    </Picker.ItemsSource>
+                </Picker>
+                <Border Padding="1"
+                   BackgroundColor="#00FFDD" WidthRequest="30">
+                    <CheckBox IsChecked="{Binding OrderReverse}" />
+                </Border>
+                <Label Text="reverse"
+                   VerticalTextAlignment="Center"
+                   Margin="5,0,0,0" />
+            </StackLayout>
             <Button Margin="5,2,0,2" WidthRequest="200" HorizontalOptions="Start"
                         Text="select all files" Command="{Binding SelectAllCommand}"
                             Style="{StaticResource ButtonOutline}"></Button>
@@ -123,7 +157,7 @@
                             <!-- Image -->
                             <ColumnDefinition Width="*" />
                             <!-- Main Text -->
-                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="{Binding ColWidthExtra}" />
                             <!-- Right Text -->
                         </Grid.ColumnDefinitions>
 
@@ -143,7 +177,7 @@
 
                         <!--FontSize="16"-->
 
-                        <Label Text="{Binding FfData.FormatFileSize}" 
+                        <Label Text="{Binding FfData.ExtraFileInfo}" 
                                        VerticalOptions="Center"
                                         Grid.Column="2" />
                         <!--HorizontalOptions="End"-->

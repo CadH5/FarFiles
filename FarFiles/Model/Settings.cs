@@ -21,6 +21,19 @@ namespace FarFiles.Model
         CENTRALSVR,
     }
 
+    public enum SeeClExtraMode
+    {
+        SIZE,
+        DATELASTWRITE,
+    }
+
+    public enum OrderClExtraMode
+    {
+        NAME,
+        SIZE,
+        DATELASTWRITE,
+    }
+
     public class Settings
     {
 #if ANDROID
@@ -56,6 +69,10 @@ namespace FarFiles.Model
         /// </summary>
         public Guid ConnClientGuid { get; set; } = Guid.Empty;
         public FfState LastKnownState { get; set; } = FfState.UNREGISTERED;
+
+        public int SeeClientExtraAsInt { get; set; } = (int)SeeClExtraMode.SIZE;
+        public int OrderClientExtraAsInt { get; set; } = (int)OrderClExtraMode.NAME;
+        public int OrderClient0normal1reverse { get; set; } = 0;
 
 #if ANDROID
 #else

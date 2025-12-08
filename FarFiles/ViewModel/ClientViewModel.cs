@@ -12,6 +12,9 @@ public partial class ClientViewModel : BaseViewModel
     public ClientPage ContentPageRef;
     public ObservableCollection<FfCollViewItem> FfColl { get; } = new();
     FileDataService _fileDataService;
+    protected int _savSeeClientExtraAsInt;
+    protected int _savOrderClientExtraAsInt;
+    protected int _savOrderClientExtraReverseAsInt;
 
     // xaml cannot bind to MauiProgram.Settings directly.
     // And for Idx0isOverwr1isSkip an extra measure is necessary:
@@ -124,6 +127,39 @@ public partial class ClientViewModel : BaseViewModel
         }
     }
 
+    public int SeeClientExtraAsInt
+    {
+        get => MauiProgram.ParseIntEnum<SeeClExtraMode>(MauiProgram.Settings.SeeClientExtraAsInt.ToString(),
+                out int intVal) ? intVal : 0;
+        set
+        {
+            MauiProgram.Settings.SeeClientExtraAsInt = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ColWidthExtra));
+        }
+    }
+
+    public int OrderClientExtraAsInt
+    {
+        get => MauiProgram.ParseIntEnum<OrderClExtraMode>(MauiProgram.Settings.OrderClientExtraAsInt.ToString(),
+                out int intVal) ? intVal : 0;
+        set
+        {
+            MauiProgram.Settings.OrderClientExtraAsInt = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool OrderReverse
+    {
+        get => MauiProgram.Settings.OrderClient0normal1reverse == 1;
+        set
+        {
+            MauiProgram.Settings.OrderClient0normal1reverse = value ? 1 : 0;
+            OnPropertyChanged();
+        }
+    }
+
     public ClientViewModel(FileDataService fileDataService, IConnectivity connectivity)
     {
         Title = "Far Away Files Access";
@@ -143,8 +179,19 @@ public partial class ClientViewModel : BaseViewModel
 
         foreach (FileOrFolderData fo in MauiProgram.Info.CurrSvrFolders)
             FfColl.Add(new FfCollViewItem(fo));
-        foreach (FileOrFolderData fi in MauiProgram.Info.CurrSvrFiles)
+
+        Func<FileOrFolderData,object> funcOrder = Settings.OrderClientExtraAsInt == (int)OrderClExtraMode.NAME ?
+                f => f.Name : (
+            Settings.OrderClientExtraAsInt == (int)OrderClExtraMode.SIZE ?
+                f => f.FileSize :
+                f => f.DtLastWrite);
+        foreach (FileOrFolderData fi in Settings.OrderClient0normal1reverse == 0 ?
+                MauiProgram.Info.CurrSvrFiles.OrderBy(funcOrder) :
+                MauiProgram.Info.CurrSvrFiles.OrderByDescending(funcOrder))
+
+        {
             FfColl.Add(new FfCollViewItem(fi));
+        }
 
         ContentPageRef?.ClrAll(FfColl);
     }
@@ -183,6 +230,12 @@ public partial class ClientViewModel : BaseViewModel
                         "Server" : "Local";
             return $"{vwFileSytem} files:";
         }
+    }
+
+
+    public int ColWidthExtra
+    {
+        get => Settings.SeeClientExtraAsInt == (int)SeeClExtraMode.SIZE ? 100 : 160;
     }
 
 
@@ -416,6 +469,23 @@ public partial class ClientViewModel : BaseViewModel
     void MoreButtons()
     {
         MoreButtonsMode = ! MoreButtonsMode;
+        if (MoreButtonsMode)
+        {
+            _savSeeClientExtraAsInt = MauiProgram.Settings.SeeClientExtraAsInt;
+            _savOrderClientExtraAsInt = MauiProgram.Settings.OrderClientExtraAsInt;
+            _savOrderClientExtraReverseAsInt = MauiProgram.Settings.OrderClient0normal1reverse;
+        }
+        else
+        {
+            if (_savSeeClientExtraAsInt != MauiProgram.Settings.SeeClientExtraAsInt ||
+                _savOrderClientExtraAsInt != MauiProgram.Settings.OrderClientExtraAsInt ||
+                _savOrderClientExtraReverseAsInt != MauiProgram.Settings.OrderClient0normal1reverse)
+            {
+                UpdateCollView();
+            }
+        }
+
+
     }
 
 

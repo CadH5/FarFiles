@@ -137,7 +137,7 @@ public static class MauiProgram
     /// <summary>
     /// Actually, a requirement is that the enum has contiguous int values
     /// </summary>
-    /// <param name="valAsStr"></param>
+    /// <param name="valAsStr">the intval as a string (not the enum name)</param>
     /// <param name="valAsInt"></param>
     /// <returns></returns>
     public static bool ParseIntEnum<T>(string valAsStr, out int valAsInt) where T : System.Enum
@@ -308,6 +308,9 @@ public static class MauiProgram
         Settings.StunPort = Preferences.Get("StunPort", Settings.StunPort);
         Settings.TimeoutSecsClient = Preferences.Get("TimeoutSecsClient", Settings.TimeoutSecsClient);
         Settings.BufSizeMoreOrLess = Preferences.Get("BufSizeMoreOrLess", Settings.BufSizeMoreOrLess);
+        Settings.SeeClientExtraAsInt = Preferences.Get("SeeClientExtraAsInt", Settings.SeeClientExtraAsInt);
+        Settings.OrderClientExtraAsInt = Preferences.Get("OrderClientExtraAsInt", Settings.OrderClientExtraAsInt);
+        Settings.OrderClient0normal1reverse = Preferences.Get("OrderClient0normal1reverse", Settings.OrderClient0normal1reverse);
         try
         {
             Settings.ConnClientGuid = Guid.Parse(Preferences.Get("ConnClientGuid", Settings.ConnClientGuid.ToString()));
@@ -343,6 +346,9 @@ public static class MauiProgram
         Preferences.Set("StunPort", Settings.StunPort);
         Preferences.Set("TimeoutSecsClient", Settings.TimeoutSecsClient);
         Preferences.Set("BufSizeMoreOrLess", Settings.BufSizeMoreOrLess);
+        Preferences.Set("SeeClientExtraAsInt", Settings.SeeClientExtraAsInt);
+        Preferences.Set("OrderClientExtraAsInt", Settings.OrderClientExtraAsInt);
+        Preferences.Set("OrderClient0normal1reverse", Settings.OrderClient0normal1reverse);
         Preferences.Set("ConnClientGuid", Settings.ConnClientGuid.ToString());
         Preferences.Set("LastKnownState", ((int)Settings.LastKnownState).ToString());
     }

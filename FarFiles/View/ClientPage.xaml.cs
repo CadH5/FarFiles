@@ -88,7 +88,7 @@ public partial class ClientPage : ContentPage
     /// Later on: many more measures were necessary
     /// </summary>
     /// <param name="ffCollvwItems"></param>
-    public void DoWeird(ObservableCollection<FfCollViewItem> ffCollvwItems)
+    public void DoWeird_currentlynotused(ObservableCollection<FfCollViewItem> ffCollvwItems)
     {
         // May 2025: to resolve the following problem:
         // Now, my page that has the CollectionView has a problem.
