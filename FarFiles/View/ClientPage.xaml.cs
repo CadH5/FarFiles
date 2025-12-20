@@ -27,22 +27,23 @@ public partial class ClientPage : ContentPage
 
     public void SelectAll(ObservableCollection<FfCollViewItem> items)
     {
-        SelectCore(items, false, "");
+        SelectFilesCore(items, false, "");
     }
 
     public void SelectFltr(ObservableCollection<FfCollViewItem> items,
                     string txtSelectFltr)
     {
-        SelectCore(items, true, txtSelectFltr);
+        SelectFilesCore(items, true, txtSelectFltr);
     }
 
-    protected void SelectCore(ObservableCollection<FfCollViewItem> items,
+    protected void SelectFilesCore(ObservableCollection<FfCollViewItem> items,
                     bool useSelectFltr, string txtSelectFltr)
     {
         ClrAll(items);
         string txtSelectFltrUpc = txtSelectFltr.ToUpper();
         foreach (var item in items)
         {
+
             if (item.FfData.IsDir)
                 continue;
 
@@ -55,6 +56,23 @@ public partial class ClientPage : ContentPage
             }
             item.IsSelected = true;
             FfCollView.SelectedItems.Add(item);
+        }
+    }
+
+    public void SelectFilesDirsAccordingtoBefore(ObservableCollection<FfCollViewItem> items,
+                    FfCollViewItem[] selectedsBefore)
+    {
+        ClrAll(items);
+        if (null == selectedsBefore || selectedsBefore.Length == 0)
+            return;
+        foreach (var item in items)
+        {
+            if (selectedsBefore.Any(s => s.FfData.IsDir == item.FfData.IsDir &&
+                            s.FfData.Name == item.FfData.Name))
+            {
+                item.IsSelected = true;
+                FfCollView.SelectedItems.Add(item);
+            }
         }
     }
 

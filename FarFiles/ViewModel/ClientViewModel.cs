@@ -15,6 +15,7 @@ public partial class ClientViewModel : BaseViewModel
     protected int _savSeeClientExtraAsInt;
     protected int _savOrderClientExtraAsInt;
     protected int _savOrderClientExtraReverseAsInt;
+    protected FfCollViewItem[] _selectedsBeforeMoreButtons = null;
 
     // xaml cannot bind to MauiProgram.Settings directly.
     // And for Idx0isOverwr1isSkip an extra measure is necessary:
@@ -504,6 +505,7 @@ public partial class ClientViewModel : BaseViewModel
             _savSeeClientExtraAsInt = MauiProgram.Settings.SeeClientExtraAsInt;
             _savOrderClientExtraAsInt = MauiProgram.Settings.OrderClientExtraAsInt;
             _savOrderClientExtraReverseAsInt = MauiProgram.Settings.OrderClient0normal1reverse;
+            _selectedsBeforeMoreButtons = ContentPageRef.GetSelecteds();
         }
         else
         {
@@ -512,6 +514,9 @@ public partial class ClientViewModel : BaseViewModel
                 _savOrderClientExtraReverseAsInt != MauiProgram.Settings.OrderClient0normal1reverse)
             {
                 UpdateCollView();
+                ContentPageRef?.SelectFilesDirsAccordingtoBefore(FfColl, _selectedsBeforeMoreButtons);
+                _selectedsBeforeMoreButtons = null;
+                ContentPageRef?.UpdatePage();
             }
         }
 
