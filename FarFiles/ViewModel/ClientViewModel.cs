@@ -135,7 +135,9 @@ public partial class ClientViewModel : BaseViewModel
         {
             MauiProgram.Settings.SeeClientExtraAsInt = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(ColWidthExtra));
+            //JEEWEE
+            OnPropertyChanged(nameof(MiddleStar));
+            OnPropertyChanged(nameof(RightStar));
         }
     }
 
@@ -232,10 +234,38 @@ public partial class ClientViewModel : BaseViewModel
         }
     }
 
+    //JEEWEE
+    //public int ColWidthExtra
+    //{
+    //    get => Settings.SeeClientExtraAsInt == (int)SeeClExtraMode.SIZE ? 50 : 160;
+    //}
+    //public GridLength ColWidthExtra
+    //{
+    //    get
+    //    {
+    //        return Settings.SeeClientExtraAsInt == (int)SeeClExtraMode.SIZE
+    //            ? new GridLength(50, GridUnitType.Absolute)
+    //            : new GridLength(160, GridUnitType.Absolute);
+    //    }
+    //}
 
-    public int ColWidthExtra
+    public GridLength MiddleStar
     {
-        get => Settings.SeeClientExtraAsInt == (int)SeeClExtraMode.SIZE ? 100 : 160;
+        get
+        {
+            return Settings.SeeClientExtraAsInt == (int)SeeClExtraMode.SIZE
+                ? new GridLength(4.9, GridUnitType.Star)    // size: 4.9 + 1.1 = 6
+                : new GridLength(3.2, GridUnitType.Star);   // date: 3.2 + 2.8 = 6
+        }
+    }
+    public GridLength RightStar
+    {
+        get
+        {
+            return Settings.SeeClientExtraAsInt == (int)SeeClExtraMode.SIZE
+                ? new GridLength(1.1, GridUnitType.Star)    // size: 4.9 + 1.1 = 6
+                : new GridLength(2.8, GridUnitType.Star);   // date: 3.2 + 2.8 = 6
+        }
     }
 
 

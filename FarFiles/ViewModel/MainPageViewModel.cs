@@ -673,7 +673,8 @@ public partial class MainPageViewModel : BaseViewModel
             MauiProgram.Info.CurrSvrFolders = lisFolders.Order().Select(
                 f => new FileOrFolderData(f, true, 0)).ToArray();
             int i = 0;
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! FileAttributes.None ? 
+            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! FileAttributes.None ?
+            //JWdP 20251214 well, yes, seems right to me
             MauiProgram.Info.CurrSvrFiles = lisFiles.Select(
                 f => new FileOrFolderData(f, false, lisSizes[i], FileAttributes.None,
                 lisDtLastWrites[i], lisDtLastWrites[i++]))
