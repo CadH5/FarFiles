@@ -55,7 +55,7 @@
                         IsVisible="{Binding MoreButtonsMode}">
             <StackLayout Orientation="Horizontal" Margin="0,5,0,0">
                 <Label Margin="5,0,0,0" VerticalTextAlignment="Center"
-                        Text="see:" WidthRequest="200" />
+                        Text="files: see:" WidthRequest="200" />
                 <Picker Style="{StaticResource PickerStyle}"
                     SelectedIndex="{Binding SeeClientExtraAsInt}">
                     <Picker.ItemsSource>
@@ -68,7 +68,7 @@
             </StackLayout>
             <StackLayout Orientation="Horizontal" Margin="0,5,0,0">
                 <Label Margin="5,0,0,0" VerticalTextAlignment="Center"
-                        Text="order by:" WidthRequest="200" />
+                        Text="files: order by:" WidthRequest="200" />
                 <Picker Style="{StaticResource PickerStyle}"
                     SelectedIndex="{Binding OrderClientExtraAsInt}">
                     <Picker.ItemsSource>
@@ -159,10 +159,6 @@
                                             Path=BindingContext.MiddleStar}" />
                             <ColumnDefinition Width="{Binding Source={x:Reference RootPage},
                                             Path=BindingContext.RightStar}" />
-                            <!--<ColumnDefinition Width="{Binding RightStar}" />-->
-                            <!--JEEWEE-->
-                            <!--<ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="{Binding ColWidthExtra}" />-->
                         </Grid.ColumnDefinitions>
 
                         <Grid.Triggers>

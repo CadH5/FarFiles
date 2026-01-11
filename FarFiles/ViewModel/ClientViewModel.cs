@@ -136,7 +136,6 @@ public partial class ClientViewModel : BaseViewModel
         {
             MauiProgram.Settings.SeeClientExtraAsInt = value;
             OnPropertyChanged();
-            //JEEWEE
             OnPropertyChanged(nameof(MiddleStar));
             OnPropertyChanged(nameof(RightStar));
         }
@@ -234,21 +233,6 @@ public partial class ClientViewModel : BaseViewModel
             return $"{vwFileSytem} files:";
         }
     }
-
-    //JEEWEE
-    //public int ColWidthExtra
-    //{
-    //    get => Settings.SeeClientExtraAsInt == (int)SeeClExtraMode.SIZE ? 50 : 160;
-    //}
-    //public GridLength ColWidthExtra
-    //{
-    //    get
-    //    {
-    //        return Settings.SeeClientExtraAsInt == (int)SeeClExtraMode.SIZE
-    //            ? new GridLength(50, GridUnitType.Absolute)
-    //            : new GridLength(160, GridUnitType.Absolute);
-    //    }
-    //}
 
     public GridLength MiddleStar
     {

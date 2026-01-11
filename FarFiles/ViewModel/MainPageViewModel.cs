@@ -250,7 +250,7 @@ public partial class MainPageViewModel : BaseViewModel
 
 
 
-    protected async void OpenClientJEEWEE()
+    protected async void OpenClientTEST()
     {
         string[] folderNames = { "aa", "folderB xxxxxxxxxx yyyyyyyyyyyy zzzzzz" };
         string[] fileNames = { "bb", "fileC",
@@ -336,7 +336,7 @@ public partial class MainPageViewModel : BaseViewModel
         }
         //====================================================================================
 
-        //OpenClientJEEWEE();   // to test the collectionview
+        //OpenClientTEST();   // to test the collectionview
         //return;
 
         if (String.IsNullOrEmpty(MauiProgram.Settings.FullPathRoot))
@@ -673,7 +673,7 @@ public partial class MainPageViewModel : BaseViewModel
             MauiProgram.Info.CurrSvrFolders = lisFolders.Order().Select(
                 f => new FileOrFolderData(f, true, 0)).ToArray();
             int i = 0;
-            //JEEWEE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! FileAttributes.None ?
+            //JWdP 2025???? FileAttributes.None ?
             //JWdP 20251214 well, yes, seems right to me
             MauiProgram.Info.CurrSvrFiles = lisFiles.Select(
                 f => new FileOrFolderData(f, false, lisSizes[i], FileAttributes.None,
@@ -1466,8 +1466,8 @@ public partial class MainPageViewModel : BaseViewModel
     {
         byte[] dummyMessage = Encoding.UTF8.GetBytes("punch");
 
-        int secondsPunching = 25;       // JEEWEE: SETTING
-        int milliSecondsSendDelay = 200;// JEEWEE: SETTING
+        int secondsPunching = 25;
+        int milliSecondsSendDelay = 200;
         CancellationTokenSource cts = new(TimeSpan.FromSeconds(secondsPunching)); // total timeout
         bool received = false;
 
