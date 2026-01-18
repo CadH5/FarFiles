@@ -1,10 +1,6 @@
 <?php
 
-//JEEWEE
-//const UNREGISTERED_CONNKEY = "-";
-//const INIT_UDPPORT_OR_ID = "X0" . str_repeat(" ", 30);
-
-function DoData($cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0Client1, $CommunicModeAsInt,
+function DoData($strLogFileName, $cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0Client1, $CommunicModeAsInt,
                 &$ipData, &$registeredCode)
 {
     if ($cmd !== "REGISTER" && $cmd !== "UNREGISTER" && $cmd !== "GETDATA")
@@ -23,7 +19,6 @@ function DoData($cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0C
     $strDataFileTempCleanup = "./farfilesdata_tempCleanup.tmp";
     $fpData = null;
     $nUnregisteredCounter = 0;
-    $bSvrUnregistered = FALSE;
 
     try
     {
@@ -68,7 +63,6 @@ function DoData($cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0C
                                 $registeredCode = 0;
                                 fseek($fpData, $prevPos, SEEK_SET);
                                 WriteOneData($fpData, $oneData);
-                                $bSvrUnregistered = TRUE;
                             } else {        // "REGISTER"
                                 $errMsg = "ConnectKey already occupied for server";
                             }
@@ -83,15 +77,6 @@ function DoData($cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0C
                                 fseek($fpData, $prevPos, SEEK_SET);
                                 WriteOneData($fpData, $oneData);
                             }
-//JEEWEE
-//                            else if ($udpPortOrId === INIT_UDPPORT_OR_ID)   // would be weird
-//                            {
-//                                $errMsg = "UdpPort $udpPortOrId: invalid value";
-//                            }
-//                            else if ($oneData->udpClientPortOrId !== INIT_UDPPORT_OR_ID)
-//                            {
-//                                $errMsg = "Client already registered";
-//                            }
                             else if ($oneData->nIsRegistered === 2)
                             {
                                 $errMsg = "Client already registered";
@@ -130,10 +115,6 @@ function DoData($cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0C
         if ("" === $errMsg && $isSvr0Client1 === 0 && $cmd === "REGISTER")
         {
             // new register server
-//JEEWEE
-//            $ipData = $ipPubl . "," . $udpPortOrId . "," . $localIP . "," .
-//                "0.0.0.0" . "," . INIT_UDPPORT_OR_ID;     // client public ip and udpportOrId (INIT_UDPPORT_OR_ID means not yet registered)
-
             $oneData = new FfBinConnData();
             $oneData->nIsRegistered = 1;
             $registeredCode = 1;
@@ -144,8 +125,6 @@ function DoData($cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0C
             $oneData->nLocalIpSvrAsInt = StrIpToInt($localIP);
             $oneData->udpClientPort = -1;
             $oneData->idClientInsteadOfUdp = str_repeat("0", 32);
-            //JEEWEE
-            //$oneData->SetThingsFromIpData($ipData);
             $oneData->nSvrCommunicMode = $CommunicModeAsInt;
             WriteOneData($fpData, $oneData);
 
@@ -159,14 +138,16 @@ function DoData($cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0C
 
 
         // JWdP 20250406 UNREGISTER is something that for the user is of less importance, so I use this
-        // occasion to do some cleanup, if it's worthwhile. I now think of 'worthwhile' as 1000 or more
+        // occasion to do some cleanup, if it's worthwhile. I now think of 'worthwhile' as 100 or more
         // unregistered data found (but note: we have only counted the ones until we found the matching
         // FfBinConnData
 
-        if ("" === $errMsg && $bSvrUnregistered && $nUnregisteredCounter > 1000) {
+        if ("" === $errMsg && $cmd === "UNREGISTER" && $nUnregisteredCounter > 100) {
+            $numDeleted = 0;
             $errMsg = CleanupDataFile($strDataFile, $strDataFileTempCleanup);
             if ("" === $errMsg)
-                $errMsg = CleanupMsgs();
+                $errMsg = CleanupMsgs($numDeleted);
+            TryLogAppend($strLogFileName, "cleaned up datafile and trash msg files ($numDeleted); errMsg='$errMsg'");
         }
 
         if ("" === $errMsg && $cmd !== "GETDATA" && $isSvr0Client1 !== 0 && "" === $ipData)
@@ -266,8 +247,9 @@ function CleanupDataFile($strDataFile, $strDataFileTempCleanup)
 
 
 
-function CleanupMsgs()
+function CleanupMsgs(&$numDeleted)
 {
+    $numDeleted = 0;
     $dir = __DIR__ . "/msgs";  // subdir "msgs" relative to this script
 
     $files = glob($dir . "/*.bin");
@@ -278,6 +260,7 @@ function CleanupMsgs()
             $fileAge = $now - filemtime($file);
             if ($fileAge >= 24 * 60 * 60) { // 1 day or older
                 unlink($file);
+                $numDeleted++;
             }
         }
     }
@@ -322,11 +305,14 @@ function WriteDataFileAsTxt($strDataFile, $strDumpTxtFile)
     fclose($fpData);
 }
 
-function TryLogAppend($strLogFileName, $strLine)
+function TryLogAppend($strLogFileNameOrEmp, $strLine)
 {
+    if ("" === $strLogFileNameOrEmp)
+        return true;
+
     for ($i = 0; $i < 3; ++$i)
     {
-        $fpLog = @fopen("log/" . $strLogFileName, "a");
+        $fpLog = @fopen("log/" . $strLogFileNameOrEmp, "a");
         if ($fpLog !== FALSE)
         {
             fprintf($fpLog, "%s %s\n",
@@ -669,6 +655,33 @@ function ReadOneData($fpData)
 }
 
 
+
+function UriParamval($uri, $paramName, $ignoreCase = true)
+{
+    if ($ignoreCase)
+        $paramName = strtoupper($paramName);
+
+    $uriParts = explode("?", $uri, 2);
+    $n = count($uriParts);
+    if ($n == 0)
+        return "";
+    $uriParamsStr = $uriParts[$n - 1];
+    $arrParts = explode("&", $uriParamsStr);
+    foreach ($arrParts as $part)
+    {
+        $arrKwAndVal = explode("=", $part);
+        if (count($arrKwAndVal) == 2)
+        {
+            $kw = $ignoreCase ? strtoupper($arrKwAndVal[0]) : $arrKwAndVal[0];
+            if ($paramName === $kw)
+                return $arrKwAndVal[1];
+        }
+    }
+
+    return "";
+}
+
+
 class FfBinConnData
 {
     public $nIsRegistered = 0;
@@ -706,56 +719,6 @@ class FfBinConnData
             $this->UdpOrIdClientAsStr();
     }
 
-//JEEWEE
-//    public function SetThingsFromIpData($ipData)
-//    {
-//        $arrParts = explode(",", $ipData);
-//        $this->nIpSvrAsInt = StrIpToInt($arrParts[0]);
-//        if (strlen($arrParts[1]) === 32)
-//        {
-//            $this->udpSvrPort = 0;
-//            $this->idSvrInsteadOfUdp = $arrParts[1];
-//        }
-//        else
-//        {
-//            $this->udpSvrPort = intval($arrParts[1]);
-//            $this->idSvrInsteadOfUdp = "";
-//        }
-//
-//        $this->nLocalIpSvrAsInt = StrIpToInt($arrParts[2]);
-//        $this->nIpClientAsInt = StrIpToInt($arrParts[3]);
-//        if (strlen($arrParts[4]) === 32)
-//        {
-//            $this->udpClientPort = 0;
-//            $this->idClientInsteadOfUdp = $arrParts[4];
-//        }
-//        else
-//        {
-//            $this->udpClientPort = intval($arrParts[4]);
-//            $this->idClientInsteadOfUdp = "";
-//        }
-//    }
-
-    //JEEWEE
-//    function UdpPortOrIdToLen32($udpPortOrIdLen32)
-//    {
-//        if (strlen($udpPortOrIdLen32) >= 32)
-//        {
-//            // it should not be > 32, but anyway that would be fatal because the file counts with always 32-len strings for udpPortOrId
-//            // (because when server registers, client value)
-//            return trim(substr($udpPortOrIdLen32, 1));
-//        }
-//        return $udpPortOrIdLen32;
-//    }
-//
-//    function UdpPortOrIdFromLen32($udpPortOrIdLen32)
-//    {
-//        if ($udpPortOrIdLen32[0] === 'X')   // then follows an int which is the real udp port
-//        {
-//            return trim(substr($udpPortOrIdLen32, 1));
-//        }
-//        return $udpPortOrIdLen32;
-//    }
 
     public function EchoThis()
     {

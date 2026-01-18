@@ -13,6 +13,7 @@ $communicMode = "";
 // JWdP 20250223: not too much info for hackers
 
 $errMsg = "";
+$registeredCode = -1;
 $strMonth3 = strtolower(substr(date("F"), 0, 3));
 $strLogFileName = $strMonth3 . "-" . date("Y") . ".txt";
 
@@ -46,7 +47,7 @@ if ("" === $errMsg)
 
 if ("" === $errMsg)
 {
-    $errMsg = DoData($cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0Client1, $CommunicModeAsInt,
+    $errMsg = DoData($strLogFileName, $cmd, $connectKey, $udpPort, $idInsteadOfUdp, $localIP, $isSvr0Client1, $CommunicModeAsInt,
             $ipData, $registeredCode);
 }
 
